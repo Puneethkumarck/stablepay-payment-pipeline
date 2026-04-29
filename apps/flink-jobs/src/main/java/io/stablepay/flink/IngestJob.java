@@ -1,7 +1,6 @@
 package io.stablepay.flink;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -19,11 +18,14 @@ import io.stablepay.flink.config.FlinkConfig;
 import io.stablepay.flink.deser.AvroEnvelopeDeserializer;
 import io.stablepay.flink.dlq.DlqKafkaSinkFactory;
 import io.stablepay.flink.dlq.DlqOutputTags;
+import io.stablepay.flink.mapper.DlqToIcebergRowMapper;
 import io.stablepay.flink.mapper.EventToIcebergRowMapper;
 import io.stablepay.flink.model.DlqEnvelope;
 import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.model.ValidationResult;
 import io.stablepay.flink.process.ValidateAndRouteFunction;
+import io.stablepay.flink.sink.DlqIcebergSinkFactory;
+import io.stablepay.flink.sink.DlqOpenSearchSink;
 import io.stablepay.flink.sink.IcebergSinkFactory;
 import io.stablepay.flink.sink.OpenSearchAsyncSink;
 import io.stablepay.flink.watermark.EnvelopeTimestampAssigner;
@@ -103,6 +105,25 @@ public class IngestJob {
         routedStream
                 .sinkTo(new OpenSearchAsyncSink(FlinkConfig.opensearchUrl()))
                 .name("opensearch-transactions-sink");
+
+        // --- DLQ mirror: union all DLQ side outputs → Iceberg + OpenSearch ---
+        var dlqStream = schemaInvalidStream.union(
+                routedStream.getSideOutput(DlqOutputTags.LATE_EVENT),
+                routedStream.getSideOutput(DlqOutputTags.ILLEGAL_TRANSITION),
+                routedStream.getSideOutput(DlqOutputTags.SINK_FAILURE));
+
+        var dlqIcebergSinkFactory = new DlqIcebergSinkFactory();
+        dlqIcebergSinkFactory.ensureDlqTableExists();
+
+        var dlqRowStream = dlqStream
+                .map(DlqToIcebergRowMapper::toRowData)
+                .name("dlq-iceberg-map");
+
+        dlqIcebergSinkFactory.addSink(dlqRowStream, "dlq_events");
+
+        dlqStream
+                .sinkTo(new DlqOpenSearchSink(FlinkConfig.opensearchUrl(), "dlq-events-write"))
+                .name("opensearch-dlq-events-sink");
 
         env.execute("stablepay-ingest-job");
     }
