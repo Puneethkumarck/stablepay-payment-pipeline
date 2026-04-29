@@ -76,8 +76,14 @@ public class AvroEnvelopeDeserializer implements KafkaRecordDeserializationSchem
 
     private static ValidationResult toDlqResult(
             String topic, int partition, long offset, String errorClass, String errorMessage, byte[] rawBytes) {
-        return new ValidationResult.Invalid(
-                new DlqEnvelope(topic, partition, offset, errorClass, errorMessage, rawBytes,
-                        java.time.Instant.now().toEpochMilli(), 0));
+        return new ValidationResult.Invalid(DlqEnvelope.builder()
+                .sourceTopic(topic)
+                .sourcePartition(partition)
+                .sourceOffset(offset)
+                .errorClass(errorClass)
+                .errorMessage(errorMessage)
+                .originalPayloadBytes(rawBytes)
+                .failedAt(java.time.Instant.now().toEpochMilli())
+                .build());
     }
 }

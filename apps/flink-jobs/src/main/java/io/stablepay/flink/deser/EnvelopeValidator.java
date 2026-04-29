@@ -68,7 +68,14 @@ public final class EnvelopeValidator {
 
     private static ValidationResult.Invalid toDlq(
             String topic, int partition, long offset, String errorClass, String errorMessage, byte[] rawBytes) {
-        return new ValidationResult.Invalid(
-                new DlqEnvelope(topic, partition, offset, errorClass, errorMessage, rawBytes, Instant.now().toEpochMilli(), 0));
+        return new ValidationResult.Invalid(DlqEnvelope.builder()
+                .sourceTopic(topic)
+                .sourcePartition(partition)
+                .sourceOffset(offset)
+                .errorClass(errorClass)
+                .errorMessage(errorMessage)
+                .originalPayloadBytes(rawBytes)
+                .failedAt(Instant.now().toEpochMilli())
+                .build());
     }
 }

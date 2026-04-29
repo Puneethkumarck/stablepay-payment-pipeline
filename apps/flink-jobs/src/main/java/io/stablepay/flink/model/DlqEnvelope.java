@@ -1,5 +1,8 @@
 package io.stablepay.flink.model;
 
+import lombok.Builder;
+
+@Builder(toBuilder = true)
 public record DlqEnvelope(
     String sourceTopic,
     int sourcePartition,

@@ -11,31 +11,45 @@ public final class DlqRouter {
 
     public static DlqEnvelope schemaInvalid(
             String topic, int partition, long offset, byte[] rawBytes, String errorMsg) {
-        return new DlqEnvelope(
-                topic, partition, offset, "SCHEMA_INVALID", errorMsg,
-                rawBytes, Instant.now().toEpochMilli(), 0);
+        return DlqEnvelope.builder()
+                .sourceTopic(topic)
+                .sourcePartition(partition)
+                .sourceOffset(offset)
+                .errorClass("SCHEMA_INVALID")
+                .errorMessage(errorMsg)
+                .originalPayloadBytes(rawBytes)
+                .failedAt(Instant.now().toEpochMilli())
+                .retryCount(0)
+                .build();
     }
 
     public static DlqEnvelope lateEvent(ValidatedEvent event, long watermark, String errorMsg) {
-        return new DlqEnvelope(
-                event.topic(), 0, 0, "LATE_EVENT",
-                errorMsg + " (event_time=" + event.eventTimeMillis() + ", watermark=" + watermark + ")",
-                null, Instant.now().toEpochMilli(), 0);
+        return DlqEnvelope.builder()
+                .sourceTopic(event.topic())
+                .errorClass("LATE_EVENT")
+                .errorMessage(errorMsg + " (event_time=" + event.eventTimeMillis() + ", watermark=" + watermark + ")")
+                .failedAt(Instant.now().toEpochMilli())
+                .build();
     }
 
     public static DlqEnvelope illegalTransition(
             ValidatedEvent event, String fromStatus, String toStatus) {
-        return new DlqEnvelope(
-                event.topic(), 0, 0, "ILLEGAL_TRANSITION",
-                "Invalid transition: " + fromStatus + " -> " + toStatus,
-                null, Instant.now().toEpochMilli(), 0);
+        return DlqEnvelope.builder()
+                .sourceTopic(event.topic())
+                .errorClass("ILLEGAL_TRANSITION")
+                .errorMessage("Invalid transition: " + fromStatus + " -> " + toStatus)
+                .failedAt(Instant.now().toEpochMilli())
+                .build();
     }
 
     public static DlqEnvelope sinkFailure(
             ValidatedEvent event, String sinkType, String errorMsg, int retryCount) {
-        return new DlqEnvelope(
-                event.topic(), 0, 0, "SINK_FAILURE",
-                sinkType + ": " + errorMsg,
-                null, Instant.now().toEpochMilli(), retryCount);
+        return DlqEnvelope.builder()
+                .sourceTopic(event.topic())
+                .errorClass("SINK_FAILURE")
+                .errorMessage(sinkType + ": " + errorMsg)
+                .failedAt(Instant.now().toEpochMilli())
+                .retryCount(retryCount)
+                .build();
     }
 }
