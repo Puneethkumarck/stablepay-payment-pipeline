@@ -14,9 +14,13 @@ import org.apache.flink.table.data.RowData;
 import io.stablepay.flink.catalog.IcebergCatalogConfig;
 import io.stablepay.flink.config.FlinkConfig;
 import io.stablepay.flink.deser.AvroEnvelopeDeserializer;
+import io.stablepay.flink.dlq.DlqKafkaSinkFactory;
+import io.stablepay.flink.dlq.DlqOutputTags;
 import io.stablepay.flink.mapper.EventToIcebergRowMapper;
+import io.stablepay.flink.model.DlqEnvelope;
 import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.model.ValidationResult;
+import io.stablepay.flink.process.ValidateAndRouteFunction;
 import io.stablepay.flink.sink.IcebergSinkFactory;
 import io.stablepay.flink.sink.OpenSearchAsyncSink;
 import io.stablepay.flink.watermark.EnvelopeTimestampAssigner;
@@ -43,13 +47,40 @@ public class IngestJob {
                 .fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "kafka-source")
                 .name("avro-deserialized-events");
 
+        // Schema-invalid events from deserialization
+        DataStream<DlqEnvelope> schemaInvalidStream = rawStream
+                .filter(r -> r instanceof ValidationResult.Invalid)
+                .map(r -> ((ValidationResult.Invalid) r).dlqEnvelope())
+                .name("schema-invalid-events");
+
+        schemaInvalidStream
+                .sinkTo(DlqKafkaSinkFactory.createSink(FlinkConfig.DLQ_SCHEMA_INVALID))
+                .name("dlq-schema-invalid-sink");
+
         SingleOutputStreamOperator<ValidatedEvent> validatedStream = rawStream
                 .filter(r -> r instanceof ValidationResult.Valid)
                 .map(r -> ((ValidationResult.Valid) r).event())
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .name("validated-events");
 
-        // DLQ side outputs wired by Plan 2.5
+        // Validate transitions and route DLQ side outputs
+        SingleOutputStreamOperator<ValidatedEvent> routedStream = validatedStream
+                .keyBy(IngestJob::extractEntityKey)
+                .process(new ValidateAndRouteFunction())
+                .name("validate-and-route");
+
+        // DLQ side outputs to Kafka
+        routedStream.getSideOutput(DlqOutputTags.LATE_EVENT)
+                .sinkTo(DlqKafkaSinkFactory.createSink(FlinkConfig.DLQ_LATE_EVENTS))
+                .name("dlq-late-event-sink");
+
+        routedStream.getSideOutput(DlqOutputTags.ILLEGAL_TRANSITION)
+                .sinkTo(DlqKafkaSinkFactory.createSink(FlinkConfig.DLQ_PROCESSING_FAILED))
+                .name("dlq-illegal-transition-sink");
+
+        routedStream.getSideOutput(DlqOutputTags.SINK_FAILURE)
+                .sinkTo(DlqKafkaSinkFactory.createSink(FlinkConfig.DLQ_SINK_FAILED))
+                .name("dlq-sink-failure-sink");
 
         // --- Iceberg raw sink (one table per topic, independent branch) ---
         IcebergSinkFactory icebergSinkFactory = new IcebergSinkFactory();
@@ -59,7 +90,7 @@ public class IngestJob {
             String topic = entry.getKey();
             String tableName = entry.getValue();
 
-            DataStream<RowData> tableStream = validatedStream
+            DataStream<RowData> tableStream = routedStream
                     .filter(e -> topic.equals(e.topic()))
                     .map(EventToIcebergRowMapper::toRowData)
                     .name("iceberg-map-" + tableName);
@@ -68,10 +99,22 @@ public class IngestJob {
         }
 
         // --- OpenSearch transactions sink (independent branch) ---
-        validatedStream
+        routedStream
                 .addSink(new OpenSearchAsyncSink(FlinkConfig.opensearchUrl()))
                 .name("opensearch-transactions-sink");
 
         env.execute("stablepay-ingest-job");
+    }
+
+    private static String extractEntityKey(ValidatedEvent event) {
+        var record = event.record();
+        var ref = record.get("payout_reference");
+        if (ref != null) return ref.toString();
+        ref = record.get("payin_reference");
+        if (ref != null) return ref.toString();
+        ref = record.get("tx_hash");
+        if (ref != null) return ref.toString();
+        if (event.flowId() != null) return event.flowId();
+        return event.eventId();
     }
 }
