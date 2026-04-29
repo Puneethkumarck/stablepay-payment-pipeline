@@ -79,6 +79,30 @@ flink-deploy: flink-build flink-submit-ingest flink-submit-correlator
 flink-ui:
     open http://localhost:8082
 
+# ─── OpenSearch ───────────────────────────────────
+
+# Initialize OpenSearch index templates and ISM policies
+opensearch-init:
+    bash infra/opensearch/init.sh
+
+# ─── DLQ Tools ────────────────────────────────────
+
+# List DLQ entries
+dlq-list *ARGS:
+    cd apps/dlq-tools && uv run dlq list {{ARGS}}
+
+# Inspect a single DLQ event
+dlq-inspect ID:
+    cd apps/dlq-tools && uv run dlq inspect {{ID}}
+
+# Replay a single DLQ event
+dlq-replay ID *ARGS:
+    cd apps/dlq-tools && uv run dlq replay {{ID}} {{ARGS}}
+
+# Replay all events by error class (dry-run by default)
+dlq-replay-class CLASS *ARGS:
+    cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} --dry-run {{ARGS}}
+
 # ─── Stubs (expanded in later phases) ───���─────────
 
 # Run all tests

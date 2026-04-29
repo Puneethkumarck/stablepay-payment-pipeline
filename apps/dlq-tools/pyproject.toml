@@ -2,10 +2,20 @@
 name = "stablepay-dlq-tools"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = ["stablepay-schemas-py"]
+dependencies = [
+    "stablepay-schemas-py",
+    "typer>=0.15.1",
+    "pyiceberg>=0.9.1",
+    "confluent-kafka>=2.8.0",
+    "pyarrow>=19.0.0",
+    "rich>=14.0.0",
+]
 
 [tool.uv.sources]
 stablepay-schemas-py = { workspace = true }
+
+[project.scripts]
+dlq = "stablepay_dlq_tools.cli:app"
 
 [build-system]
 requires = ["hatchling"]
