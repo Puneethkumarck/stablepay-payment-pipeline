@@ -1,0 +1,30 @@
+{
+  "envelope": {
+    "event_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "event_time": 1714300900000,
+    "ingest_time": 1714300900050,
+    "schema_version": "1.0.0",
+    "flow_id": null,
+    "correlation_id": "corr-crypto-payin-001",
+    "trace_id": "00-1bf7651916cd43dd8448eb211c803200-c8ae6b7169203332-01"
+  },
+  "payin_reference": "PI-CRYPTO-20240428-001",
+  "customer_id": "cust-660e8400-e29b-41d4-a716-446655440001",
+  "account_id": "acc-crypto-001",
+  "amount": {
+    "amount_micros": 500000000,
+    "currency_code": "USDC"
+  },
+  "internal_status": "COMPLETED",
+  "customer_status": "COMPLETED",
+  "chain": "ethereum",
+  "asset": "USDC",
+  "source_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD41",
+  "destination_address": "0x8Ba1f109551bD432803012645Ac136ddd64DBA72",
+  "tx_hash": "0xabc123def456789012345678901234567890abcdef1234567890abcdef123456",
+  "confirmations": 12,
+  "gas_fee_micros": 3500000,
+  "block_number": 19750000,
+  "block_timestamp": 1714300880000,
+  "is_user_facing": true
+}

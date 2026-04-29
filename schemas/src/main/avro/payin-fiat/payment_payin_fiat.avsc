@@ -1,0 +1,39 @@
+{
+  "type": "record",
+  "name": "PayinFiatV1",
+  "namespace": "io.stablepay.events.payments",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "payin_reference", "type": "string"},
+    {"name": "customer_id", "type": "string"},
+    {"name": "account_id", "type": "string"},
+    {"name": "amount", "type": "io.stablepay.events.common.Money"},
+    {"name": "fee", "type": ["null", "io.stablepay.events.common.Money"], "default": null},
+    {"name": "internal_status", "type": {
+      "type": "enum",
+      "name": "FiatPayinStatus",
+      "namespace": "io.stablepay.events.payments",
+      "symbols": [
+        "DETECTED",
+        "PENDING_SCREENING",
+        "SCREENING_IN_PROGRESS",
+        "SCREENING_CLEARED",
+        "SCREENING_FLAGGED",
+        "SCREENING_HELD",
+        "MATCHED",
+        "PENDING_ALLOCATION",
+        "ALLOCATED",
+        "COMPLETED",
+        "FAILED",
+        "RETURNED",
+        "SUSPENDED"
+      ]
+    }},
+    {"name": "customer_status", "type": "io.stablepay.events.payments.CustomerFacingStatus"},
+    {"name": "sender", "type": ["null", "io.stablepay.events.common.Party"], "default": null},
+    {"name": "receiver_account", "type": ["null", "string"], "default": null},
+    {"name": "bank_reference", "type": ["null", "string"], "default": null},
+    {"name": "description", "type": ["null", "string"], "default": null},
+    {"name": "is_user_facing", "type": "boolean", "default": true}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "SigningRequestV1",
+  "namespace": "io.stablepay.events.signing",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "request_id", "type": "string"},
+    {"name": "transaction_reference", "type": "string"},
+    {"name": "chain", "type": "string"},
+    {"name": "raw_transaction_hex", "type": "string"},
+    {"name": "status", "type": {
+      "type": "enum",
+      "name": "SigningStatus",
+      "namespace": "io.stablepay.events.signing",
+      "symbols": ["REQUESTED", "IN_PROGRESS", "SIGNED", "FAILED", "TIMEOUT"]
+    }}
+  ]
+}

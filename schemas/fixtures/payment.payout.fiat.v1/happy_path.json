@@ -1,0 +1,47 @@
+{
+  "envelope": {
+    "event_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "event_time": 1714300800000,
+    "ingest_time": 1714300800100,
+    "schema_version": "1.0.0",
+    "flow_id": null,
+    "correlation_id": "corr-fiat-payout-001",
+    "trace_id": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+  },
+  "payout_reference": "PO-FIAT-20240428-001",
+  "customer_id": "cust-550e8400-e29b-41d4-a716-446655440000",
+  "account_id": "acc-123456789",
+  "amount": {
+    "amount_micros": 150000000,
+    "currency_code": "USD"
+  },
+  "fee": {
+    "amount_micros": 2500000,
+    "currency_code": "USD"
+  },
+  "source_amount": null,
+  "target_amount": null,
+  "fx_rate": null,
+  "internal_status": "COMPLETED",
+  "customer_status": "COMPLETED",
+  "beneficiary": {
+    "party_id": "ben-987654321",
+    "name": "Jane Doe",
+    "account_id": "acc-ben-001",
+    "iban": "DE89370400440532013000",
+    "wallet_address": null,
+    "address": {
+      "line1": "123 Main Street",
+      "line2": null,
+      "city": "Berlin",
+      "state": null,
+      "postal_code": "10115",
+      "country_code": "DE"
+    }
+  },
+  "provider": "swift-partner-a",
+  "route": "SWIFT",
+  "description": "Invoice payment #INV-2024-042",
+  "notes": null,
+  "is_user_facing": true
+}

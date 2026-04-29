@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "DlqSchemaInvalidV1",
+  "namespace": "io.stablepay.events.dlq",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "source_topic", "type": "string"},
+    {"name": "source_partition", "type": "int"},
+    {"name": "source_offset", "type": "long"},
+    {"name": "error_class", "type": "string", "default": "SCHEMA_INVALID"},
+    {"name": "error_message", "type": "string"},
+    {"name": "original_payload_bytes", "type": "bytes"},
+    {"name": "failed_at", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+  ]
+}

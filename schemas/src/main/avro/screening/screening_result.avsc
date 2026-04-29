@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "ScreeningResultV1",
+  "namespace": "io.stablepay.events.screening",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "screening_id", "type": "string"},
+    {"name": "transaction_reference", "type": "string"},
+    {"name": "customer_id", "type": "string"},
+    {"name": "outcome", "type": {
+      "type": "enum",
+      "name": "ScreeningOutcome",
+      "namespace": "io.stablepay.events.screening",
+      "symbols": ["CLEARED", "FLAGGED", "HOLD", "RFI", "REJECTED", "SEIZED"]
+    }},
+    {"name": "provider", "type": ["null", "string"], "default": null},
+    {"name": "risk_score", "type": ["null", "double"], "default": null},
+    {"name": "notes", "type": ["null", "string"], "default": null}
+  ]
+}

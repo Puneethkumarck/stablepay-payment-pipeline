@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "Money",
+  "namespace": "io.stablepay.events.common",
+  "fields": [
+    {"name": "amount_micros", "type": "long", "doc": "Amount in micros (6 decimal places)"},
+    {"name": "currency_code", "type": "string", "doc": "ISO 4217 currency code (e.g. USD, EUR, BTC)"}
+  ]
+}

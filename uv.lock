@@ -236,7 +236,7 @@ requires-dist = [{ name = "stablepay-schemas-py", editable = "packages/schemas-p
 [[package]]
 name = "stablepay-payment-pipeline"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 
 [[package]]
 name = "stablepay-schemas-py"

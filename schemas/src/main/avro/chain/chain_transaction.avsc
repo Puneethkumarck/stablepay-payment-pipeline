@@ -1,0 +1,36 @@
+{
+  "type": "record",
+  "name": "ChainTransactionV1",
+  "namespace": "io.stablepay.events.chain",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "tx_hash", "type": "string"},
+    {"name": "chain", "type": "string"},
+    {"name": "asset", "type": "string"},
+    {"name": "from_address", "type": "string"},
+    {"name": "to_address", "type": "string"},
+    {"name": "amount", "type": "io.stablepay.events.common.Money"},
+    {"name": "gas_fee_micros", "type": ["null", "long"], "default": null},
+    {"name": "block_number", "type": ["null", "long"], "default": null},
+    {"name": "block_timestamp", "type": ["null", {"type": "long", "logicalType": "timestamp-millis"}], "default": null},
+    {"name": "confirmations", "type": "int", "default": 0},
+    {"name": "nonce", "type": ["null", "long"], "default": null},
+    {"name": "is_replacement", "type": "boolean", "default": false},
+    {"name": "status", "type": {
+      "type": "enum",
+      "name": "ChainTransactionStatus",
+      "namespace": "io.stablepay.events.chain",
+      "symbols": [
+        "PENDING",
+        "BROADCAST",
+        "CONFIRMING",
+        "CONFIRMED",
+        "FAILED",
+        "DROPPED",
+        "REPLACED",
+        "STUCK",
+        "RBF_ATTEMPTED"
+      ]
+    }}
+  ]
+}

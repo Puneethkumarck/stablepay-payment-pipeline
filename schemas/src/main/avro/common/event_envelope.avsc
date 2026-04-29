@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "EventEnvelope",
+  "namespace": "io.stablepay.events.common",
+  "fields": [
+    {"name": "event_id", "type": "string", "doc": "Unique event identifier (UUID)"},
+    {"name": "event_time", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "When the event occurred"},
+    {"name": "ingest_time", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "When the event was ingested"},
+    {"name": "schema_version", "type": "string", "doc": "Semantic version of the schema (e.g. 1.0.0)"},
+    {"name": "flow_id", "type": ["null", "string"], "default": null, "doc": "Multi-leg flow correlation ID"},
+    {"name": "correlation_id", "type": ["null", "string"], "default": null, "doc": "Cross-service correlation ID"},
+    {"name": "trace_id", "type": ["null", "string"], "default": null, "doc": "OTEL trace ID for distributed tracing"}
+  ]
+}

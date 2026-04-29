@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "ApprovalDecisionV1",
+  "namespace": "io.stablepay.events.approval",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "approval_id", "type": "string"},
+    {"name": "transaction_reference", "type": "string"},
+    {"name": "approver_id", "type": "string"},
+    {"name": "decision", "type": {
+      "type": "enum",
+      "name": "ApprovalDecision",
+      "namespace": "io.stablepay.events.approval",
+      "symbols": ["APPROVED", "REJECTED", "ESCALATED"]
+    }},
+    {"name": "approval_level", "type": "int"},
+    {"name": "notes", "type": ["null", "string"], "default": null}
+  ]
+}

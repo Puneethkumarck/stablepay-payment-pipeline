@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "Address",
+  "namespace": "io.stablepay.events.common",
+  "fields": [
+    {"name": "line1", "type": ["null", "string"], "default": null},
+    {"name": "line2", "type": ["null", "string"], "default": null},
+    {"name": "city", "type": ["null", "string"], "default": null},
+    {"name": "state", "type": ["null", "string"], "default": null},
+    {"name": "postal_code", "type": ["null", "string"], "default": null},
+    {"name": "country_code", "type": ["null", "string"], "default": null, "doc": "ISO 3166-1 alpha-2"}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "Party",
+  "namespace": "io.stablepay.events.common",
+  "fields": [
+    {"name": "party_id", "type": ["null", "string"], "default": null},
+    {"name": "name", "type": ["null", "string"], "default": null},
+    {"name": "account_id", "type": ["null", "string"], "default": null},
+    {"name": "iban", "type": ["null", "string"], "default": null},
+    {"name": "wallet_address", "type": ["null", "string"], "default": null},
+    {"name": "address", "type": ["null", "io.stablepay.events.common.Address"], "default": null}
+  ]
+}

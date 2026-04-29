@@ -1,0 +1,45 @@
+{
+  "envelope": {
+    "event_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "event_time": 1714301000000,
+    "ingest_time": 1714301000075,
+    "schema_version": "1.0.0",
+    "flow_id": "flow-770e8400-e29b-41d4-a716-446655440002",
+    "correlation_id": "corr-flow-onramp-001",
+    "trace_id": "00-2cf7651916cd43dd8448eb211c803300-d9bf6b7169203333-01"
+  },
+  "flow_id": "flow-770e8400-e29b-41d4-a716-446655440002",
+  "customer_id": "cust-880e8400-e29b-41d4-a716-446655440003",
+  "flow_type": "ONRAMP",
+  "flow_status": "COMPLETED",
+  "source_amount": {
+    "amount_micros": 1000000000,
+    "currency_code": "EUR"
+  },
+  "target_amount": {
+    "amount_micros": 1085000000,
+    "currency_code": "USDC"
+  },
+  "fx_rate": 1.085,
+  "legs": [
+    {
+      "leg_id": "leg-001",
+      "leg_type": "PAYIN_FIAT",
+      "status": "COMPLETED",
+      "reference": "PI-FIAT-20240428-001"
+    },
+    {
+      "leg_id": "leg-002",
+      "leg_type": "TRADE",
+      "status": "COMPLETED",
+      "reference": "TR-20240428-001"
+    },
+    {
+      "leg_id": "leg-003",
+      "leg_type": "PAYOUT_CRYPTO",
+      "status": "COMPLETED",
+      "reference": "PO-CRYPTO-20240428-001"
+    }
+  ],
+  "description": "EUR to USDC onramp"
+}

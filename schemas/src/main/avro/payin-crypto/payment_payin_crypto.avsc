@@ -1,0 +1,41 @@
+{
+  "type": "record",
+  "name": "PayinCryptoV1",
+  "namespace": "io.stablepay.events.payments",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "payin_reference", "type": "string"},
+    {"name": "customer_id", "type": "string"},
+    {"name": "account_id", "type": "string"},
+    {"name": "amount", "type": "io.stablepay.events.common.Money"},
+    {"name": "internal_status", "type": {
+      "type": "enum",
+      "name": "CryptoPayinStatus",
+      "namespace": "io.stablepay.events.payments",
+      "symbols": [
+        "DETECTED",
+        "PENDING_CONFIRMATION",
+        "CONFIRMING",
+        "CONFIRMED",
+        "PENDING_SCREENING",
+        "SCREENING_CLEARED",
+        "SCREENING_FLAGGED",
+        "ALLOCATED",
+        "COMPLETED",
+        "FAILED",
+        "STUCK"
+      ]
+    }},
+    {"name": "customer_status", "type": "io.stablepay.events.payments.CustomerFacingStatus"},
+    {"name": "chain", "type": "string"},
+    {"name": "asset", "type": "string"},
+    {"name": "source_address", "type": ["null", "string"], "default": null},
+    {"name": "destination_address", "type": "string"},
+    {"name": "tx_hash", "type": ["null", "string"], "default": null},
+    {"name": "confirmations", "type": "int", "default": 0},
+    {"name": "gas_fee_micros", "type": ["null", "long"], "default": null},
+    {"name": "block_number", "type": ["null", "long"], "default": null},
+    {"name": "block_timestamp", "type": ["null", {"type": "long", "logicalType": "timestamp-millis"}], "default": null},
+    {"name": "is_user_facing", "type": "boolean", "default": true}
+  ]
+}

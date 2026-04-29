@@ -1,0 +1,54 @@
+{
+  "type": "record",
+  "name": "PaymentFlowV1",
+  "namespace": "io.stablepay.events.flow",
+  "fields": [
+    {"name": "envelope", "type": "io.stablepay.events.common.EventEnvelope"},
+    {"name": "flow_id", "type": "string"},
+    {"name": "customer_id", "type": "string"},
+    {"name": "flow_type", "type": {
+      "type": "enum",
+      "name": "FlowType",
+      "namespace": "io.stablepay.events.flow",
+      "symbols": ["ONRAMP", "OFFRAMP", "CRYPTO_TO_CRYPTO"]
+    }},
+    {"name": "flow_status", "type": {
+      "type": "enum",
+      "name": "FlowStatus",
+      "namespace": "io.stablepay.events.flow",
+      "symbols": [
+        "INITIATED",
+        "PAYIN_PENDING",
+        "PAYIN_COMPLETED",
+        "TRADE_PENDING",
+        "TRADE_COMPLETED",
+        "PAYOUT_PENDING",
+        "PAYOUT_COMPLETED",
+        "COMPLETED",
+        "PARTIALLY_COMPLETED",
+        "FAILED",
+        "COMPENSATION_INITIATED",
+        "COMPENSATION_COMPLETED",
+        "CANCELLED"
+      ]
+    }},
+    {"name": "source_amount", "type": ["null", "io.stablepay.events.common.Money"], "default": null},
+    {"name": "target_amount", "type": ["null", "io.stablepay.events.common.Money"], "default": null},
+    {"name": "fx_rate", "type": ["null", "double"], "default": null, "doc": "Display-only FX rate"},
+    {"name": "legs", "type": {
+      "type": "array",
+      "items": {
+        "type": "record",
+        "name": "FlowLeg",
+        "namespace": "io.stablepay.events.flow",
+        "fields": [
+          {"name": "leg_id", "type": "string"},
+          {"name": "leg_type", "type": "string"},
+          {"name": "status", "type": "string"},
+          {"name": "reference", "type": ["null", "string"], "default": null}
+        ]
+      }
+    }},
+    {"name": "description", "type": ["null", "string"], "default": null}
+  ]
+}
