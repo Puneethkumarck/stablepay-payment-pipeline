@@ -1,0 +1,57 @@
+{
+  "index_patterns": ["transactions*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.mapping.total_fields.limit": 100
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "event_id": { "type": "keyword" },
+        "event_time": { "type": "date", "format": "epoch_millis" },
+        "ingest_time": { "type": "date", "format": "epoch_millis" },
+        "schema_version": { "type": "keyword" },
+        "flow_id": { "type": "keyword" },
+        "correlation_id": { "type": "keyword" },
+        "trace_id": { "type": "keyword" },
+        "event_type": { "type": "keyword" },
+        "flow_type": { "type": "keyword" },
+        "direction": { "type": "keyword" },
+        "is_crypto": { "type": "boolean" },
+        "is_user_facing": { "type": "boolean" },
+        "transaction_reference": { "type": "keyword" },
+        "customer_id": { "type": "keyword" },
+        "account_id": { "type": "keyword" },
+        "amount_micros": { "type": "long" },
+        "currency_code": { "type": "keyword" },
+        "fee_amount_micros": { "type": "long" },
+        "fee_currency_code": { "type": "keyword" },
+        "source_amount_micros": { "type": "long" },
+        "source_currency_code": { "type": "keyword" },
+        "target_amount_micros": { "type": "long" },
+        "target_currency_code": { "type": "keyword" },
+        "fx_rate": { "type": "double", "doc_values": true },
+        "internal_status": { "type": "keyword" },
+        "customer_status": { "type": "keyword" },
+        "screening_outcome": { "type": "keyword" },
+        "chain": { "type": "keyword" },
+        "asset": { "type": "keyword" },
+        "source_address": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+        "destination_address": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+        "tx_hash": { "type": "keyword" },
+        "confirmations": { "type": "integer" },
+        "gas_fee_micros": { "type": "long" },
+        "block_number": { "type": "long" },
+        "block_timestamp": { "type": "date", "format": "epoch_millis" },
+        "provider": { "type": "keyword" },
+        "route": { "type": "keyword" },
+        "beneficiary_name": { "type": "text" },
+        "sender_name": { "type": "text" },
+        "description": { "type": "text" },
+        "notes": { "type": "text" }
+      }
+    }
+  }
+}

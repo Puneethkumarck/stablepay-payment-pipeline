@@ -1,0 +1,10 @@
+flow_weights:
+  fiat_payout: 0.30
+  crypto_payout: 0.20
+  fiat_payin: 0.20
+  crypto_payin: 0.15
+  multi_leg_flow: 0.15
+
+burst:
+  duration_seconds: 30
+  default_interval_seconds: 600

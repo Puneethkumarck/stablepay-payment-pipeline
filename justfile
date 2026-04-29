@@ -42,7 +42,44 @@ create-issues phase:
 preview-issues phase:
     uv run scripts/create-github-issues.py {{phase}} --dry-run
 
-# ─── Stubs (expanded in later phases) ─────────────
+# ─── Simulator ────────────────────────────────────
+
+# Run the payment event simulator
+simulate *ARGS:
+    cd apps/simulator && uv run stablepay-simulate {{ARGS}}
+
+# Run simulator with realistic timing (delay-multiplier=1.0)
+simulate-realistic:
+    cd apps/simulator && uv run stablepay-simulate --realistic
+
+# Run simulator with periodic burst mode
+simulate-burst:
+    cd apps/simulator && uv run stablepay-simulate --burst
+
+# ─── Flink Jobs ────────���──────────────────────────
+
+# Build Flink fat JAR
+flink-build:
+    ./gradlew :apps:flink-jobs:shadowJar
+
+# Submit ingest job to Flink session cluster
+flink-submit-ingest:
+    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
+    docker exec stablepay-flink-jobmanager flink run -d /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.IngestJob
+
+# Submit correlator job to Flink session cluster
+flink-submit-correlator:
+    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
+    docker exec stablepay-flink-jobmanager flink run -d /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.CorrelatorJob
+
+# Build and submit all Flink jobs
+flink-deploy: flink-build flink-submit-ingest flink-submit-correlator
+
+# Open Flink Web UI
+flink-ui:
+    open http://localhost:8082
+
+# ─── Stubs (expanded in later phases) ───���─────────
 
 # Run all tests
 test:

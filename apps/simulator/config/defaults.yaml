@@ -1,0 +1,7 @@
+rate: 200
+delay_multiplier: 0.01
+burst_enabled: false
+burst_interval: 600
+burst_duration: 30
+customer_pool_size: 100
+seed: null

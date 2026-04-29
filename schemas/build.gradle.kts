@@ -3,6 +3,12 @@ plugins {
     alias(libs.plugins.avro)
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
 dependencies {
     implementation(libs.avro.core)
 }

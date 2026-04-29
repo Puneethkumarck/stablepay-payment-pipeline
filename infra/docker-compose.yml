@@ -108,6 +108,96 @@ services:
     networks:
       - stablepay_default
 
+  # ─── Flink JobManager ──────────────────────────────
+  flink-jobmanager:
+    image: flink:2.0.0-java21
+    container_name: stablepay-flink-jobmanager
+    ports:
+      - "8082:8081"
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        state.backend.type: rocksdb
+        state.checkpoints.dir: s3://flink-checkpoints/checkpoints
+        state.savepoints.dir: s3://flink-savepoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+        s3.path.style.access: true
+        execution.checkpointing.interval: 60s
+        execution.checkpointing.min-pause: 30s
+        state.checkpoints.num-retained: 3
+        restart-strategy.type: fixed-delay
+        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.delay: 30s
+        taskmanager.numberOfTaskSlots: 3
+    volumes:
+      - flink_data:/opt/flink/data
+    mem_limit: 512m
+    depends_on:
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/overview || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - stablepay_default
+
+  # ─── Flink TaskManager ────────────────────────────
+  flink-taskmanager:
+    image: flink:2.0.0-java21
+    container_name: stablepay-flink-taskmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        state.backend.type: rocksdb
+        state.checkpoints.dir: s3://flink-checkpoints/checkpoints
+        state.savepoints.dir: s3://flink-savepoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+        s3.path.style.access: true
+        taskmanager.numberOfTaskSlots: 3
+        taskmanager.memory.process.size: 1536m
+    volumes:
+      - flink_data:/opt/flink/data
+    mem_limit: 1536m
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    networks:
+      - stablepay_default
+
+  # ─── OpenSearch ───────────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    container_name: stablepay-opensearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - stablepay_default
+
   # ─── MinIO bucket init (one-shot) ─────────────────
   minio-init:
     image: minio/mc:latest
@@ -132,6 +222,8 @@ volumes:
   kafka_data:
   postgres_data:
   minio_data:
+  flink_data:
+  opensearch_data:
 
 networks:
   stablepay_default:
