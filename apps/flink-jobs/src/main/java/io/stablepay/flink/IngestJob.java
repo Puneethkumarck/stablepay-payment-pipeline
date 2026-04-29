@@ -19,11 +19,14 @@ import io.stablepay.flink.config.FlinkConfig;
 import io.stablepay.flink.deser.AvroEnvelopeDeserializer;
 import io.stablepay.flink.dlq.DlqKafkaSinkFactory;
 import io.stablepay.flink.dlq.DlqOutputTags;
+import io.stablepay.flink.mapper.EventToFactScreeningMapper;
+import io.stablepay.flink.mapper.EventToFactTransactionMapper;
 import io.stablepay.flink.mapper.EventToIcebergRowMapper;
 import io.stablepay.flink.model.DlqEnvelope;
 import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.model.ValidationResult;
 import io.stablepay.flink.process.ValidateAndRouteFunction;
+import io.stablepay.flink.sink.FactTableSinkFactory;
 import io.stablepay.flink.sink.IcebergSinkFactory;
 import io.stablepay.flink.sink.OpenSearchAsyncSink;
 import io.stablepay.flink.watermark.EnvelopeTimestampAssigner;
@@ -103,6 +106,22 @@ public class IngestJob {
         routedStream
                 .sinkTo(new OpenSearchAsyncSink(FlinkConfig.opensearchUrl()))
                 .name("opensearch-transactions-sink");
+
+        // --- Fact table sinks (independent branches) ---
+        var factSinkFactory = new FactTableSinkFactory();
+        factSinkFactory.ensureFactTablesExist();
+
+        var factTxStream = routedStream
+                .filter(e -> FlinkConfig.FACT_TX_TOPICS.contains(e.topic()))
+                .map(EventToFactTransactionMapper::toRowData)
+                .name("fact-transactions-map");
+        factSinkFactory.addSink(factTxStream, "fact_transactions");
+
+        var factScreeningStream = routedStream
+                .filter(e -> "screening.result.v1".equals(e.topic()))
+                .map(EventToFactScreeningMapper::toRowData)
+                .name("fact-screening-map");
+        factSinkFactory.addSink(factScreeningStream, "fact_screening_outcomes");
 
         env.execute("stablepay-ingest-job");
     }
