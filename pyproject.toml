@@ -1,0 +1,35 @@
+[project]
+name = "stablepay-payment-pipeline"
+version = "0.1.0"
+requires-python = ">=3.13"
+
+[tool.uv.workspace]
+members = [
+    "apps/simulator",
+    "apps/llm-agent",
+    "apps/dlq-tools",
+    "apps/agent-tools-mcp",
+    "apps/lakehouse-jobs",
+    "packages/schemas-py",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+exclude = ["packages/schemas-py/src/_generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+exclude = ["_generated"]

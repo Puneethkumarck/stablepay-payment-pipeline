@@ -1,0 +1,10 @@
+{
+  "editor.formatOnSave": true,
+  "[java]": { "editor.defaultFormatter": "redhat.java" },
+  "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" },
+  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

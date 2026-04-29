@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "streetsidesoftware.avro",
+    "vscjava.vscode-gradle",
+    "charliermarsh.ruff",
+    "biomejs.biome",
+    "editorconfig.editorconfig",
+    "bradlc.vscode-tailwindcss",
+    "ms-python.python",
+    "redhat.java"
+  ]
+}

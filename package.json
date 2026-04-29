@@ -1,0 +1,13 @@
+{
+  "name": "stablepay-payment-pipeline",
+  "private": true,
+  "packageManager": "pnpm@10.8.0",
+  "scripts": {
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "lefthook": "^2.1.6",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0"
+  }
+}

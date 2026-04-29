@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow example env, test fixtures, and generated code"
+regexTarget = "match"
+paths = [
+    '''^\.env\.example$''',
+    '''schemas/fixtures/.*''',
+    '''.*test-data/.*''',
+    '''packages/schemas-py/src/_generated/.*''',
+    '''.*\.avsc$'''
+]

@@ -1,0 +1,20 @@
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}
+
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      run: gitleaks protect --staged --no-banner
+      skip:
+        - run: "! command -v gitleaks &>/dev/null"
+    ruff-format:
+      glob: "*.py"
+      run: ruff format --check {staged_files}
+      exclude: "packages/schemas-py/src/_generated/"
+      skip:
+        - run: "! command -v ruff &>/dev/null"
+    trailing-whitespace:
+      run: "git diff --cached --check -- . ':!gradlew.bat'"

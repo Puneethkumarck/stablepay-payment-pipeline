@@ -1,0 +1,10 @@
+{
+  "name": "@stablepay/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Next.js app added in Phase 4'",
+    "build": "echo 'Next.js app added in Phase 4'",
+    "lint": "echo 'Linting added in Phase 4'"
+  }
+}
