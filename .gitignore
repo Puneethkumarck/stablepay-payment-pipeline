@@ -1,0 +1,71 @@
+# GSD planning artifacts kept local-only
+.planning/
+
+# Environment
+.env
+.env.local
+*.env.local
+infra/.env
+
+# Generated artifacts (codegen output committed only when explicitly required)
+build/
+dist/
+out/
+target/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Java / Gradle
+.gradle/
+gradle-app.setting
+**/.gradletasknamecache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.uv/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+.vercel/
+.swc/
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Logs / runtime
+logs/
+*.log
+ops/alerts.log
+
+# Generated codegen output (regenerable from schemas/)
+apps/api/build/generated-avro-java/
+apps/simulator/_generated/
+apps/web/src/api-client/
+
+# Secrets
+*.pem
+*.key
+keys.json
