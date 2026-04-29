@@ -27,9 +27,11 @@ public final class FlinkConfig {
 
     private static final String ENV_KAFKA_BOOTSTRAP = "STBLPAY_KAFKA_BOOTSTRAP_SERVERS";
     private static final String ENV_SCHEMA_REGISTRY = "STBLPAY_SCHEMA_REGISTRY_URL";
+    private static final String ENV_OPENSEARCH_URL = "STBLPAY_OPENSEARCH_URL";
 
     private static final String DEFAULT_KAFKA_BOOTSTRAP = "kafka:9092";
     private static final String DEFAULT_SCHEMA_REGISTRY = "http://schema-registry:8081";
+    private static final String DEFAULT_OPENSEARCH_URL = "http://opensearch:9200";
 
     public static String kafkaBootstrapServers() {
         return System.getenv().getOrDefault(ENV_KAFKA_BOOTSTRAP, DEFAULT_KAFKA_BOOTSTRAP);
@@ -37,5 +39,9 @@ public final class FlinkConfig {
 
     public static String schemaRegistryUrl() {
         return System.getenv().getOrDefault(ENV_SCHEMA_REGISTRY, DEFAULT_SCHEMA_REGISTRY);
+    }
+
+    public static String opensearchUrl() {
+        return System.getenv().getOrDefault(ENV_OPENSEARCH_URL, DEFAULT_OPENSEARCH_URL);
     }
 }

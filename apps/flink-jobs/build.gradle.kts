@@ -17,8 +17,13 @@ dependencies {
     implementation(libs.flink.connector.kafka)
     implementation(libs.flink.avro)
     implementation(libs.flink.avro.confluent.registry)
+    implementation(libs.flink.table.common)
     implementation(libs.iceberg.flink.runtime)
     implementation(libs.opensearch.java)
+    implementation(libs.httpclient5)
+    implementation(libs.hadoop.common) {
+        exclude(group = "org.slf4j")
+    }
     implementation(libs.avro.core)
     implementation(libs.slf4j.api)
 

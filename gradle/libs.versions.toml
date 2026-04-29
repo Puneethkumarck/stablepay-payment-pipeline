@@ -9,6 +9,8 @@ flink = "2.0.0"
 flink-connector-kafka = "4.0.1-2.0"
 iceberg = "1.10.1"
 opensearch-java = "2.20.0"
+httpclient5 = "5.4.4"
+hadoop = "3.4.1"
 shadow = "8.3.5"
 junit = "5.12.2"
 assertj = "3.27.3"
@@ -29,8 +31,11 @@ flink-rocksdb = { module = "org.apache.flink:flink-statebackend-rocksdb", versio
 flink-connector-kafka = { module = "org.apache.flink:flink-connector-kafka", version.ref = "flink-connector-kafka" }
 flink-avro = { module = "org.apache.flink:flink-avro", version.ref = "flink" }
 flink-avro-confluent-registry = { module = "org.apache.flink:flink-avro-confluent-registry", version.ref = "flink" }
+flink-table-common = { module = "org.apache.flink:flink-table-common", version.ref = "flink" }
 iceberg-flink-runtime = { module = "org.apache.iceberg:iceberg-flink-runtime-2.0", version.ref = "iceberg" }
 opensearch-java = { module = "org.opensearch.client:opensearch-java", version.ref = "opensearch-java" }
+httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "httpclient5" }
+hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
