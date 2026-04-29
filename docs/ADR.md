@@ -1,10 +1,10 @@
-# ADR: Architecture Decision Record
+# ADR: Architecture Decision Record — stablepay-payment-pipeline (Java service)
 
 **Status:** Accepted
-**Date:** 2026-03-26
-**Context:** Reference architecture for coding agents building new payment processing microservices.
-**Stack:** Java 25 (LTS), Spring Boot 4.0.x, Gradle, PostgreSQL, Kafka, SQS/SNS
-**Architecture:** Hexagonal (Ports & Adapters) + DDD + CQRS + Event-Driven
+**Last revised:** 2026-04-29
+**Scope:** Architecture decisions governing `apps/api/` (Spring Boot 4.x service) and Java code in `apps/flink-jobs/`. Adapted from a sibling reference project; project-specific values applied throughout.
+**Stack:** Java 25 LTS, Spring Boot 4.0.x, Spring Cloud 2025.x, Gradle 9 Kotlin DSL, PostgreSQL 17, Kafka 4.0+, OpenSearch 2.18+, Trino 470+, Apache Iceberg (read-side via Trino)
+**Architecture:** Hexagonal (Ports & Adapters) + read-mostly CQRS + Event-Driven (DLQ replay only) + ArchUnit-enforced layering
 
 ---
 
@@ -20,17 +20,16 @@
 8. [API Design](#8-api-design)
 9. [Error Handling: Dual Exception Hierarchies](#9-error-handling-dual-exception-hierarchies)
 10. [Object Mapping: MapStruct](#10-object-mapping-mapstruct)
-11. [Persistence: JPA + PostgreSQL](#11-persistence-jpa--mysql)
-12. [External Service Integration: Feign Clients](#12-external-service-integration-feign-clients)
+11. [Persistence: JPA + PostgreSQL](#11-persistence-jpa--postgresql)
+12. [External Integration](#12-external-integration)
 13. [Observability](#13-observability)
 14. [Feature Flags](#14-feature-flags)
 15. [Distributed Job Locking: ShedLock](#15-distributed-job-locking-shedlock)
 16. [Testing Strategy: Three-Tier Pyramid](#16-testing-strategy-three-tier-pyramid)
-17. [Batch Processing](#17-batch-processing)
-18. [Authentication & Security](#18-authentication--security)
-19. [Configuration & Environment](#19-configuration--environment)
-20. [Key Libraries](#20-key-libraries)
-21. [Coding Conventions for Agents](#21-coding-conventions-for-agents)
+17. [Authentication & Security](#17-authentication--security)
+18. [Configuration & Environment](#18-configuration--environment)
+19. [Key Libraries](#19-key-libraries)
+20. [Coding Conventions for Agents](#20-coding-conventions-for-agents)
 
 ---
 
@@ -110,7 +109,7 @@ application → domain ← infrastructure
 - **Domain records** (aggregates, value objects, commands, events) are framework-free — only `@Builder` from Lombok.
 - **Domain classes** (services, command handlers) ARE Spring-managed beans — `@Component`/`@Service`, `@RequiredArgsConstructor`, `@Slf4j`.
 - **No JPA annotations** (`@Entity`, `@Table`, `@Column`) ever appear in the domain layer.
-- Domain defines ports as interfaces (e.g., `PayoutRepository`, `FeeProvider`, `TransferExecutor`, `EventPublisher<T>`). Infrastructure implements them.
+- Domain defines ports as interfaces (e.g., `TransactionReadOnlyRepository`, `FlowReadOnlyRepository`, `IdempotencyKeyRepository`, `AgentSqlRepository`, `EventPublisher<T>`). Infrastructure implements them.
 - Application layer orchestrates inbound requests into domain calls.
 
 ---
@@ -135,8 +134,10 @@ Domain aggregates and value objects are Java `record` types with Lombok `@Builde
 Wrap `UUID` in domain-specific records:
 
 ```java
-public record WalletId(UUID value) {}
 public record TransactionId(UUID value) {}
+public record FlowId(UUID value) {}
+public record CustomerId(UUID value) {}
+public record DlqId(UUID value) {}
 ```
 
 Use UUID v7 (time-based sortable) via `com.github.f4b6a3:uuid-creator` for entities that benefit from chronological ordering.
@@ -145,29 +146,30 @@ Use UUID v7 (time-based sortable) via `com.github.f4b6a3:uuid-creator` for entit
 
 ```java
 @Builder(toBuilder = true)
-public record Payout(
-    UUID id,
-    UUID transactionReference,
+public record Transaction(
+    TransactionId id,
+    FlowId flowId,
+    CustomerId customerId,
     Money amount,
-    Money fee,
-    Status status,
-    List<StatusHistory> statusHistory
+    String internalStatus,
+    String customerStatus,
+    Instant eventTime,
+    List<TransactionEvent> timeline
 ) {
-    public Payout {
+    public Transaction {
         Objects.requireNonNull(id);
-        Objects.requireNonNull(transactionReference);
+        Objects.requireNonNull(customerId);
     }
 
-    public Payout withStatus(Status newStatus, UserDetails modifiedBy) {
+    public Transaction withDerivedCustomerStatus() {
         return toBuilder()
-            .status(newStatus)
-            .statusHistory(appendStatus(statusHistory, newStatus, modifiedBy))
+            .customerStatus(CustomerStatus.from(internalStatus).name())
             .build();
     }
 
-    public void assertNotInFinalState() {
-        if (status.isFinalState()) {
-            throw new PayoutInFinalStateException(transactionReference);
+    public void assertVisibleTo(CustomerId scope) {
+        if (!customerId.equals(scope)) {
+            throw new CustomerScopeMismatchException(id, scope);
         }
     }
 }
@@ -183,19 +185,28 @@ Separate command handlers (write) and query services (read) in the domain layer.
 
 ### Command Handlers
 
-Command handlers live in the domain layer, co-located with their aggregates. They are Spring-managed beans.
+Command handlers live in the domain layer, co-located with their aggregates. They are Spring-managed beans. In v1 the API has one command handler — DLQ replay.
 
 ```java
 @Component
 @RequiredArgsConstructor
-public class PayoutCommandHandler implements EventHandler<CreatePayoutCommand> {
+public class DlqReplayCommandHandler {
 
-    private final PayoutRepository payoutRepository;
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final EventPublisher<DlqReplayCommandEvent> eventPublisher;
 
     @Transactional
-    public void handle(CreatePayoutCommand command) {
-        var payout = Payout.create(command);
-        payoutRepository.save(payout);
+    public ReplayResult handle(ReplayDlqMessageCommand command, AuthenticatedUser user) {
+        var existing = idempotencyKeyRepository.findByKey(command.idempotencyKey(), user.id().toString());
+        if (existing.isPresent()) return existing.get().result();
+
+        var event = new DlqReplayCommandEvent(command.dlqId(), command.sourceTopic(),
+                                                user.id(), Instant.now());
+        eventPublisher.publish(event);                   // Namastack outbox — same TX as save
+        var key = IdempotencyKey.create(command.idempotencyKey(), user.id().toString(),
+                                          ReplayResult.accepted(command.dlqId()));
+        idempotencyKeyRepository.save(key);
+        return key.result();
     }
 }
 ```
@@ -206,12 +217,16 @@ public class PayoutCommandHandler implements EventHandler<CreatePayoutCommand> {
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PayoutQueryHandler {
+public class TransactionQueryHandler {
 
-    private final PayoutReadOnlyRepository payoutRepository;
+    private final TransactionReadOnlyRepository transactionRepository;
 
-    public Page<PayoutView> search(PayoutFilter filter, Pageable pageable) {
-        return payoutRepository.findByFilter(filter, pageable);
+    public Optional<Transaction> findByReference(TransactionId id, CustomerId scope) {
+        return transactionRepository.findByReference(id, scope);
+    }
+
+    public SearchResult<Transaction> search(TransactionSearchQuery query, Pageable page) {
+        return transactionRepository.search(query, page);
     }
 }
 ```
@@ -219,31 +234,34 @@ public class PayoutQueryHandler {
 ### Repository Port Separation
 
 ```java
-// Read-only port
-public interface PayoutReadOnlyRepository {
-    Optional<Payout> findByTransactionReference(UUID ref);
-    Page<PayoutView> findByFilter(PayoutFilter filter, Pageable pageable);
+// Read-only port — most of v1 uses this style since the API is read-mostly
+public interface TransactionReadOnlyRepository {
+    Optional<Transaction> findByReference(TransactionId reference, CustomerId scope);
+    Page<Transaction> findByFilter(TransactionFilter filter, Pageable pageable);
+    SearchResult<Transaction> search(TransactionSearchQuery query, Pageable pageable);
 }
 
-// Full port extends read-only
-public interface PayoutRepository extends PayoutReadOnlyRepository {
-    Payout save(Payout payout);
-    Payout getAndLock(UUID transactionReference);
+// Idempotency-key port (the only write-side port in v1)
+public interface IdempotencyKeyRepository {
+    Optional<IdempotencyKey> findByKey(String key, String scope);
+    IdempotencyKey save(IdempotencyKey key);
 }
 ```
 
 ### Command Routing — List-Based Polymorphic Pattern
 
-Spring auto-collects all `@Component` processors implementing a common interface. Each processor decides via `shouldProcess()` whether it handles the change.
+Spring auto-collects all `@Component` processors implementing a common interface. Each processor decides via `shouldProcess()` whether it handles the change. v1 doesn't use this pattern (single-handler per command), but it's documented as the canonical approach for when more handlers are added later.
 
 ```java
 @Component
 @RequiredArgsConstructor
-public class AccountEventHandler {
-    private final List<AccountChangeProcessor> accountChangeProcessors;
+public class DlqEventHandler {
+    private final List<DlqEventProcessor> dlqEventProcessors;
 
-    private void processAccountChange(AccountChange change) {
-        accountChangeProcessors.forEach(p -> p.process(change));
+    private void process(DlqEvent event) {
+        dlqEventProcessors.stream()
+            .filter(p -> p.shouldProcess(event))
+            .forEach(p -> p.process(event));
     }
 }
 ```
@@ -254,40 +272,36 @@ public class AccountEventHandler {
 
 ### Decision
 
-State transitions are enforced by a generic `StateMachine<S, T>` framework embedded in the aggregate.
+State transitions are enforced by a generic `StateMachine<S, T>` framework. The framework lives in the domain layer and is available for any aggregate that has a state lifecycle.
 
-### Rules
+### Applicability to v1
+
+**The Spring Boot API in v1 does not own a write-side state machine** — the simulator (`apps/simulator/`) and the Flink correlator (`apps/flink-jobs/`) drive all transaction and flow state transitions. The API is read-mostly.
+
+The generic `StateMachine<S, T>` framework is documented here because:
+1. It is the canonical pattern when write-side aggregates are added in a future phase
+2. Any inferred / derived status (e.g., customer-visible status from internal status) uses lookup tables rather than ad-hoc if/else, and the framework's `getValidPredecessors()` style is the right pattern to validate that the inferred mapping covers every possible internal status
+
+### Rules (when used)
 
 - Define all valid transitions statically using `withTransition(from, to, action)` and `withTransitionsFrom(from, to1, to2, ...)`.
 - Each transition either emits a `StateChangedEvent` (triggering downstream side effects) or performs `noAction()`.
 - Invalid transitions throw `StateMachineException` (retryable).
-- Customer-facing status is derived from internal status via a mapping function. Never store customer status directly.
+- Customer-facing status is **derived** from internal status via a mapping function — never stored.
 
-### Status Lifecycle
-
-```
-CREATED
-  -> TRANSFER_LIABILITY_TO_SUSPENSE_TRIGGERED -> _COMPLETED / _FAILED
-  -> MERCHANT_4_EYES_APPROVAL_REQUESTED -> _APPROVED / _COMPLETED / _DECLINED / _EXPIRED
-  -> FINCRIME_TRIGGERED -> _ON_HOLD / _RFI / _COMPLETED / _REJECTED / _FUNDS_CONFISCATED
-  -> PAYOPS_APPROVAL_REQUESTED -> _COMPLETED / _DECLINED
-  -> BANKING_API_TRIGGERED -> _ROUTED
-  -> PARTNER_ACCEPTED -> PARTNER_COMPLETED / PARTNER_FAILED / PARTNER_REVERTED
-  -> TRANSFER_SUSPENSE_TO_ASSET_TRIGGERED -> _COMPLETED -> PROCESSING_COMPLETED
-  -> TRANSFER_SUSPENSE_TO_LIABILITY_TRIGGERED -> _COMPLETED -> PROCESSING_FAILED (refund)
-```
-
-### Customer Status Mapping
+### Customer Status Mapping (canonical mapping that the API computes from `internalStatus` returned by Trino/OpenSearch)
 
 
-| Internal Phase                                 | Customer Status    |
-| ---------------------------------------------- | ------------------ |
-| CREATED through FINCRIME_COMPLETED             | `PROCESSING`       |
-| MERCHANT_4_EYES_APPROVAL_REQUESTED             | `PENDING_APPROVAL` |
-| PARTNER_COMPLETED through PROCESSING_COMPLETED | `COMPLETED`        |
-| DECLINED / EXPIRED / CANCELLED                 | `CANCELLED`        |
-| PARTNER_FAILED / PROCESSING_FAILED             | `FAILED`           |
-| PARTNER_REVERTED                               | `REVERTED`         |
+| Internal phase                                                              | Customer Status    |
+| --------------------------------------------------------------------------- | ------------------ |
+| CREATED through COMPLIANCE_PASSED                                            | `PROCESSING`       |
+| CUSTOMER_APPROVAL_REQUIRED                                                   | `NEEDS_APPROVAL`   |
+| OPS_APPROVAL_REQUIRED                                                        | `PROCESSING`       |
+| PROVIDER_SUBMITTED through PROVIDER_SETTLED → LEDGER_RELEASED → COMPLETED   | `COMPLETED`        |
+| REJECTED / CANCELLED / DECLINED / EXPIRED                                    | `CANCELLED`        |
+| PROVIDER_REJECTED → LEDGER_REFUNDED → FAILED                                 | `FAILED`           |
+| PROVIDER_REVERSED → REVERSED                                                 | `REVERSED`         |
+| FUNDS_SEIZED                                                                 | `CANCELLED`        |
 
 
 ---
@@ -308,22 +322,20 @@ implementation "io.namastack:namastack-outbox-starter-jdbc:1.1.0"
 // Infrastructure adapter implements domain port
 @Component
 @RequiredArgsConstructor
-public class PayoutStatusEventOutboxPublisher implements EventPublisher<PayoutStatusEvent> {
+public class DlqReplayOutboxPublisher extends AbstractOutboxEventPublisher
+        implements EventPublisher<DlqReplayCommandEvent> {
 
-    private final OutboxEventPublisher outboxEventPublisher;
-    private final EventMapper eventMapper;
-
-    @Override
-    public void publish(PayoutStatusEvent event) {
-        var outboxEvent = eventMapper.toOutboxEvent(event);
-        outboxEventPublisher.publish(outboxEvent);  // Written in same TX as domain change
+    public DlqReplayOutboxPublisher(Outbox outbox) {
+        super(outbox, List.of("dlqId"));   // partition key
     }
 }
 
 // OutboxHandler routes events to Kafka topics
 @Component
-public class PayoutOutboxHandler extends NamastackOutboxHandler {
-    // Maps event types to destination topics
+public class StablepayOutboxHandler extends AbstractOutboxHandler {
+    public StablepayOutboxHandler(KafkaTemplate<String, Object> kafkaTemplate) {
+        super(kafkaTemplate);
+    }
 }
 ```
 
@@ -351,38 +363,18 @@ namastack:
 
 | Channel      | Technology | Direction | Purpose                          |
 | ------------ | ---------- | --------- | -------------------------------- |
-| SQS Queues   | AWS SQS    | Inbound   | Commands and targeted events     |
-| SNS Topics   | AWS SNS    | Outbound  | Fan-out status notifications     |
-| Kafka Topics | AWS MSK    | Both      | Transfer status events (ordered) |
+| Kafka Topics | Apache Kafka | Outbound | DLQ replay commands + future event publishing via Namastack outbox |
 
-
-### Inbound Listeners
-
-All listeners extend `ExceptionHandlingConsumer` or `PayloadValidatingConsumer`:
-
-```java
-@Component
-public class PayoutCommandListener extends PayloadValidatingConsumer<LegacyCreatePayoutCommand> {
-    @Override
-    protected void processValid(LegacyCreatePayoutCommand request) {
-        var domainEvent = mapper.toDomain(request);
-        eventHandler.handle(domainEvent);
-    }
-}
-```
-
-- Re-throw retryable exceptions; persist non-retryable as failure events.
-- Override `processValid()` or `process()` method.
+In v1 the Spring Boot API service is read-mostly — it does not consume inbound message streams. The Flink jobs (separate Java codebase under `apps/flink-jobs/`) handle all stream consumption from Kafka. The API publishes one event type via the Namastack outbox: `dlq.replay.command.v1` from `POST /admin/dlq/{id}/replay`.
 
 ### Event Routing
 
-Define all queue/topic bindings in a single `EventRouting` configuration class:
+Define all topic bindings in a single `EventRouting` configuration class:
 
 ```java
 @Configuration
 public class EventRouting {
-    @Value("${messaging.bindings.payout-commands}") String payoutCommands;
-    @Value("${messaging.bindings.payout-status-events}") String statusEvents;
+    @Value("${messaging.bindings.dlq-replay-commands}") String dlqReplayCommands;
 }
 ```
 
@@ -394,31 +386,35 @@ public class EventRouting {
 
 Use `@Lock(LockModeType.PESSIMISTIC_WRITE)` for all balance-affecting operations. Use `@Version` (optimistic) for everything else.
 
-### Implementation
+### Applicability to v1
+
+**v1 of `stablepay-api` is read-mostly** — there are no balance-affecting writes. The only API write is `POST /admin/dlq/{id}/replay`, which is non-financial and uses the idempotency-key constraint plus the Namastack outbox transaction for safety. Pessimistic locking is documented here as the correct pattern when balance writes are added in a future phase (e.g., a settle-internal-transfer admin endpoint).
+
+### Pattern (for future write paths)
 
 ```java
 // JPA repository
 @Lock(LockModeType.PESSIMISTIC_WRITE)
-@Query("SELECT w FROM WalletEntity w WHERE w.id = :id")
-Optional<WalletEntity> findByIdForUpdate(@Param("id") UUID id);
+@Query("SELECT a FROM AccountEntity a WHERE a.id = :id")
+Optional<AccountEntity> findByIdForUpdate(@Param("id") UUID id);
 
 // Domain repository port
-public interface WalletRepository {
-    Wallet getAndLock(WalletId id);  // Delegates to findByIdForUpdate
+public interface AccountRepository {
+    Account getAndLock(AccountId id);  // Delegates to findByIdForUpdate
 }
 
 // Command handler
-var wallet = walletRepository.getAndLock(command.getWalletId());
-wallet.assertNotBlocked();
-var adjusted = wallet.withBalanceAdjusted(command.getAmount());
+var account = accountRepository.getAndLock(command.accountId());
+account.assertNotBlocked();
+var adjusted = account.withBalanceAdjusted(command.amount());
 if (adjusted.overdrawn()) throw new InsufficientFundsException(...);
-walletRepository.save(adjusted);
+accountRepository.save(adjusted);
 ```
 
 ### Why
 
-- One writer at a time per wallet — deterministic, no retries needed.
-- Acceptable latency for financial operations (lock contention is low per-wallet).
+- One writer at a time per account — deterministic, no retries needed.
+- Acceptable latency for financial operations (lock contention is low per-account).
 - Deadlock risk mitigated by consistent lock ordering.
 
 ---
@@ -436,20 +432,21 @@ RESTful APIs with role-based access control, idempotency, and request metadata e
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v2/fiat/pay")
-public class PayoutController {
+@RequestMapping("/api/v1/transactions")
+public class TransactionController {
 
-    private final PayoutCommandHandler commandHandler;
-    private final PayoutQueryHandler queryService;
-    private final PayoutRequestResponseMapper mapper;
+    private final TransactionQueryHandler queryHandler;
+    private final TransactionResponseMapper mapper;
 
-    @PostMapping
-    public ResponseEntity<CreatePayoutResponse> create(
-            @RequestBody @Valid CreatePayoutRequest request,
-            @RequestHeader("X-Idempotency-Key") String idempotencyKey) {
-        var command = mapper.toCommand(request);
-        var result = commandHandler.handle(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(result));
+    @GetMapping("/{reference}")
+    @Secured("ROLE_CUSTOMER")
+    public ResponseEntity<TransactionView> findByReference(
+            @PathVariable String reference,
+            @AuthenticationPrincipal AuthenticatedUser user) {
+        return queryHandler.findByReference(new TransactionId(UUID.fromString(reference)), user.customerId())
+            .map(mapper::toView)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 }
 ```
@@ -457,17 +454,19 @@ public class PayoutController {
 ### Rules
 
 - Controllers are **thin** — only mapping and delegation, no business logic.
-- **Idempotency:** All create operations require an `X-Idempotency-Key` header (3-36 chars). Enforced via DB uniqueness constraint on `(idempotencyKey, accountReference)`.
-- **Request Metadata:** GeoLocation headers extracted via custom `HeaderRequestMetadataArgumentResolver` with `@ExtractedRequestMetadata` annotation.
-- **Error Codes:** Use structured error codes: `{ORG}-FIAT-XXXX` (4-digit zero-padded).
+- **Idempotency:** Non-idempotent operations (DLQ replay, future state-changing ops) require an `X-Idempotency-Key` header (3-36 chars). Enforced via DB uniqueness constraint on `(idempotency_key, customer_id_or_admin_user_id)`.
+- **Request Metadata:** GeoLocation headers extracted via custom `HeaderRequestMetadataArgumentResolver` with `@ExtractedRequestMetadata` annotation when needed for audit trails.
+- **Error Codes:** Use structured error codes: `STBLPAY-XXXX` (4-digit zero-padded).
 - **Pagination:** Use Spring `Pageable` for list endpoints. Return `Page<T>` responses.
 
 ### API Versioning
 
 ```
-/api/v2/fiat/pay/           <- Public customer/merchant API
-/api/v2/fiat/pay/unified/   <- Newer unified API (preferred for new integrations)
-/api/banking/internal/       <- Internal operations API (PayOps, compliance)
+/api/v1/transactions/           <- Public customer-facing transaction queries (account-scoped via JWT customer_id)
+/api/v1/flows/                  <- Public customer-facing payment-flow drill-down
+/api/v1/customers/              <- Public customer summary
+/api/v1/admin/                  <- Admin (cross-customer search, DLQ inspection + replay, stuck-tx, aggregates)
+/api/v1/agent/                  <- LLM agent service-to-service (constrained SQL, search, timeline)
 ```
 
 ---
@@ -577,16 +576,24 @@ Spring Data JPA with PostgreSQL and Flyway migrations.
 
 ### Repository Adapter Pattern
 
+The Spring Boot API has only two JPA-backed tables in v1: `auth_users` (seeded users for the local JWT issuer) and `idempotency_keys`. Domain reads land on OpenSearch and Trino — not JPA.
+
 ```java
 @Repository
 @RequiredArgsConstructor
-public class PayoutRepositoryAdapter implements PayoutRepository {
-    private final PayoutJpaRepository jpaRepository;
-    private final PayoutEntityMapper mapper;
+public class IdempotencyKeyRepositoryAdapter implements IdempotencyKeyRepository {
+    private final IdempotencyKeyJpaRepository jpaRepository;
+    private final IdempotencyKeyEntityMapper mapper;
 
     @Override
-    public Payout save(Payout payout) {
-        var entity = mapper.toEntity(payout);
+    public Optional<IdempotencyKey> findByKey(String idempotencyKey, String scope) {
+        return jpaRepository.findByKeyAndScope(idempotencyKey, scope)
+            .map(mapper::toDomain);
+    }
+
+    @Override
+    public IdempotencyKey save(IdempotencyKey key) {
+        var entity = mapper.toEntity(key);
         return mapper.toDomain(jpaRepository.save(entity));
     }
 }
@@ -597,41 +604,37 @@ public class PayoutRepositoryAdapter implements PayoutRepository {
 
 | Decision           | Choice                                    | Reason                                    |
 | ------------------ | ----------------------------------------- | ----------------------------------------- |
-| Entity inheritance | `@MappedSuperclass`                       | Avoids JOIN overhead                      |
-| Dynamic queries    | `JpaSpecificationExecutor<T>`             | Specification pattern is cleaner          |
-| Pagination         | Offset-based (`Page<Pageable>`)           | Standard for REST APIs                    |
-| JSON columns       | `@JdbcTypeCode(SqlTypes.JSON)`            | Simpler for metadata than separate tables |
-| Flyway             | Enabled, `V{N}__{TICKET}_description.sql` | Versioned schema evolution                |
+| Pagination         | Cursor-based (opaque cursor + limit)      | Avoids deep-offset pain at scale; OpenSearch + Trino handle this efficiently |
+| JSON columns       | `@JdbcTypeCode(SqlTypes.JSON)`            | Used sparingly — only for idempotency-key replay-result snapshots |
+| Flyway             | Enabled, `V{N}__{TICKET}_description.sql` | Versioned schema evolution for `auth_users` and `idempotency_keys` |
+| UUID columns       | `@JdbcTypeCode(VARCHAR)`                  | Postgres native UUID storage with explicit typing |
+| Enum columns       | `@Enumerated(STRING)` always              | Never `ORDINAL` — readable + reorder-safe |
 
 
 ---
 
-## 12. External Service Integration: Feign Clients
+## 12. External Integration
 
 ### Decision
 
-All HTTP service-to-service calls use Spring Cloud OpenFeign.
+The Spring Boot API integrates with three downstream systems, none of which are peer microservices in v1. Adapter classes implement domain ports per the hexagonal pattern; the underlying transports differ.
 
-### External Services
+### Integrations
 
 
-| Service                 | Purpose                              | Adapter                        |
-| ----------------------- | ------------------------------------ | ------------------------------ |
-| Banking API             | Partner routing                      | `BankingApiAdapter`            |
-| Wallet Service          | Wallet balances, processing profiles | `WalletServiceAdapter`         |
-| Beneficiary Management  | Beneficiary validation/creation      | `BeneficiaryManagementAdapter` |
-| Fee Service             | Fee calculation                      | `FeeServiceAdapter`            |
-| Transfer Service        | Ledger transfers                     | `TransferServiceClient`        |
-| Capabilities Management | Auto-approval thresholds             | `CapabilitiesServiceAdapter`   |
-| Accounts Service        | Customer/sender details              | `AccountServiceAdapter`        |
-| Bridge Service          | Wallet/merchant mapping              | `BridgeAdapter`                |
+| System         | Purpose                                                      | Adapter                                | Transport                                |
+| -------------- | ------------------------------------------------------------ | -------------------------------------- | ---------------------------------------- |
+| OpenSearch     | Transaction search, flow drill-down, DLQ inspection          | `OpenSearchTransactionRepositoryAdapter`, `OpenSearchFlowRepositoryAdapter`, `OpenSearchDlqRepositoryAdapter` | `spring-data-opensearch` over HTTPS      |
+| Trino          | Analytics aggregations and constrained agent SQL execution   | `TrinoAnalyticsRepositoryAdapter`, `AgentSqlExecutorAdapter`                                                  | Trino JDBC driver via Spring JdbcTemplate |
+| MCP tools server | (Reverse direction) — the Spring Boot API hosts the agent endpoints that the MCP server proxies to. There is no outbound MCP call from the API. | n/a                                                                                                          | n/a (the MCP server in `apps/agent-tools-mcp/` calls the API)                                              |
 
 
 ### Rules
 
-- Each external service has a dedicated adapter implementing a domain port.
-- Client URLs via: `application.clients.{service-name}.url`.
-- Automatic distributed tracing via `MicrometerObservationCapability`.
+- Each downstream system has a dedicated adapter implementing a domain port (`TransactionReadOnlyRepository`, `FlowReadOnlyRepository`, `CustomerSummaryRepository`, `AgentSqlRepository`, etc.).
+- Connection URLs via: `application.opensearch.url`, `application.trino.url`.
+- Automatic distributed tracing via `MicrometerObservationCapability` for the Trino JDBC driver and the OpenSearch HTTP client.
+- All outbound calls carry the W3C TraceContext headers from the inbound request so the trace continues unbroken into the downstream system.
 
 ---
 
@@ -727,9 +730,9 @@ Three levels of automated tests with distinct purposes.
 
 ### Business Tests (`src/business-test/java`)
 
-- **Purpose:** End-to-end flow verification from API call through all state transitions.
-- **Framework:** Spring Boot Test + MockMvc + WireMock + TestContext builder.
-- **Pattern:** Create payout -> verify external calls -> verify DB state -> verify events published.
+- **Purpose:** End-to-end flow verification from API call through downstream systems.
+- **Framework:** Spring Boot Test + MockMvc + Testcontainers (Postgres, OpenSearch, Trino, Kafka) + TestContext builder.
+- **Pattern:** Seed Iceberg + OpenSearch fixtures → call API → verify response shape + role-scoping + idempotency + DLQ replay command emitted via outbox.
 
 ### Architecture Tests (ArchUnit)
 
@@ -748,47 +751,25 @@ Extend `DefaultArchitectureTest` and enforce:
 ### Testcontainers
 
 
-| Annotation   | Container     | Image              |
-| ------------ | ------------- | ------------------ |
-| `@PgTest`    | PostgreSQL    | `postgres:16`      |
-| `@KafkaTest` | Kafka         | `cp-kafka:7.6.0`   |
-| `@S3Test`    | LocalStack S3 | `localstack:2.1.0` |
-| `@RedisTest` | Redis         | `redis:7.2`        |
+| Annotation         | Container     | Image              |
+| ------------------ | ------------- | ------------------ |
+| `@PgTest`          | PostgreSQL    | `postgres:17`      |
+| `@KafkaTest`       | Kafka         | `apache/kafka:4.0` (KRaft) |
+| `@OpenSearchTest`  | OpenSearch    | `opensearchproject/opensearch:2.18.0` |
+| `@TrinoTest`       | Trino         | `trinodb/trino:470` |
+| `@RedisTest`       | Redis         | `redis:7.4`        |
+| `@MinioTest`       | MinIO         | `minio/minio:latest` (used by Trino-Iceberg integration tests) |
 
 
 ### Test Fixtures
 
 - Shared via Gradle's `testFixtures` source set.
 - Naming: `SOME_ENTITY_NAME` for constants, `someEntityBuilder()` for builders.
-- WireMock stubs organized by external service (e.g., `FeeServiceStubs`, `BridgeServiceStubs`).
+- Stubs organized per downstream system (e.g., `OpenSearchResponseStubs`, `TrinoQueryResultStubs`).
 
 ---
 
-## 17. Batch Processing
-
-### Decision
-
-Batch payouts via CSV upload with pre-processing, validation, and MFA-triggered execution.
-
-### Flow
-
-```
-1. Upload CSV -> Parse into PreProcessedPayouts -> Persist batch (CREATED)
-2. Validate each payout (beneficiary, amount, limits) -> Update status (VALIDATED)
-3. MFA trigger -> Create individual payouts from batch -> Each follows standard lifecycle
-4. Batch completion tracked via BatchCompletionService
-```
-
-### Rules
-
-- Batch and payout references are UUIDs.
-- Pre-processed payouts can be updated or deleted before triggering.
-- Batch status: `CREATED -> VALIDATED -> PROCESSING -> COMPLETED`.
-- Validation errors stored per payout as `Map<String, String>`.
-
----
-
-## 18. Authentication & Security
+## 17. Authentication & Security
 
 ### Decision
 
@@ -796,37 +777,41 @@ Spring Security with role-based access for API endpoints.
 
 ### Rules
 
-- **Spring Security:** Use `@Secured({"ROLE_*"})` on every endpoint for explicit role requirements.
-- **User Extraction:** `@AuthenticationPrincipal AuthenticatedUser user` — provides `userId`, `email`, `fullName`, `accountReference`, and roles.
-- **Audit Trail:** Every state change records `UserDetails` (userId, fullName, email) of who triggered it. System-initiated changes use `SYSTEM_USER_DETAILS`.
+- **Spring Security:** Use `@Secured({"ROLE_*"})` on every endpoint for explicit role requirements. Three roles in v1: `ROLE_CUSTOMER`, `ROLE_ADMIN`, `ROLE_AGENT`.
+- **User Extraction:** `@AuthenticationPrincipal AuthenticatedUser user` — provides `userId`, `email`, `customerId`, and roles. JWT issued by the in-repo `apps/auth/` service (RS256, JWK set served at `/.well-known/jwks.json`).
+- **Customer Scoping:** Every read operation on customer-scoped data filters by `customer_id` from the principal at the repository-adapter layer. Admin role bypasses the filter explicitly.
+- **Audit Trail:** Mutations (DLQ replay) record `UserDetails` (userId, email) of who triggered them. System-initiated changes use `SYSTEM_USER`.
 
 ---
 
-## 19. Configuration & Environment
+## 18. Configuration & Environment
 
 ### Profiles
 
 
-| Profile   | Purpose                                |
-| --------- | -------------------------------------- |
-| `default` | Base configuration (`application.yml`) |
-| `local`   | Local development with LocalStack      |
-| `test`    | Integration/business test config       |
+| Profile     | Purpose                                                |
+| ----------- | ------------------------------------------------------ |
+| `default`   | Base configuration (`application.yml`)                 |
+| `local`     | Local Docker Compose development                       |
+| `test`      | Integration/business test config (Testcontainers)      |
 
 
 ### Key Properties
 
 ```yaml
 # Messaging
-messaging.bindings:
-  payout-commands: <queue-name>
-  payout-status-events: <topic-name>
-  transfer-status-events: <kafka-topic>
+messaging:
+  bindings:
+    dlq-replay-commands: dlq.replay.command.v1
 
-# External clients
-application.clients:
-  banking-api.url: <url>
-  wallet-service.url: <url>
+# External systems
+application:
+  opensearch:
+    url: ${OPENSEARCH_URL:http://opensearch:9200}
+  trino:
+    url: ${TRINO_URL:jdbc:trino://trino:8080/iceberg}
+  agent-mcp:
+    url: ${AGENT_MCP_URL:http://agent-tools-mcp:8000}
 
 # Outbox
 outbox:
@@ -834,59 +819,73 @@ outbox:
   interval: 1000
   strategy: keep_order
 
-# Database
+# Database (auth + idempotency only)
 spring:
-  datasource.url: jdbc:postgresql://<host>/<db>
+  datasource.url: ${POSTGRES_URL:jdbc:postgresql://catalog-db:5432/stablepay_api}
   flyway.enabled: true
   jpa.open-in-view: false
+
+# Rate limiting
+ratelimit:
+  customer: 100/min
+  admin: 500/min
+  agent: 1000/min
+
+# JWT
+auth:
+  jwks-url: ${JWKS_URL:http://auth:8080/.well-known/jwks.json}
+  access-token-ttl: PT15M
+  refresh-token-ttl: P7D
 ```
 
 ---
 
-## 20. Key Libraries
+## 19. Key Libraries
 
 
 | Library | Purpose |
 |---------|---------|
-| `namastack-outbox-starter-jdbc` | Transactional outbox with JDBC (polling, batching, retry, dead-letter) |
+| `io.namastack:namastack-outbox-starter-jdbc` | Transactional outbox with JDBC (polling, batching, retry, dead-letter) |
 | MapStruct | Compile-time object mapping |
 | Lombok | Boilerplate reduction (@Builder, @RequiredArgsConstructor) |
 | nv-i18n | ISO CurrencyCode and CountryCode |
-| uuid-creator | Time-based UUID v7 generation |
-| Flying Saucer | PDF generation |
-| OpenCSV | CSV parsing |
-| ShedLock | Distributed job locking |
+| uuid-creator (`com.github.f4b6a3:uuid-creator`) | Time-based UUID v7 generation |
+| Spring Data OpenSearch | OpenSearch repository abstraction |
+| Trino JDBC driver | Trino client for analytics + agent SQL execution |
+| `io.trino:trino-parser` | SQL parsing for agent-SQL allowlist validation |
+| ShedLock JDBC | Distributed job locking (background maintenance jobs if added) |
 | ArchUnit | Architecture rule enforcement |
+| Bucket4j | Token-bucket rate limiting |
+| Sentry | Error tracking (`sentry-spring-boot-starter-jakarta`) |
+| `micrometer-tracing-bridge-otel` | OTEL trace context propagation |
 
 
 ---
 
-## 21. Coding Conventions for Agents
+## 20. Coding Conventions for Agents
 
 ### Package Naming
 
 ```
-com.{org}.banking.{domain}/
+com.stablepay.payments/
   application/
-    config/          <- Spring configuration classes
-    controller/      <- REST controllers
-    stream/          <- Message listeners
-    stream/mapper/   <- Wire-to-domain mappers
-    job/             <- Scheduled jobs
+    config/          <- Spring configuration classes (EventRouting, WebConfig, SecurityConfig)
+    controller/      <- REST controllers (transaction, flow, customer, admin, agent)
+    security/        <- Roles, AuthenticatedUser
   domain/
-    {subdomain}/     <- Grouped by business capability
-    {subdomain}/model/ <- Domain models
-    common/model/    <- Shared value objects
-    statemachine/    <- Generic state machine framework
-    command/         <- Command handler interfaces
+    transaction/     <- TransactionQueryHandler + ports
+    flow/            <- FlowQueryHandler + ports
+    customer/        <- CustomerSummaryHandler + ports
+    dlq/             <- DlqQueryHandler + ReplayCommandHandler
+    agent/           <- AgentSqlHandler + AgentSearchHandler + AgentTimelineHandler
+    common/          <- Money, type-safe IDs (TransactionId, FlowId, CustomerId)
+    exceptions/
   infrastructure/
-    db/              <- JPA entities, repositories, adapters
-    db/{subdomain}/  <- Grouped by aggregate
-    client/          <- Feign clients and adapters
-    client/{service}/ <- One package per external service
-    stream/          <- Event publishers (outbox)
-    stream/mapper/   <- Domain-to-wire mappers
-    common/          <- Shared infrastructure utilities
+    opensearch/      <- OpenSearch repository adapters + mappers
+    trino/           <- Trino repository adapters + mappers
+    db/              <- JPA entities (auth_users, idempotency_keys) + adapters
+    kafka/           <- Outbox event publisher (Namastack)
+    common/          <- Shared infrastructure utilities (e.g., TraceContextHelper)
 ```
 
 ### Naming Conventions
@@ -894,16 +893,16 @@ com.{org}.banking.{domain}/
 
 | Type            | Pattern                                                | Example                                                |
 | --------------- | ------------------------------------------------------ | ------------------------------------------------------ |
-| Domain port     | `{Noun}Repository`, `{Noun}Provider`, `{Noun}Executor` | `PayoutRepository`, `FeeProvider`                      |
-| Infra adapter   | `{Noun}RepositoryAdapter`, `{Service}Adapter`          | `PayoutRepositoryAdapter`, `BankingApiAdapter`         |
-| Event handler   | `{Event}Handler` implementing `EventHandler<T>`        | `TransferEventHandler`                                 |
-| Command handler | `{Action}CommandHandler`                               | `BalanceAdjustmentCommandHandler`                      |
-| Mapper          | `{Source}Mapper` or `{Target}Mapper`                   | `PayoutEntityMapper`, `TransferEventMapper`            |
-| Test fixtures   | `{Entity}Fixtures` with `SOME_*` constants             | `PayoutFixtures.SOME_PAYOUT`                           |
-| Wire events     | `{Domain}{Action}Event`                                | `PayoutStatusEvent`, `TransferEvent`                   |
-| Commands        | `{Action}{Entity}Command`                              | `CreatePayoutCommand`, `TriggerBatchCommand`           |
-| Exception       | `{Noun}{Problem}Exception`                             | `InsufficientFundsException`, `WalletBlockedException` |
-| Error code      | `{SERVICE_PREFIX}-{NUMBER}`                            | `FIAT-0101`, `TRANS-2004`                              |
+| Domain port     | `{Noun}Repository`, `{Noun}Provider`, `{Noun}Executor` | `TransactionReadOnlyRepository`, `AgentSqlRepository`  |
+| Infra adapter   | `{Noun}RepositoryAdapter`, `{System}Adapter`           | `OpenSearchTransactionRepositoryAdapter`, `TrinoAnalyticsRepositoryAdapter` |
+| Query handler   | `{Aggregate}QueryHandler`                              | `TransactionQueryHandler`, `FlowQueryHandler`          |
+| Command handler | `{Action}CommandHandler`                               | `DlqReplayCommandHandler`                              |
+| Mapper          | `{Source}Mapper` or `{Target}Mapper`                   | `TransactionEntityMapper`, `MoneyEntityMapper`         |
+| Test fixtures   | `{Entity}Fixtures` with `SOME_*` constants             | `TransactionFixtures.SOME_TRANSACTION`                 |
+| Wire events     | `{Domain}{Action}Event`                                | `DlqReplayCommandEvent`                                |
+| Commands        | `{Action}{Entity}Command`                              | `ReplayDlqMessageCommand`                              |
+| Exception       | `{Noun}{Problem}Exception`                             | `TransactionNotFoundException`, `IdempotencyKeyConflictException` |
+| Error code      | `STBLPAY-{NUMBER}`                                     | `STBLPAY-0101`, `STBLPAY-2004`                         |
 
 
 ### Code Style
@@ -912,7 +911,7 @@ com.{org}.banking.{domain}/
 - Use Lombok `@Builder`, `@RequiredArgsConstructor`, `@Jacksonized`, `@Slf4j`.
 - Records for DTOs and value objects. Classes only when mutable state is required.
 - BDD test style: `// given`, `// when`, `// then`.
-- AssertJ for all assertions. `usingRecursiveComparison()` for deep equality on records.
+- AssertJ for all assertions. **Single `usingRecursiveComparison()` per result assertion** — see TESTING_STANDARDS.md golden rule.
 - Parameterized tests with `@ArgumentsSource` or `@MethodSource` for multi-case validation.
 - BDD-style Mockito: `given(...).willReturn(...)`, `then(...).should()`.
 - Constructor injection only — never field injection.
@@ -921,7 +920,7 @@ com.{org}.banking.{domain}/
 
 - Do NOT put JPA annotations in the domain layer.
 - Do NOT expose JPA entities outside the infrastructure layer.
-- Do NOT publish events directly to a message broker (always use outbox).
+- Do NOT publish events directly to a message broker (always use Namastack outbox).
 - Do NOT use mutable state in domain models.
 - Do NOT hardcode queue/topic names (use `EventRouting` configuration).
 - Do NOT bypass the state machine for status transitions.
@@ -929,8 +928,10 @@ com.{org}.banking.{domain}/
 - Do NOT use `@Transactional` on controllers — place it on domain services and command handlers.
 - Do NOT use `@Autowired` on fields (use constructor injection via `@RequiredArgsConstructor`).
 - Do NOT use `System.out` / `System.err` (use `@Slf4j`).
-- Do NOT throw generic `Exception` / `RuntimeException` (use domain-specific exceptions with error codes).
+- Do NOT throw generic `Exception` / `RuntimeException` (use domain-specific exceptions with `STBLPAY-XXXX` error codes).
 - Do NOT use `spring.jpa.open-in-view: true`.
 - Do NOT use `@Enumerated(ORDINAL)` (always `STRING`).
 - Do NOT create `@SpringBootTest` for unit tests (use `@ExtendWith(MockitoExtension.class)`).
+- Do NOT use `float`/`double` for money — always `BigDecimal + CurrencyCode` in the domain layer; convert to/from `long` micros at the infrastructure-layer mapper.
+- Do NOT skip the customer-scope filter on read paths — always pass `CustomerId scope` from the principal into the repository call.
 

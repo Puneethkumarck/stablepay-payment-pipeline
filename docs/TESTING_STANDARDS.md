@@ -102,27 +102,37 @@ assertThat(result).usingRecursiveComparison()
 
 **Mapper test:**
 ```java
-var result = mapper.toDomain(apiEvent);
-var expected = PayoutStatusEvent.builder()
-        .payoutReference(UUID.fromString(apiEvent.payoutReference()))
-        .status(PARTNER_ACCEPTED).build();
+var result = mapper.toView(domainTransaction);
+var expected = TransactionView.builder()
+        .reference(domainTransaction.id().value().toString())
+        .customerStatus("COMPLETED")
+        .amount(SOME_MONEY)
+        .eventTime(SOME_INSTANT)
+        .build();
 assertThat(result).usingRecursiveComparison().isEqualTo(expected);
 ```
 
 **Service/handler test (interaction verification):**
 ```java
-var expectedMerchant = merchant.toBuilder().build();
-expectedMerchant.activate(approver, scopes);
+var expectedKey = IdempotencyKey.builder()
+        .key(SOME_IDEMPOTENCY_KEY)
+        .scope(SOME_ADMIN_USER.id().toString())
+        .result(ReplayResult.accepted(SOME_DLQ_ID))
+        .build();
 // ... when ...
-then(merchantRepository).should().save(eqIgnoringTimestamps(expectedMerchant));
+then(idempotencyKeyRepository).should().save(eqIgnoringTimestamps(expectedKey));
 ```
 
 **Integration test (controller response):**
 ```java
-var response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(), PayoutView.class);
-var expected = PayoutView.builder().reference(ref).status("CREATED").amount(SOME_MONEY).build();
+var response = objectMapper.readValue(mvcResult.getResponse().getContentAsString(), TransactionView.class);
+var expected = TransactionView.builder()
+        .reference(ref.value().toString())
+        .customerStatus("PROCESSING")
+        .amount(SOME_MONEY)
+        .build();
 assertThat(response).usingRecursiveComparison()
-        .ignoringFields("createdAt", "updatedAt").isEqualTo(expected);
+        .ignoringFields("eventTime", "ingestTime").isEqualTo(expected);
 ```
 
 ### Narrow Exceptions (the ONLY cases where individual asserts are allowed)
@@ -171,17 +181,17 @@ The project uses **four physically separated test source sets** with distinct sc
 ### Primary Convention: `should*` in camelCase
 
 ```java
-void shouldHandleApprovedMerchantApprovalEvent()
-void shouldThrowIfPayoutNotFound()
-void shouldReturnAllBindings()
-void shouldMapTransferSuccessEventToDomain()
-void shouldDiscardWhenInvalidReturnFalse()
+void shouldReturnTransactionByReference()
+void shouldThrowIfTransactionNotFound()
+void shouldRejectAgentSqlOutsideAllowlist()
+void shouldEmitDlqReplayCommandWhenIdempotencyKeyIsNew()
+void shouldReturnExistingResultWhenIdempotencyKeyAlreadyUsed()
 ```
 
-### Secondary Convention: `given_When_Then` (older controller tests only)
+### Secondary Convention: `given_When_Then` (older legacy code only)
 
 ```java
-void givenAValidRequestWithAuthenticatedUser_WhenAttemptToRetrieveThePdf_ThenSuccess()
+void givenAValidRequestWithAuthenticatedUser_WhenAttemptToRetrieveTheTransaction_ThenSuccess()
 ```
 
 **Rule**: Standardize on `should*` camelCase for all new code. The `given_When_Then` variant is legacy.
@@ -194,21 +204,23 @@ void givenAValidRequestWithAuthenticatedUser_WhenAttemptToRetrieveThePdf_ThenSuc
 
 ```java
 @Test
-void shouldHandleApprovedMerchantApprovalEvent() {
+void shouldEmitDlqReplayCommandWhenIdempotencyKeyIsNew() {
     // given
-    var payout = MERCHANT_4_EYES_APPROVAL_REQUESTED_PAYOUT;
-    var event = SOME_APPROVED_MERCHANT_APPROVAL_EVENT.toBuilder()
-        .payoutReference(payout.transactionReference())
-        .build();
-    given(payoutRepository.findByTransactionReference(event.payoutReference()))
-        .willReturn(Optional.of(payout));
+    var command = new ReplayDlqMessageCommand(SOME_DLQ_ID, "dlq.processing-failed.v1", SOME_IDEMPOTENCY_KEY);
+    var user = SOME_ADMIN_USER;
+    given(idempotencyKeyRepository.findByKey(command.idempotencyKey(), user.id().toString()))
+        .willReturn(Optional.empty());
 
     // when
-    handler.handle(event);
+    var result = handler.handle(command, user);
 
     // then
-    then(payoutRepository).should().save(eqIgnoringTimestamps(expected.payout()));
-    then(payoutStatusEventPublisher).should().publish(eqIgnoringTimestamps(expected.event()));
+    var expectedResult = ReplayResult.accepted(SOME_DLQ_ID);
+    assertThat(result).usingRecursiveComparison().isEqualTo(expectedResult);
+    var expectedEvent = new DlqReplayCommandEvent(SOME_DLQ_ID, "dlq.processing-failed.v1", user.id(), SOME_INSTANT);
+    then(eventPublisher).should().publish(eqIgnoring(expectedEvent, "requestedAt"));
+    then(idempotencyKeyRepository).should().save(eqIgnoringTimestamps(IdempotencyKey.builder()
+        .key(command.idempotencyKey()).scope(user.id().toString()).result(expectedResult).build()));
 }
 ```
 
@@ -216,16 +228,17 @@ void shouldHandleApprovedMerchantApprovalEvent() {
 
 ```java
 @Test
-void shouldThrowIfPayoutNotFound() {
+void shouldThrowIfTransactionNotFound() {
     // given
-    var event = SOME_APPROVED_MERCHANT_APPROVAL_EVENT;
-    given(payoutRepository.findByTransactionReference(event.payoutReference()))
+    var ref = new TransactionId(UUID.randomUUID());
+    given(transactionRepository.findByReference(ref, SOME_CUSTOMER_ID))
         .willReturn(Optional.empty());
 
     // when/then
-    assertThatThrownBy(() -> handler.handle(event))
-        .isInstanceOf(PayoutNotFoundException.class)
-        .hasMessageContaining("Could not find payout with transactionReference");
+    assertThatThrownBy(() -> handler.findByReference(ref, SOME_CUSTOMER_ID).orElseThrow(
+        () -> new TransactionNotFoundException(ref)))
+        .isInstanceOf(TransactionNotFoundException.class)
+        .hasMessageContaining("Transaction not found:");
 }
 ```
 
@@ -254,11 +267,10 @@ The project uses **BDDMockito exclusively**:
 
 ```java
 @ExtendWith(MockitoExtension.class)
-class MerchantApprovalEventHandlerTest {
-    @Mock private PayoutRepository payoutRepository;
-    @Mock private EventPublisher<StateChangedEvent> payoutStatusEventPublisher;
-    @Mock private TransferService transferService;
-    @InjectMocks private MerchantApprovalEventHandler handler;
+class DlqReplayCommandHandlerTest {
+    @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
+    @Mock private EventPublisher<DlqReplayCommandEvent> eventPublisher;
+    @InjectMocks private DlqReplayCommandHandler handler;
 }
 ```
 
@@ -268,15 +280,15 @@ class MerchantApprovalEventHandlerTest {
 
 ```java
 // BAD: generic matchers give zero confidence in what was actually called
-given(repo.findById(any())).willReturn(Optional.of(merchant));                 // FORBIDDEN
-given(repo.findByTransactionReference(any())).willReturn(Optional.empty());    // FORBIDDEN
-given(repo.save(any(Merchant.class))).willAnswer(inv -> inv.getArgument(0));   // FORBIDDEN
-then(repo).should().save(eq(expectedMerchant));                                // FORBIDDEN
+given(repo.findById(any())).willReturn(Optional.of(transaction));                 // FORBIDDEN
+given(repo.findByReference(any(), any())).willReturn(Optional.empty());           // FORBIDDEN
+given(repo.save(any(IdempotencyKey.class))).willAnswer(inv -> inv.getArgument(0));// FORBIDDEN
+then(repo).should().save(eq(expectedKey));                                        // FORBIDDEN
 
 // GOOD: actual values - test fails if arguments don't match
-given(repo.findById(merchantId)).willReturn(Optional.of(merchant));            // CORRECT
-given(repo.findByTransactionReference(txRef)).willReturn(Optional.empty());    // CORRECT
-then(repo).should().save(eqIgnoringTimestamps(expectedMerchant));              // CORRECT
+given(repo.findById(transactionId)).willReturn(Optional.of(transaction));         // CORRECT
+given(repo.findByReference(transactionId, customerId)).willReturn(Optional.empty()); // CORRECT
+then(repo).should().save(eqIgnoringTimestamps(expectedKey));                      // CORRECT
 ```
 
 **Allowed custom matchers** (these verify actual content, not bypass matching):
@@ -285,14 +297,14 @@ then(repo).should().save(eqIgnoringTimestamps(expectedMerchant));              /
 
 **Stubbing `save()` with return value**: when the handler needs the saved object back:
 ```java
-given(repo.save(eqIgnoringTimestamps(expectedMerchant)))
+given(repo.save(eqIgnoringTimestamps(expectedKey)))
         .willAnswer(inv -> inv.getArgument(0));
 ```
 
 ### `@Spy` for Real Mappers/Validators
 
 ```java
-@Spy private final BatchPayoutRequestMapper mapper = getMapper(BatchPayoutRequestMapper.class);
+@Spy private final TransactionResponseMapper mapper = getMapper(TransactionResponseMapper.class);
 @Spy private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 ```
 
@@ -303,9 +315,9 @@ MapStruct mappers and Jakarta validators are spied rather than mocked, so their 
 ```java
 @ServiceTest
 @AutoConfigureMockMvc
-class ProofOfPaymentControllerTest extends RestControllerAbstractTest {
-    @MockBean private ProofOfPaymentCommandHandler handler;
-    @SpyBean private SomeRealBean spiedBean;
+class TransactionControllerTest extends RestControllerAbstractTest {
+    @MockBean private TransactionQueryHandler handler;
+    @SpyBean private TransactionResponseMapper spiedMapper;
 }
 ```
 
@@ -334,40 +346,37 @@ All fixtures live in `src/testFixtures/java/`. Never define shared fixtures in `
 ### Fixture Structure
 
 ```
-src/testFixtures/java/com/stablepay/payments/payout/test/
-    FullContextIntegrationTest.java       // Integration test base
-    RestControllerAbstractTest.java        // Controller test base
+src/testFixtures/java/com/stablepay/payments/test/
+    FullContextIntegrationTest.java       // Integration test base (Testcontainers + Spring)
+    RestControllerAbstractTest.java        // Controller test base (MockMvc + JWT)
     TestUtils.java                         // Comparison utilities (MANDATORY)
     commons/
-        AuthenticationGenerator.java       // Auth test helpers
+        JwtTokenGenerator.java             // Issues test JWTs with role + customer_id claims
+        TraceContextGenerator.java         // Generates W3C trace IDs for trace-propagation tests
     fixtures/
-        PayoutFixtures.java                // Payout at every lifecycle state (30+ constants)
-        CommonFixtures.java                // Shared: SOME_MONEY, SOME_SENDER, etc.
-        FeeFixtures.java                   // Fee domain objects
-        BatchPayoutFixtures.java           // Batch payout data
-        BeneficiaryFixtures.java           // Beneficiary test data
-        BridgeFixtures.java                // Bridge service responses
-        TransferEventFixtures.java         // Transfer events
-        MerchantApprovalFixtures.java      // Approval events
-        PayoutStatusFixtures.java          // Status-related fixtures
-        CustomerDetailsFixtures.java       // Customer details
-        WalletMappingFixtures.java         // Wallet mappings
-        ApiErrorFixtures.java              // Error responses
-        ProofOfPaymentFixtures.java        // POP objects
-        ProcessingProfileFixtures.java     // Processing profiles
+        TransactionFixtures.java           // SOME_TRANSACTION + builders for each lifecycle state
+        FlowFixtures.java                  // SOME_FLOW + builders for on_ramp / off_ramp / crypto_to_crypto
+        DlqFixtures.java                   // SOME_DLQ_MESSAGE + per-error-class fixtures
+        CustomerFixtures.java              // SOME_CUSTOMER + 5 seeded test customers
+        IdempotencyKeyFixtures.java
+        ApiErrorFixtures.java              // Error response fixtures
+        CommonFixtures.java                // SOME_MONEY, SOME_INSTANT, SOME_TRACE_ID
     stubs/
-        fee/FeeServiceStubs.java
-        auth/AuthServiceStubs.java
-        banking/BankingApiStubs.java
-        bridge/BridgeServiceStubs.java
-        beneficiary/BeneficiaryManagementStubs.java
-        wallet/WalletServiceStubs.java
-        capability/CapabilitiesManagementServiceStubs.java
-        transfer/TransferServiceStubs.java
-        mfa/MfaStub.java
+        opensearch/
+            OpenSearchTransactionStubs.java   // WireMock OS responses for transaction queries
+            OpenSearchFlowStubs.java
+            OpenSearchDlqStubs.java
+        trino/
+            TrinoAnalyticsStubs.java          // JdbcTemplate result-set stubs
+            TrinoAgentSqlStubs.java
+        auth/
+            AuthServiceJwksStubs.java         // JWK set responses for JWT decoder tests
+        kafka/
+            KafkaOutboxStubs.java             // Asserts outbox messages emitted with correct partition key
     request/
-        InvalidCreatePayoutRequestWithWalletId.java
-        InvalidUnifiedPayoutRequest.java
+        InvalidTransactionFilterRequestProvider.java
+        InvalidReplayDlqMessageRequestProvider.java
+        InvalidAgentSqlRequestProvider.java
 ```
 
 ### Fixture Design Patterns
@@ -376,43 +385,49 @@ src/testFixtures/java/com/stablepay/payments/payout/test/
 
 ```java
 @NoArgsConstructor(access = PRIVATE)
-public final class PayoutFixtures {
-    public static final Payout NEW_PAYOUT = createPayoutWithStatus(CREATED);
-    public static final Payout FINCRIME_TRIGGERED_PAYOUT = createPayoutWithStatus(FINCRIME_TRIGGERED);
-    public static final Payout PARTNER_COMPLETED_PAYOUT = createPayoutWithStatus(PARTNER_COMPLETED);
-    // ... 30+ payout constants covering every state
+public final class TransactionFixtures {
+    public static final Transaction NEW_TRANSACTION = createTransactionWithStatus(CREATED);
+    public static final Transaction COMPLIANCE_HELD_TRANSACTION = createTransactionWithStatus(COMPLIANCE_HELD);
+    public static final Transaction PROVIDER_SETTLED_TRANSACTION = createTransactionWithStatus(PROVIDER_SETTLED);
+    // ... constants covering every customer-visible status, plus a sample of internal statuses
 }
 ```
 
 **Pattern 2: Builder factory methods**
 
 ```java
-public static PayoutRequestBuilder payoutRequestBuilder() {
-    return PayoutRequest.builder()
-        .merchantId("some-merchant-id")
-        .accountReference("some-account-reference")
-        .beneficiaryDetails(payoutBeneficiaryBuilder().build())
-        .amount(SOME_MONEY);
+public static TransactionFilterRequestBuilder transactionFilterRequestBuilder() {
+    return TransactionFilterRequest.builder()
+        .from(SOME_INSTANT.minus(7, DAYS))
+        .to(SOME_INSTANT)
+        .currency("USD")
+        .status(CustomerStatus.COMPLETED)
+        .pageSize(50);
 }
 ```
 
 **Pattern 3: State-machine-based fixture generation**
 
-`PayoutFixtures.createPayoutWithStatus(Status)` walks the payout through its state machine from `CREATED` to the desired state, producing realistic test objects with proper status history.
+`TransactionFixtures.createTransactionWithStatus(InternalStatus)` walks a transaction through its lifecycle from `CREATED` to the desired state, producing realistic test objects with proper event timeline. Used heavily in business tests that need a transaction in a specific intermediate state.
 
 **Pattern 4: `SOME_*` prefix convention**
 
 ```java
-public static final Money SOME_MONEY = Money.builder().amount(...).currency(...).build();
-public static final Sender SOME_SENDER = Sender.builder()...build();
-public static final MerchantApprovalEvent SOME_APPROVED_MERCHANT_APPROVAL_EVENT = ...;
+public static final Money SOME_MONEY = new Money(new BigDecimal("100.00"), CurrencyCode.USD);
+public static final CustomerId SOME_CUSTOMER_ID = new CustomerId(UUID.fromString("..."));
+public static final TransactionId SOME_TRANSACTION_ID = new TransactionId(UUID.fromString("..."));
+public static final FlowId SOME_FLOW_ID = new FlowId(UUID.fromString("..."));
+public static final Instant SOME_INSTANT = Instant.parse("2026-04-29T12:00:00Z");
+public static final String SOME_IDEMPOTENCY_KEY = "stablepay-test-key-001";
+public static final DlqReplayCommandEvent SOME_DLQ_REPLAY_COMMAND_EVENT = ...;
 ```
 
 **Pattern 5: Static import for clean test code**
 
 ```java
-import static com.stablepay.payments.payout.test.fixtures.PayoutFixtures.MERCHANT_4_EYES_APPROVAL_REQUESTED_PAYOUT;
-import static com.stablepay.payments.payout.test.fixtures.CommonFixtures.SOME_MONEY;
+import static com.stablepay.payments.test.fixtures.TransactionFixtures.PROVIDER_SETTLED_TRANSACTION;
+import static com.stablepay.payments.test.fixtures.CommonFixtures.SOME_MONEY;
+import static com.stablepay.payments.test.fixtures.CommonFixtures.SOME_CUSTOMER_ID;
 ```
 
 **Pattern 6: All fixture factories MUST live in testFixtures (MANDATORY)**
@@ -420,7 +435,7 @@ import static com.stablepay.payments.payout.test.fixtures.CommonFixtures.SOME_MO
 Test helper methods that create domain objects must be extracted into dedicated `*Fixtures` classes in `src/testFixtures/java/.../fixtures/`. They must NOT remain as private methods in test classes.
 
 Rules:
-- One fixture class per aggregate/entity: `ComplianceCheckFixtures`, `FxQuoteFixtures`, etc.
+- One fixture class per aggregate/entity: `TransactionFixtures`, `FlowFixtures`, `DlqFixtures`, etc.
 - Fixture classes are `public final` with a `private` constructor (utility class pattern)
 - All factory methods are `public static` — callers use static imports
 - Shared constants (e.g., `SOURCE_AMOUNT`, `BASE_TIME`) also live in fixture classes
@@ -447,13 +462,14 @@ public final class ComplianceCheckFixtures {
 **Pattern 7: `ArgumentsProvider` for parameterized tests**
 
 ```java
-public static class PayoutWithMultipleStatesProvider implements ArgumentsProvider {
+public static class TransactionWithMultipleStatesProvider implements ArgumentsProvider {
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext ctx) {
         return Stream.of(
-            of(NEW_PAYOUT),
-            of(FINCRIME_TRIGGERED_PAYOUT),
-            // ... all payout states
+            of(NEW_TRANSACTION),
+            of(COMPLIANCE_HELD_TRANSACTION),
+            of(PROVIDER_SETTLED_TRANSACTION),
+            // ... representative states
         );
     }
 }
@@ -479,9 +495,9 @@ assertThat(result).isEmpty();
 ### Recursive Comparison (standard approach for complex objects)
 
 ```java
-assertThat(payoutElements)
+assertThat(transactionView)
     .usingRecursiveComparison()
-    .isEqualTo(expectedPayoutElement);
+    .isEqualTo(expectedTransactionView);
 
 assertThat(apiError)
     .usingRecursiveComparison()
@@ -493,13 +509,13 @@ assertThat(apiError)
 ### Exception Assertions
 
 ```java
-assertThatThrownBy(() -> handler.handle(event))
-    .isInstanceOf(PayoutNotFoundException.class)
-    .hasMessageContaining("Could not find payout with transactionReference");
+assertThatThrownBy(() -> handler.handle(command, user))
+    .isInstanceOf(TransactionNotFoundException.class)
+    .hasMessageContaining("Transaction not found");
 
-assertThatThrownBy(() -> builder.withTransition(STATE1, STATE2, null))
-    .isExactlyInstanceOf(IllegalStateException.class)
-    .hasMessage("Cannot define the same transition twice for: STATE1 -> STATE2");
+assertThatThrownBy(() -> sqlValidator.validate(disallowedSql))
+    .isExactlyInstanceOf(AgentSqlNotAllowedException.class)
+    .hasMessageContaining("Table not in allowlist:");
 ```
 
 ### Custom Timestamp-Ignoring Comparison
@@ -529,24 +545,23 @@ Is the result an object (entity, VO, DTO, event)?
 
 #### Complete Examples by Layer
 
-**State transition (aggregate):**
+**Domain method on a record (returning new instance):**
 ```java
 @Test
-void shouldTransitionToLockedStatus() {
+void shouldDeriveCustomerStatusFromInternalStatus() {
     // given
-    var quote = FxQuoteFixtures.activeQuote();
+    var transaction = NEW_TRANSACTION.toBuilder().internalStatus("PROVIDER_SETTLED").build();
 
     // when
-    var result = quote.lock();
+    var result = transaction.withDerivedCustomerStatus();
 
     // then
-    var expected = quote.toBuilder()
-            .status(FxQuoteStatus.LOCKED)
+    var expected = transaction.toBuilder()
+            .customerStatus(CustomerStatus.COMPLETED.name())
             .build();
 
     assertThat(result)
             .usingRecursiveComparison()
-            .ignoringFields("lockedAt")
             .isEqualTo(expected);
 }
 ```
@@ -554,26 +569,25 @@ void shouldTransitionToLockedStatus() {
 **Factory method (new entity with generated ID):**
 ```java
 @Test
-void shouldCreateComplianceCheck() {
+void shouldInitiateIdempotencyKey() {
     // given
-    var paymentId = UUID.randomUUID();
-    var corridor = new Corridor("US", "DE", "USD", "EUR");
-    var amount = Money.of(new BigDecimal("1000.00"), "USD");
+    var key = "stablepay-test-key-001";
+    var scope = SOME_ADMIN_USER.id().toString();
+    var result = ReplayResult.accepted(SOME_DLQ_ID);
 
     // when
-    var result = ComplianceCheck.initiate(paymentId, corridor, amount);
+    var idempotencyKey = IdempotencyKey.create(key, scope, result);
 
     // then
-    var expected = ComplianceCheck.builder()
-            .paymentId(paymentId)
-            .corridor(corridor)
-            .amount(amount)
-            .status(ComplianceCheckStatus.PENDING)
+    var expected = IdempotencyKey.builder()
+            .key(key)
+            .scope(scope)
+            .result(result)
             .build();
 
-    assertThat(result)
+    assertThat(idempotencyKey)
             .usingRecursiveComparison()
-            .ignoringFields("checkId", "createdAt")
+            .ignoringFields("id", "createdAt")
             .isEqualTo(expected);
 }
 ```
@@ -583,10 +597,10 @@ void shouldCreateComplianceCheck() {
 @Test
 void shouldCreateMoney() {
     // when
-    var result = Money.of(new BigDecimal("100.00"), "USD");
+    var result = Money.of(new BigDecimal("100.00"), CurrencyCode.USD);
 
     // then
-    var expected = new Money(new BigDecimal("100.00"), "USD");
+    var expected = new Money(new BigDecimal("100.00"), CurrencyCode.USD);
 
     assertThat(result)
             .usingRecursiveComparison()
@@ -597,18 +611,20 @@ void shouldCreateMoney() {
 **Mapper (input to output):**
 ```java
 @Test
-void shouldMapApiEventToDomain() {
+void shouldMapDomainTransactionToView() {
     // given
-    var apiEvent = SOME_PAYOUT_STATUS_API_ACCEPTED_EVENT;
+    var domain = COMPLIANCE_HELD_TRANSACTION;
 
     // when
-    var result = mapper.toDomain(apiEvent);
+    var result = mapper.toView(domain);
 
     // then
-    var expected = PayoutStatusEvent.builder()
-            .payoutReference(UUID.fromString(apiEvent.payoutReference()))
-            .status(PARTNER_ACCEPTED)
-            .eventDateTime(apiEvent.eventDateTime())
+    var expected = TransactionView.builder()
+            .reference(domain.id().value().toString())
+            .customerStatus(CustomerStatus.PROCESSING.name())
+            .internalStatus(domain.internalStatus())
+            .amount(domain.amount())
+            .eventTime(domain.eventTime())
             .build();
 
     assertThat(result)
@@ -620,22 +636,32 @@ void shouldMapApiEventToDomain() {
 **Domain service returning a result:**
 ```java
 @Test
-void shouldLockRateAndReservePool() {
+void shouldComputeCustomerSummaryForDateRange() {
     // given
-    var quote = FxQuoteFixtures.activeQuote();
-    var pool = LiquidityPoolFixtures.poolWithBalance("10000.00");
-    given(quoteRepository.findById(quote.quoteId())).willReturn(Optional.of(quote));
-    given(poolRepository.findByCorridor(quote.corridor())).willReturn(Optional.of(pool));
+    var customerId = SOME_CUSTOMER_ID;
+    var range = new DateRange(SOME_INSTANT.minus(30, DAYS), SOME_INSTANT);
+    var aggRows = List.of(
+        new VolumeRow("USD", 12, new BigDecimal("12500.00")),
+        new VolumeRow("EUR", 5, new BigDecimal("4200.00"))
+    );
+    given(summaryRepository.queryVolumes(customerId, range)).willReturn(aggRows);
 
     // when
-    var result = lockService.lockRate(quote.quoteId(), paymentId);
+    var result = summaryHandler.load(customerId, range);
 
     // then
-    var expectedLock = FxRateLock.fromQuote(quote, paymentId);
-    assertThat(result.lock())
+    var expected = CustomerSummary.builder()
+            .customerId(customerId)
+            .range(range)
+            .totalVolumeByCurrency(Map.of(
+                CurrencyCode.USD, new Money(new BigDecimal("12500.00"), CurrencyCode.USD),
+                CurrencyCode.EUR, new Money(new BigDecimal("4200.00"), CurrencyCode.EUR)))
+            .transactionCount(17)
+            .build();
+    assertThat(result)
             .usingRecursiveComparison()
-            .ignoringFields("lockId", "createdAt")
-            .isEqualTo(expectedLock);
+            .ignoringFields("computedAt")
+            .isEqualTo(expected);
 }
 ```
 
@@ -677,62 +703,59 @@ assertThat(result)
 4. **Use `eqIgnoring`** — when additional fields must be ignored (e.g., `eventId`, `correlationId`)
 5. **No scattered `assertThat` on return values** — the `save()`/`publish()` verification covers correctness
 
-#### Example: handler that mutates an existing entity
+#### Example: handler that records a new entity (DLQ replay command)
 
 ```java
 @Test
-void shouldActivateMerchant() {
+void shouldEmitDlqReplayCommandAndPersistIdempotencyKey() {
     // given
-    var merchant = MerchantFixtures.pendingApprovalMerchant();
-    var merchantId = merchant.getMerchantId();
-    var approver = MerchantFixtures.anApprover();
-    var scopes = List.of("payments:read", "payments:write");
-    given(merchantRepository.findById(merchantId)).willReturn(Optional.of(merchant));
+    var command = new ReplayDlqMessageCommand(SOME_DLQ_ID, "dlq.processing-failed.v1", SOME_IDEMPOTENCY_KEY);
+    var user = SOME_ADMIN_USER;
+    given(idempotencyKeyRepository.findByKey(SOME_IDEMPOTENCY_KEY, user.id().toString()))
+            .willReturn(Optional.empty());
 
-    // Build expected: clone fixture, apply same domain operation
-    var expectedMerchant = merchant.toBuilder().build();
-    expectedMerchant.activate(approver, scopes);
-
-    var expectedEvent = MerchantActivatedEvent.builder()
-            .eventType(MerchantActivatedEvent.EVENT_TYPE)
-            .merchantId(merchantId)
-            .legalName(merchant.getLegalName())
+    // Build expected: same factory + downstream operation
+    var expectedResult = ReplayResult.accepted(SOME_DLQ_ID);
+    var expectedKey = IdempotencyKey.builder()
+            .key(SOME_IDEMPOTENCY_KEY)
+            .scope(user.id().toString())
+            .result(expectedResult)
             .build();
+    var expectedEvent = new DlqReplayCommandEvent(SOME_DLQ_ID, "dlq.processing-failed.v1", user.id(), SOME_INSTANT);
 
-    given(merchantRepository.save(eqIgnoringTimestamps(expectedMerchant)))
+    given(idempotencyKeyRepository.save(eqIgnoringTimestamps(expectedKey)))
             .willAnswer(inv -> inv.getArgument(0));
 
     // when
-    handler.activate(merchantId, approver, scopes);
+    handler.handle(command, user);
 
-    // then - verify interactions with expected objects
-    then(activationPolicy).should().validate(merchant);
-    then(merchantRepository).should().save(eqIgnoringTimestamps(expectedMerchant));
-    then(eventPublisher).should().publish(
-            eqIgnoring(expectedEvent, "eventId", "correlationId"));
+    // then — verify interactions with expected objects
+    then(idempotencyKeyRepository).should().save(eqIgnoringTimestamps(expectedKey));
+    then(eventPublisher).should().publish(eqIgnoring(expectedEvent, "requestedAt"));
 }
 ```
 
-#### Example: handler that creates a new entity (random ID)
+#### Example: handler that returns existing result on repeat (idempotency)
 
 ```java
 @Test
-void shouldApplyMerchant() {
+void shouldReturnExistingResultWhenIdempotencyKeyAlreadyUsed() {
     // given
-    var command = new ApplyMerchantCommand("Acme Ltd", ...);
-
-    // Build expected from same factory method - merchantId will differ
-    var expectedMerchant = Merchant.createNew("Acme Ltd", ...);
-
-    given(merchantRepository.save(eqIgnoring(expectedMerchant, "merchantId")))
-            .willAnswer(inv -> inv.getArgument(0));
+    var command = new ReplayDlqMessageCommand(SOME_DLQ_ID, "dlq.processing-failed.v1", SOME_IDEMPOTENCY_KEY);
+    var user = SOME_ADMIN_USER;
+    var existing = IdempotencyKey.builder()
+            .key(SOME_IDEMPOTENCY_KEY).scope(user.id().toString())
+            .result(ReplayResult.accepted(SOME_DLQ_ID)).build();
+    given(idempotencyKeyRepository.findByKey(SOME_IDEMPOTENCY_KEY, user.id().toString()))
+            .willReturn(Optional.of(existing));
 
     // when
-    handler.apply(command);
+    var result = handler.handle(command, user);
 
-    // then - ignore merchantId since it's randomly generated inside the handler
-    then(merchantRepository).should().save(
-            eqIgnoring(expectedMerchant, "merchantId"));
+    // then
+    assertThat(result).usingRecursiveComparison().isEqualTo(existing.result());
+    then(eventPublisher).shouldHaveNoInteractions();
+    then(idempotencyKeyRepository).should(never()).save(any());
 }
 ```
 
@@ -740,26 +763,25 @@ void shouldApplyMerchant() {
 
 ```java
 // BAD: mixing assertThat on return value with mock verification
-var result = handler.activate(merchantId, approver, scopes);
-assertThat(result).isNotNull();                    // FORBIDDEN - redundant
-assertThat(result.isActive()).isTrue();             // FORBIDDEN - covered by save verification
-then(eventPublisher).should().publish(any(...));    // FORBIDDEN - doesn't verify event content
+var result = handler.handle(command, user);
+assertThat(result).isNotNull();                                            // FORBIDDEN - redundant
+assertThat(result.dlqId()).isEqualTo(SOME_DLQ_ID);                          // FORBIDDEN - covered by recursive-comparison expected
+then(eventPublisher).should().publish(any(...));                            // FORBIDDEN - doesn't verify event content
 
 // BAD: generic matchers
-then(merchantRepository).should().save(any(Merchant.class));               // FORBIDDEN
-then(eventPublisher).should().publish(any(MerchantSuspendedEvent.class));  // FORBIDDEN
+then(idempotencyKeyRepository).should().save(any(IdempotencyKey.class));    // FORBIDDEN
+then(eventPublisher).should().publish(any(DlqReplayCommandEvent.class));    // FORBIDDEN
 
 // BAD: generic matchers in stubs
-given(repo.findById(any())).willReturn(Optional.of(merchant));             // FORBIDDEN
-given(repo.save(any(Merchant.class))).willAnswer(inv -> inv.getArgument(0)); // FORBIDDEN
+given(repo.findByKey(any(), any())).willReturn(Optional.of(existing));      // FORBIDDEN
+given(repo.save(any(IdempotencyKey.class))).willAnswer(inv -> inv.getArgument(0)); // FORBIDDEN
 
 // GOOD: actual values in stubs
-given(repo.findById(merchantId)).willReturn(Optional.of(merchant));        // CORRECT
+given(repo.findByKey(SOME_IDEMPOTENCY_KEY, user.id().toString())).willReturn(Optional.of(existing)); // CORRECT
 
 // GOOD: verify with expected objects
-then(merchantRepository).should().save(eqIgnoringTimestamps(expectedMerchant));
-then(eventPublisher).should().publish(
-        eqIgnoring(expectedEvent, "eventId", "correlationId"));
+then(idempotencyKeyRepository).should().save(eqIgnoringTimestamps(expectedKey));
+then(eventPublisher).should().publish(eqIgnoring(expectedEvent, "requestedAt"));
 ```
 
 #### When this pattern does NOT apply
@@ -775,20 +797,20 @@ then(eventPublisher).should().publish(
 
 ```java
 @ParameterizedTest
-@ArgumentsSource(PayoutWithMultipleStatesProvider.class)
-void shouldRejectPayoutInInvalidState(Payout payout) { ... }
+@ArgumentsSource(TransactionWithMultipleStatesProvider.class)
+void shouldComputeCustomerStatusForEachInternalState(Transaction transaction) { ... }
 
 @ParameterizedTest
 @MethodSource("provideInvalidRequests")
-void shouldRejectInvalidRequest(PayoutRequest request) { ... }
+void shouldRejectInvalidTransactionFilterRequest(TransactionFilterRequest request) { ... }
 
 @ParameterizedTest
 @CsvSource({"EUR,100", "GBP,120", "USD,120"})
-void shouldAutoApproveUnderThreshold(String currency, BigDecimal threshold) { ... }
+void shouldRespectPerCurrencyMinimumAmount(String currency, BigDecimal minimum) { ... }
 
 @ParameterizedTest
-@EnumSource(TransferType.class)
-void shouldMapAllTransferTypes(TransferType type) { ... }
+@EnumSource(FlowVariant.class)
+void shouldRenderTimelineForEachFlowVariant(FlowVariant variant) { ... }
 
 @ParameterizedTest
 @ValueSource(booleans = {true, false})
@@ -807,10 +829,9 @@ void shouldHandleNullInput(String input) { ... }
 
 ```
 FullContextIntegrationTest (abstract)
-  |-- @MySQLTest (TestContainers)
+  |-- @PgTest, @OpenSearchTest, @TrinoTest, @KafkaTest (Testcontainers)
   |-- @ServiceTest (Spring context)
-  |-- @Import(TestChannelBinderConfiguration.class)
-  |-- ObjectMapper, InputDestination, TestStreamSupport
+  |-- ObjectMapper, JwtTokenGenerator
   |
   |-- RestControllerAbstractTest (abstract)
   |     |-- @AutoConfigureMockMvc
@@ -822,79 +843,94 @@ FullContextIntegrationTest (abstract)
   +-- BusinessTest (abstract)
         |-- @SpringBootTest(webEnvironment = DEFINED_PORT)
         |-- @DirtiesContext
-        |-- FiatPayoutProcessorClient
+        |-- StablepayApiClient
         |
         +-- (Business flow tests extend this)
 ```
 
-### Database: MySQL TestContainers
+### Containers: Testcontainers
 
 ```java
-@MySQLTest  // from foundation library - handles TestContainers lifecycle
+@PgTest          // PostgreSQL 17 — for auth + idempotency JPA tests
+@OpenSearchTest  // OpenSearch 2.18 — for search-adapter integration tests
+@TrinoTest       // Trino 470 — for analytics-adapter and agent-SQL tests
+@KafkaTest       // Apache Kafka 4.0 KRaft — for outbox publish verification
 ```
 
 JPA repository tests use `@Transactional` for automatic rollback.
 
-### External HTTP Services: WireMock
+### External Systems: WireMock + Stubs
 
-Stub definitions follow a typed pattern:
+Stub definitions follow a typed pattern under `src/testFixtures/java/.../stubs/`:
 
 ```
 stubs/
-|-- FeeServiceStubs / RetrieveFeesStubDefinition
-|-- BridgeServiceStubs / BridgeServiceGetAllWalletDetailsStubDefinition
-|-- AuthServiceStubs / AuthServiceStubDefinition
-|-- BeneficiaryManagementStubs / GetBeneficiaryStubsDefinition
-|-- BankingApiStubs / GetWalletMappingStubDefinition
-|-- WalletServiceStubs / WalletServiceStubDefinition
-|-- CapabilitiesManagementServiceStubs / EvaluateCapabilityStubDefinition
-|-- TransferServiceStubs / TransferServiceGetWalletSnapshotSubDefinition
-+-- MfaStub / MfaStubDefinition
+|-- opensearch/
+|     |-- OpenSearchTransactionStubs / TransactionSearchStubDefinition
+|     |-- OpenSearchFlowStubs / FlowFetchStubDefinition
+|     +-- OpenSearchDlqStubs / DlqSearchStubDefinition
+|-- trino/
+|     |-- TrinoAnalyticsStubs / AggQueryStubDefinition
+|     +-- TrinoAgentSqlStubs / ConstrainedSqlStubDefinition
+|-- auth/
+|     +-- AuthServiceJwksStubs / JwksResponseStubDefinition
++-- kafka/
+      +-- KafkaOutboxStubs / OutboxPublishStubDefinition
 ```
 
-Each extends `StubDefinitionWithRequestData<Request, Response, Error>` from foundation library.
+Each extends `StubDefinitionWithRequestData<Request, Response, Error>`.
 
-### Messaging: Spring Cloud Stream Test Binder
+### Messaging Verification
 
 ```java
-@Import(TestChannelBinderConfiguration.class)
-// ...
-@Autowired protected InputDestination input;
-@Autowired protected TestStreamSupport testStreamSupport;
+// Outbox publish verification — assert the outbox emits exactly one event with the expected partition key
+@Autowired protected OutboxAssertions outboxAssertions;
+
+outboxAssertions.assertEmitted(DlqReplayCommandEvent.class)
+    .withTopic("dlq.replay.command.v1")
+    .withPartitionKey(SOME_DLQ_ID.toString())
+    .matching(eqIgnoring(expectedEvent, "requestedAt"));
 ```
 
 ### Test Application Config
 
 ```yaml
 # integration-test: application-test.yml
-# All external services -> localhost:4444 (WireMock)
+# OpenSearch / Trino / Kafka URLs point at Testcontainer-provided ports
 # Fast scheduler intervals (PT1S, PT0S)
-# RDS IAM disabled, dummy HAWK credentials
+# Dummy JWT signing key + JWK set served by AuthServiceJwksStubs
 ```
 
 ---
 
 ## 9. Business Test Setup
 
-Full E2E tests that start the real server and verify complete payout lifecycle flows.
+Full E2E tests that start the real server and verify complete API flows end-to-end through OpenSearch + Trino + Postgres + Kafka containers.
 
 ```java
 @SpringBootTest(webEnvironment = DEFINED_PORT)
-@WireMockTest(httpPort = 4444)
+@PgTest @OpenSearchTest @TrinoTest @KafkaTest
 @DirtiesContext
 @AutoConfigureMockMvc
-class PayoutFlowBusinessTest extends BusinessTest {
+class TransactionSearchFlowBusinessTest extends BusinessTest {
 
     @BeforeEach
     void setUp() {
-        // Set up all WireMock stubs for external services
+        // Seed Iceberg fact tables via Trino INSERT (IcebergSeeder)
+        // Seed OpenSearch transactions index with fixtures
+        // Issue test JWT for the customer scope
     }
 
     @Test
-    void shouldCompleteFullPayoutFlow() {
-        // Create payout via API
-        // Verify state transitions through the entire lifecycle
-        // Assert final state
+    void shouldRetrieveTransactionByReferenceForOwningCustomer() {
+        // Call GET /api/v1/transactions/{ref} with customer JWT
+        // Verify response shape, customer scoping, status mapping
+    }
+
+    @Test
+    void shouldReturn404WhenTransactionBelongsToDifferentCustomer() {
+        // Same call with another customer's JWT
+        // Assert 404 (not 403) — avoid enumeration leak
     }
 }
 ```
@@ -903,7 +939,7 @@ class PayoutFlowBusinessTest extends BusinessTest {
 - `TestContext` — builder-based test context holding all state
 - `BusinessTestHelper` — static helper methods for common setup
 - `BusinessTestMapper` — MapStruct mapper for assertions
-- `BatchPayoutBusinessTestHelper` — batch-specific helpers
+- `IcebergSeeder` — seeds `fact_*` and `agg_*` tables via Trino INSERT for deterministic queries
 
 ---
 
@@ -913,7 +949,7 @@ Every new service must include **five ArchUnit rules**. This must be the **first
 
 ```java
 class ArchitectureTest {
-    private static final String BASE = "com.stablecoin.payments.<service>";
+    private static final String BASE = "com.stablepay.payments";
 
     // Rule 1: domain must NOT depend on infrastructure
     noClasses().that().resideInAPackage(BASE + ".domain..")
@@ -950,29 +986,38 @@ class ArchitectureTest {
 Use JUnit 5 `@Nested` to group related tests within a single test class:
 
 ```java
-class PayoutStatusEventListenerTest {
+class DlqReplayCommandHandlerTest {
 
     @Nested
-    class WhenEventIsValid {
+    class WhenIdempotencyKeyIsNew {
         @Test
-        void shouldProcessEvent() { ... }
+        void shouldEmitReplayCommandEvent() { ... }
 
         @Test
-        void shouldPublishStateChange() { ... }
+        void shouldPersistIdempotencyKey() { ... }
+    }
+
+    @Nested
+    class WhenIdempotencyKeyAlreadyUsed {
+        @Test
+        void shouldReturnExistingResult() { ... }
+
+        @Test
+        void shouldNotEmitEvent() { ... }
     }
 
     @Nested
     @ExtendWith(OutputCaptureExtension.class)
     class LoggingTests {
         @Test
-        void shouldLogWarning(CapturedOutput output) { ... }
+        void shouldLogReplayAttempt(CapturedOutput output) { ... }
     }
 }
 ```
 
 **Conventions**:
 - Use `@Nested` to group tests by scenario or concern (e.g., valid inputs, error cases, logging)
-- Inner class names should be descriptive: `WhenEventIsValid`, `WhenPayoutNotFound`, `LoggingTests`
+- Inner class names should be descriptive: `WhenIdempotencyKeyIsNew`, `WhenTransactionNotFound`, `LoggingTests`
 - Each `@Nested` class can have its own `@BeforeEach` setup
 - `@Nested` classes can carry their own extensions (e.g., `OutputCaptureExtension` for log capture only)
 - Avoid nesting more than one level deep
@@ -1044,7 +1089,7 @@ public final class TestUtils {
 |---|---|
 | `eqIgnoringTimestamps(expected)` | Saved/published objects where only timestamps differ (e.g., `createdAt`, `updatedAt`) |
 | `eqIgnoring(expected, "eventId", "correlationId")` | Events with random IDs generated inside the handler |
-| `eqIgnoring(expected, "merchantId")` | New entities created with `UUID.randomUUID()` inside the handler |
+| `eqIgnoring(expected, "dlqId")` | New entities created with `UUID.randomUUID()` inside the handler |
 
 ### `AuthenticationGenerator`
 
@@ -1071,7 +1116,7 @@ public static AuthenticatedUser dummyAuthenticatedUserForGivenRole(String role) 
 | Domain logic, handlers, services | Unit | `@ExtendWith(MockitoExtension.class)` | None |
 | MapStruct mappers | Unit | None (plain JUnit) | None |
 | Controller HTTP behavior | Integration | `@ServiceTest @AutoConfigureMockMvc` | `RestControllerAbstractTest` |
-| JPA repository queries | Integration | `@ServiceTest @MySQLTest @Transactional` | `FullContextIntegrationTest` |
+| JPA repository queries | Integration | `@ServiceTest @PgTest @Transactional` | `FullContextIntegrationTest` |
 | Event listener processing | Integration | `@ServiceTest @Import(TestChannelBinderConfiguration)` | `FullContextIntegrationTest` |
 | Architecture layer rules | Integration | `@AnalyzeClasses` | `DefaultArchitectureTest` |
 | Full payout lifecycle | Business | `@SpringBootTest(DEFINED_PORT) @WireMockTest` | `BusinessTest` |

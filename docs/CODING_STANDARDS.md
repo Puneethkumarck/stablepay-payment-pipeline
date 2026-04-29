@@ -45,10 +45,10 @@ Instructions for coding agents developing new Java/Spring Boot microservices in 
 
 ## 1. Architecture: Hexagonal (Ports and Adapters)
 
-Every service follows a strict three-layer package structure under `com.<org>.<domain>.<service>`:
+Every service follows a strict three-layer package structure under `com.stablepay.payments`:
 
 ```
-com.<org>.banking.payout
+com.stablepay.payments.payout
   ├── domain/           # Core business logic, services, models, ports
   ├── application/      # Input adapters: REST controllers, event listeners, scheduled jobs
   └── infrastructure/   # Output adapters: database, messaging, external HTTP clients
@@ -93,44 +93,77 @@ Use **Java records** for immutable value objects and domain events. Use **classe
 // Value object (record)
 public record Money(BigDecimal value, CurrencyCode currency) {}
 
-// Domain event (record)
-public record PayoutStateChangedEvent(Payout payout) implements StateChangedEvent {}
+// Type-safe ID
+public record TransactionId(UUID value) {}
+public record FlowId(UUID value) {}
+public record CustomerId(UUID value) {}
 
-// Change result pairs the updated entity with its emitted event
-public record PayoutChangeResult(Payout payout, StateChangedEvent event) {}
+// Domain query result (record)
+public record Transaction(
+    TransactionId id,
+    FlowId flowId,
+    CustomerId customerId,
+    Money amount,
+    String internalStatus,
+    String customerStatus,
+    Instant eventTime,
+    List<TransactionEvent> timeline
+) {}
+
+// Domain event (record) — used only for the DLQ replay command in v1
+public record DlqReplayCommandEvent(
+    UUID dlqId,
+    String sourceTopic,
+    UUID requestedBy,
+    Instant requestedAt
+) {
+    public static final String TOPIC = "dlq.replay.command.v1";
+}
 ```
 
-Domain models use Lombok but NOT Spring:
+Domain query handlers use Lombok and Spring (for DI / transactions); domain *records* use Lombok only:
 
 ```java
-// Domain entity with behavior (rich model) - Lombok only, NO Spring
+// Domain query handler — Spring-managed
 @Slf4j
-@Builder(toBuilder = true, access = PACKAGE)
-public class Payout implements StateProvider<Status> {
+@Service
+@RequiredArgsConstructor
+public class TransactionQueryHandler {
+    private final TransactionReadOnlyRepository transactionRepository;
 
-    // Domain behavior lives ON the entity - returns new instances
-    public PayoutChangeResult transferLiabilityToSuspenseCompleted() { ... }
-    public PayoutChangeResult processingFailed() { ... }
-    public PayoutChangeResult merchant4EyesApprovalApproved(UserDetails approval) { ... }
+    public Optional<Transaction> findByReference(TransactionId id, CustomerId scope) {
+        return transactionRepository.findByReference(id, scope);
+    }
+
+    public SearchResult<Transaction> search(TransactionSearchQuery query, Pageable page) {
+        return transactionRepository.search(query, page);
+    }
 }
 ```
 
 **Rules:**
-- Domain models are immutable. State transitions return new instances (via `PayoutChangeResult`).
-- Use `@Builder(toBuilder = true)` when you need copy-and-modify semantics.
+- Domain models are immutable records. Mutations return new instances (`toBuilder().with(...)..build()`).
+- Use `@Builder(toBuilder = true)` on every record with 3+ fields. Trivial 1-2 field records (e.g., `Money`, `TransactionId`) are exempt.
 - Enums for statuses, types, and fixed classifications. Use `@Getter` and `@RequiredArgsConstructor` on enums with fields.
 - No JPA annotations in domain models. Entity mapping belongs in `infrastructure`.
-- No Spring annotations on domain models. Only Lombok (`@Builder`, `@Getter`, `@RequiredArgsConstructor`, `@Slf4j`, `@SneakyThrows`).
+- No Spring annotations on domain models — only on services/handlers (which are not records). Records carry only Lombok (`@Builder`, `@Getter`, `@RequiredArgsConstructor`, `@Slf4j`, `@SneakyThrows`).
 
 ### 3.2 Repository Ports
 
 Define repository interfaces in the domain layer. Implementation is in `infrastructure`.
 
 ```java
-// domain/payout/PayoutRepository.java - plain interface, no annotations
-public interface PayoutRepository {
-    Optional<Payout> findByTransactionReference(UUID transactionReference);
-    Payout save(Payout payout);
+// domain/transaction/TransactionReadOnlyRepository.java — plain interface, no annotations
+public interface TransactionReadOnlyRepository {
+    Optional<Transaction> findByReference(TransactionId reference, CustomerId scope);
+    Page<Transaction> findByFilter(TransactionFilter filter, Pageable pageable);
+    SearchResult<Transaction> search(TransactionSearchQuery query, Pageable pageable);
+}
+
+// domain/dlq/DlqReplayCommandHandler-related ports
+public interface IdempotencyKeyRepository {
+    Optional<IdempotencyKey> findByKey(String key, String scope);
+    IdempotencyKey save(IdempotencyKey key);
 }
 ```
 
@@ -142,22 +175,40 @@ Services orchestrate domain logic. They use Spring for DI and transactions, and 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PayoutCreationService {
-    private final PayoutRepository payoutRepository;
-    private final PayoutDataEnricher payoutDataEnricher;
-    private final PayoutTransactionalProxy payoutTransactionalProxy;
-    // ...
+@Transactional(readOnly = true)
+public class FlowQueryHandler {
+    private final FlowReadOnlyRepository flowRepository;
+    private final TransactionReadOnlyRepository transactionRepository;
+
+    public Optional<FlowTimeline> timeline(FlowId id, CustomerId scope) {
+        return flowRepository.findById(id, scope)
+            .map(flow -> new FlowTimeline(flow, transactionRepository.findByFlowId(id, scope)));
+    }
 }
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class TransferEventHandler implements EventHandler<TransferEvent> {
-    private final PayoutRepository payoutRepository;
-    private final EventPublisher<StateChangedEvent> eventPublisher;
+public class DlqReplayCommandHandler {
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final EventPublisher<DlqReplayCommandEvent> eventPublisher;
 
     @Transactional
-    public void handle(TransferEvent event) { ... }
+    public ReplayResult handle(ReplayDlqMessageCommand command, AuthenticatedUser user) {
+        var existing = idempotencyKeyRepository.findByKey(command.idempotencyKey(), user.id().toString());
+        if (existing.isPresent()) return existing.get().result();
+
+        var event = new DlqReplayCommandEvent(command.dlqId(), command.sourceTopic(),
+                                                user.id(), Instant.now());
+        eventPublisher.publish(event);   // Namastack outbox — same TX as idempotency key save
+        var key = IdempotencyKey.builder()
+            .key(command.idempotencyKey())
+            .scope(user.id().toString())
+            .result(ReplayResult.accepted(event.dlqId()))
+            .build();
+        idempotencyKeyRepository.save(key);
+        return key.result();
+    }
 }
 ```
 
@@ -207,13 +258,15 @@ StateMachine.<Status, Order>builder()
 ### 3.6 Error Handling
 
 - Define domain-specific exceptions extending `RuntimeException`.
-- Use structured error codes: `<ORG>-<DOMAIN>-XXXX` (4-digit, zero-padded). Example: `ACME-FIAT-0001`.
+- Use structured error codes: `STBLPAY-XXXX` (4-digit, zero-padded). Example: `STBLPAY-0101`.
 - Each exception type maps to a specific HTTP status in the application layer.
 
 ```java
-public class PayoutNotFoundException extends RuntimeException { ... }
-public class PayoutStateMachineException extends StateMachineException { ... }
-public class InsufficientWalletBalanceException extends RuntimeException { ... }
+public class TransactionNotFoundException extends RuntimeException { ... }
+public class FlowNotFoundException extends RuntimeException { ... }
+public class IdempotencyKeyConflictException extends RuntimeException { ... }
+public class AgentSqlNotAllowedException extends RuntimeException { ... }
+public class CustomerScopeMismatchException extends RuntimeException { ... }
 ```
 
 ---
@@ -244,35 +297,39 @@ public class InsufficientWalletBalanceException extends RuntimeException { ... }
 
 ## 5. Infrastructure Layer
 
-### 5.1 Database (JPA)
+### 5.1 Database (JPA — limited use in v1)
 
-- Package: `infrastructure.db.<feature>`.
+The Spring Boot API has only two JPA-backed tables in v1: `auth_users` and `idempotency_keys`. Domain reads land on OpenSearch and Trino — not JPA. JPA usage here is intentionally minimal.
+
+- Package: `infrastructure.db.<feature>` (`auth/`, `idempotency/`).
 - JPA entities are **separate** from domain models. Use `@Entity` classes with `@Table`.
 - Mappers convert between JPA entities and domain models.
 - Use Spring Data JPA repositories (`JpaRepository`) wrapped by an adapter that implements the domain port.
 
 ```java
-// infrastructure/db/payout/PayoutJpaRepository.java (Spring Data)
-interface PayoutJpaRepository extends JpaRepository<PayoutEntity, Long> { ... }
+// infrastructure/db/idempotency/IdempotencyKeyJpaRepository.java (Spring Data)
+interface IdempotencyKeyJpaRepository extends JpaRepository<IdempotencyKeyEntity, UUID> {
+    Optional<IdempotencyKeyEntity> findByKeyAndScope(String key, String scope);
+}
 
-// infrastructure/db/payout/PayoutRepositoryAdapter.java (implements domain port)
-class PayoutRepositoryAdapter implements PayoutRepository { ... }
+// infrastructure/db/idempotency/IdempotencyKeyRepositoryAdapter.java (implements domain port)
+class IdempotencyKeyRepositoryAdapter implements IdempotencyKeyRepository { ... }
 ```
 
 ### 5.2 Messaging (Namastack Outbox Pattern)
 
-Use **Namastack Outbox** (`io.namastack:namastack-outbox-starter-jdbc`) for reliable transactional event publishing via Kafka.
+Use **Namastack Outbox** (`io.namastack:namastack-outbox-starter-jdbc`) for reliable transactional event publishing via Kafka. In v1 the API publishes a single event type — `dlq.replay.command.v1` — but the pattern is wired up correctly for any future event types.
 
 **Event model:** Each domain event is a record with a static `TOPIC` field:
 
 ```java
-public record PaymentCompleted(
-        UUID paymentId,
-        UUID correlationId,
-        Money sourceAmount,
-        Instant completedAt
+public record DlqReplayCommandEvent(
+        UUID dlqId,
+        String sourceTopic,
+        UUID requestedBy,
+        Instant requestedAt
 ) {
-    public static final String TOPIC = "payment.completed";
+    public static final String TOPIC = "dlq.replay.command.v1";
 }
 ```
 
@@ -280,11 +337,11 @@ public record PaymentCompleted(
 
 ```java
 @Component
-public class OutboxEventPublisher extends AbstractOutboxEventPublisher
-        implements PaymentEventPublisher {
+public class DlqReplayOutboxPublisher extends AbstractOutboxEventPublisher
+        implements EventPublisher<DlqReplayCommandEvent> {
 
-    public OutboxEventPublisher(Outbox outbox) {
-        super(outbox, List.of("paymentId")); // key field for partitioning
+    public DlqReplayOutboxPublisher(Outbox outbox) {
+        super(outbox, List.of("dlqId")); // key field for Kafka partitioning
     }
 }
 ```
@@ -295,9 +352,8 @@ The base class calls `outbox.schedule(event, key)` inside `@Transactional(propag
 
 ```java
 @Component
-public class ServiceOutboxHandler extends AbstractOutboxHandler {
-
-    public ServiceOutboxHandler(KafkaTemplate<String, Object> kafkaTemplate) {
+public class StablepayOutboxHandler extends AbstractOutboxHandler {
+    public StablepayOutboxHandler(KafkaTemplate<String, Object> kafkaTemplate) {
         super(kafkaTemplate);
     }
 }
@@ -309,15 +365,16 @@ The handler is annotated with `@OutboxHandler` (`io.namastack.outbox.annotation`
 - Events MUST have a `public static final String TOPIC` field.
 - Publishing MUST happen within a transaction (`propagation = MANDATORY`).
 - One `OutboxEventPublisher` and one `OutboxHandler` per service module.
-- Key fields (for Kafka partitioning) are resolved by accessor name (e.g., `paymentId`).
+- Key fields (for Kafka partitioning) are resolved by accessor name (e.g., `dlqId`).
 
-### 5.3 External HTTP Clients
+### 5.3 External Integration Adapters
 
-- Package: `infrastructure.client.<service>`.
-- Use Feign clients for inter-service communication.
-- Wrap Feign clients in adapter classes that map between API models and domain models.
-- Handle `FeignException` subtypes (e.g., `NotFound` -> `Optional.empty()`).
-- Infrastructure records (RPC response DTOs, client config records) MUST use `@Builder(toBuilder = true)`.
+- Package: `infrastructure.{system}` — `opensearch/`, `trino/`, `kafka/`.
+- The Spring Boot API does not call peer microservices via Feign in v1. The downstream systems are OpenSearch (HTTPS), Trino (JDBC), and Kafka (via Namastack outbox).
+- For OpenSearch: Spring Data OpenSearch repositories wrapped in adapter classes that implement domain ports and map between OpenSearch documents and domain records.
+- For Trino: `JdbcTemplate` wrapped in adapter classes — see `TrinoAnalyticsRepositoryAdapter`. The `AgentSqlExecutorAdapter` uses `io.trino:trino-parser` to validate the agent's SQL against the `fact_*` / `agg_*` allowlist before delegating to `JdbcTemplate`.
+- Handle integration errors via dedicated exception types (e.g., `OpenSearchUnavailableException`, `TrinoQueryTimeoutException`) mapped to HTTP statuses in the controller-advice layer.
+- Infrastructure records (response DTOs, client-config records) MUST use `@Builder(toBuilder = true)`.
 
 ---
 
@@ -335,7 +392,7 @@ Use **MapStruct** for all layer-boundary mapping. No manual field-by-field mappi
 | External -> Domain | `toDomain(externalModel)` |
 
 **Rules:**
-- One mapper interface per concern (e.g., `PayoutRequestMapper`, `TransferEventMapper`).
+- One mapper interface per concern (e.g., `TransactionResponseMapper`, `MoneyEntityMapper`, `DlqEnvelopeMapper`).
 - Mappers are interfaces annotated with `@Mapper(componentModel = "spring")`.
 - In unit tests, instantiate via `Mappers.getMapper(XxxMapper.class)` or the generated `XxxMapperImpl`.
 - Use `@Spy` for mapper injection in tests when you need to verify mapper calls.
@@ -403,20 +460,20 @@ public class CustomerAwareSenderProvider implements SenderProvider {
 | Element | Convention | Example |
 |---------|-----------|---------|
 | Package | lowercase, singular | `domain.payout.model.core` |
-| Class | PascalCase | `PayoutCreationService` |
-| Interface | PascalCase, no `I` prefix | `PayoutRepository` |
+| Class | PascalCase | `TransactionQueryHandler` |
+| Interface | PascalCase, no `I` prefix | `TransactionReadOnlyRepository` |
 | Method | camelCase, verb-first | `findByTransactionReference` |
 | Constant | SCREAMING_SNAKE_CASE | `FIAT_PAYOUT_FLOW_TYPE` |
-| Test method | `should<Action><Condition>` | `shouldThrowExceptionIfPayoutNotFound` |
+| Test method | `should<Action><Condition>` | `shouldThrowExceptionIfTransactionNotFound` |
 | Fixture constant | `SOME_*` or descriptive | `SOME_PAYOUT_REQUEST`, `NEW_PAYOUT` |
-| Fixture builder | `<concept>Builder()` | `payoutBuilder()`, `senderBuilder()` |
+| Fixture builder | `<concept>Builder()` | `transactionBuilder()`, `flowBuilder()`, `dlqMessageBuilder()` |
 
 ### 8.6 Import Order
 
 ```java
 import static ...;         // Static imports first
 
-import com.<org>...;       // Internal imports
+import com.stablepay...;       // Internal imports
 import com.other...;       // Third-party imports
 import java...;            // Java standard library
 import jakarta...;         // Jakarta imports
@@ -518,37 +575,39 @@ public record Money(
 
 ### 10.1 Namastack Outbox
 
-All events are published through the Namastack transactional outbox (see Section 5.2 for implementation details):
+All events are published through the Namastack transactional outbox (see Section 5.2 for implementation details). The Spring Boot API publishes one event type in v1 — the DLQ replay command — but the pattern is wired up to scale.
 
 ```java
 // Domain port (in domain layer)
-public interface PaymentEventPublisher {
-    void publish(Object event);
+public interface EventPublisher<T> {
+    void publish(T event);
 }
 
 // Infrastructure adapter (in infrastructure layer)
 @Component
-public class OutboxEventPublisher extends AbstractOutboxEventPublisher
-        implements PaymentEventPublisher {
-    public OutboxEventPublisher(Outbox outbox) {
-        super(outbox, List.of("paymentId"));
+public class DlqReplayOutboxPublisher extends AbstractOutboxEventPublisher
+        implements EventPublisher<DlqReplayCommandEvent> {
+    public DlqReplayOutboxPublisher(Outbox outbox) {
+        super(outbox, List.of("dlqId"));   // partition key
     }
 }
 ```
 
 ### 10.2 Event Naming
 
-- Commands: `Create*Command`, `Trigger*Command`
-- Events: `*StatusEvent`, `*ChangedEvent`, `*ResultEvent`
-- Requests: `*ScreeningRequest`, `*TransferRequest`
+- Commands: `*Command` records (e.g., `ReplayDlqMessageCommand`)
+- Events: `*Event` records with `public static final String TOPIC` (e.g., `DlqReplayCommandEvent` → `dlq.replay.command.v1`)
+- Topics: `<domain>.<entity>.<sub>.v<N>` (e.g., `dlq.replay.command.v1`)
 
 ---
 
 ## 11. Security
 
-- Role-based access via Spring Security (`@RolesAllowed`, custom role annotations).
-- Service-to-service authentication via shared credential mechanisms (e.g., HMAC-based auth).
-- Auto-configuration classes for client authentication setup.
+- **Role-based access:** Spring Security with `@Secured("ROLE_*")` on every endpoint. Three roles in v1: `ROLE_CUSTOMER`, `ROLE_ADMIN`, `ROLE_AGENT`.
+- **Customer scoping:** Every customer-scoped read filters by `CustomerId scope` from `@AuthenticationPrincipal AuthenticatedUser`. Repository adapters enforce this — controllers cannot bypass.
+- **Service-to-service:** The LLM agent calls `/api/v1/agent/*` endpoints with a pre-issued `ROLE_AGENT` JWT (no `customer_id` claim — not customer-scoped); validated via the same Spring Security JWT decoder used for customers/admins.
+- **JWT verification:** RS256 with JWK set fetched from the in-repo `apps/auth/` service at `/.well-known/jwks.json`. Token TTL: 15-min access + 7-day refresh.
+- **Auto-configuration:** `SecurityConfig` configures `SecurityFilterChain` with the JWT decoder; auth-service URL injected via `auth.jwks-url`.
 
 ---
 
@@ -556,16 +615,19 @@ public class OutboxEventPublisher extends AbstractOutboxEventPublisher
 
 Before submitting code, verify:
 
-- [ ] Domain models have zero Spring imports (Lombok only)
+- [ ] Domain records have zero Spring imports (Lombok only)
 - [ ] Domain services/handlers use only `@Component`/`@Service`/`@Transactional` from Spring
 - [ ] Domain layer does not import from `application` or `infrastructure`
 - [ ] All mapping uses MapStruct, not manual field copying
-- [ ] Repository interfaces are in `domain`, implementations in `infrastructure.db`
-- [ ] Events use Namastack outbox pattern, not direct Kafka publishing
+- [ ] Repository interfaces are in `domain`, implementations under `infrastructure/{opensearch,trino,db}`
+- [ ] Events use the Namastack outbox pattern, not direct Kafka publishing
 - [ ] Domain events have a `public static final String TOPIC` field
-- [ ] Money values use `BigDecimal` with `CurrencyCode`
+- [ ] Money values use `BigDecimal` + `CurrencyCode` in domain, `long` micros at the storage boundary
 - [ ] Constructor injection via `@RequiredArgsConstructor`, no `@Autowired`
-- [ ] State transitions use the `StateMachine` pattern
-- [ ] Custom exceptions extend `RuntimeException` with structured error codes
+- [ ] State transitions use the `StateMachine` pattern (only relevant when write-side aggregates exist)
+- [ ] Custom exceptions extend `RuntimeException` with `STBLPAY-XXXX` error codes
 - [ ] Functional style: streams over loops, Optional pipelines over null checks
-- [ ] Tests follow [TESTING_STANDARDS.md](TESTING_STANDARDS.md)
+- [ ] Customer-scoped reads filter by `CustomerId` from the principal at the repository-adapter layer — controllers cannot bypass
+- [ ] Idempotency-keyed writes (e.g., DLQ replay) require `X-Idempotency-Key` header + DB unique constraint
+- [ ] Agent SQL endpoint validates against the `fact_*` / `agg_*` allowlist via `io.trino:trino-parser` before forwarding to Trino
+- [ ] Tests follow [TESTING_STANDARDS.md](TESTING_STANDARDS.md) — golden recursive-comparison rule applied
