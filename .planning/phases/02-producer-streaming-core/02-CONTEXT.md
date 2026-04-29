@@ -51,6 +51,12 @@ Phase 2 delivers the Python state-machine simulator (`apps/simulator/`) that emi
 - **D-15:** Transition validation strictness — Lenient with logging at Phase 2. Valid transition graph defined as a static lookup table per flow type. Violations routed to DLQ as side effect but the event ALSO proceeds through the main pipeline. Config flag `STBLPAY_FLINK_STRICT_TRANSITIONS=false` (default) controls this. Tighten to strict rejection in a later pass after simulator tuning.
 - **D-16:** DLQ envelope — Uses existing DLQ Avro schemas from Phase 1 (already generated). Carries: source topic, partition, offset, original payload bytes, error class enum, error message, `failed_at` timestamp, retry count. Counters exposed as Flink metrics per DLQ-02.
 
+### Edge cases & additional clarifications
+
+- **D-17:** `ReplaySource` scope at Phase 2 — Only the `EventSource` protocol (abstract interface) and `FakerSource` (default) are built. `ReplaySource` is a stub (interface + `NotImplementedError`) with a docstring describing future behavior (replay from Iceberg raw table dump). `ExternalKafkaSource` is also stub-only per ING-04. Full `ReplaySource` implementation deferred to Phase 3 or later when Iceberg raw tables exist to replay from.
+- **D-18:** Burst mode mechanics — Burst bypasses the delay multiplier entirely (instant emit at max throughput for 30s). Burst spikes ALL flow types proportionally (same weighted distribution as steady state per D-04). Burst interval configurable: default every ~10 minutes, flag `--burst-interval 600` (seconds). Burst targets 2000 evt/s aggregate across all topics.
+- **D-19:** OpenSearch deployment in Compose — Single-node cluster (`discovery.type=single-node`, `OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m`). Security plugin disabled for dev (`DISABLE_SECURITY_PLUGIN=true`). Memory budget: 1GB total. Port 9200 exposed. Phase 6 may add security plugin + TLS per SEC-03.
+
 ### Claude's Discretion
 - Specific Flink connector versions (iceberg-flink, opensearch-flink-connector or custom) — researcher determines latest stable compatible set
 - Internal simulator package structure (`apps/simulator/src/stablepay_simulator/`) — models/, sources/, producers/, config/ breakdown
