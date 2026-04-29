@@ -2,10 +2,23 @@
 name = "stablepay-simulator"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = ["stablepay-schemas-py"]
+dependencies = [
+    "stablepay-schemas-py",
+    "confluent-kafka[avro,schemaregistry]>=2.14.0",
+    "faker>=37.1.0",
+    "pyyaml>=6.0.2",
+    "click>=8.1.8",
+    "structlog>=25.1.0",
+]
+
+[project.scripts]
+stablepay-simulate = "stablepay_simulator.cli:main"
 
 [tool.uv.sources]
 stablepay-schemas-py = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stablepay_simulator"]
 
 [build-system]
 requires = ["hatchling"]

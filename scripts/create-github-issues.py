@@ -68,6 +68,18 @@ def parse_frontmatter(content: str) -> dict:
 
 def parse_tasks(content: str, frontmatter: dict) -> list[Task]:
     tasks = []
+
+    # Try XML-style <task> blocks first (legacy format)
+    tasks = _parse_xml_tasks(content, frontmatter)
+    if tasks:
+        return tasks
+
+    # Fall back to markdown ### Task N: format
+    return _parse_markdown_tasks(content, frontmatter)
+
+
+def _parse_xml_tasks(content: str, frontmatter: dict) -> list[Task]:
+    tasks = []
     task_pattern = re.compile(
         r'<task\s+id="([^"]+)"\s+type="([^"]+)">\s*'
         r"<title>(.*?)</title>\s*"
@@ -112,6 +124,60 @@ def parse_tasks(content: str, frontmatter: dict) -> list[Task]:
         )
 
     return tasks
+
+
+def _parse_markdown_tasks(content: str, frontmatter: dict) -> list[Task]:
+    tasks = []
+    plan_num = str(frontmatter.get("plan", ""))
+    phase_num = str(frontmatter.get("phase", ""))
+    plan_type = frontmatter.get("type", "execute")
+
+    task_header_pattern = re.compile(r"^###\s+Task\s+(\d+):\s*(.+)$", re.MULTILINE)
+    headers = list(task_header_pattern.finditer(content))
+
+    for i, header_match in enumerate(headers):
+        task_seq = header_match.group(1)
+        title = header_match.group(2).strip()
+        task_id = f"{phase_num}.{plan_num}.{task_seq}"
+
+        start = header_match.end()
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(content)
+        block = content[start:end]
+
+        read_first = _extract_tag_list(block, "read_first")
+        action = _extract_tag_content(block, "action")
+        acceptance_criteria = _extract_tag_list(block, "acceptance_criteria")
+
+        tasks.append(
+            Task(
+                task_id=task_id,
+                title=title,
+                task_type=plan_type,
+                read_first=read_first,
+                action=action,
+                acceptance_criteria=acceptance_criteria,
+                plan_number=plan_num,
+                plan_title=frontmatter.get("title", ""),
+                phase_number=phase_num,
+                requirements=frontmatter.get("requirements", []),
+                depends_on=frontmatter.get("depends_on", []),
+            )
+        )
+
+    return tasks
+
+
+def _extract_tag_content(block: str, tag: str) -> str:
+    pattern = re.compile(rf"<{tag}>(.*?)</{tag}>", re.DOTALL)
+    m = pattern.search(block)
+    return m.group(1).strip() if m else ""
+
+
+def _extract_tag_list(block: str, tag: str) -> list[str]:
+    raw = _extract_tag_content(block, tag)
+    if not raw:
+        return []
+    return [line.strip().lstrip("- ") for line in raw.splitlines() if line.strip().startswith("-")]
 
 
 def load_requirements() -> dict[str, str]:

@@ -42,6 +42,20 @@ create-issues phase:
 preview-issues phase:
     uv run scripts/create-github-issues.py {{phase}} --dry-run
 
+# ─── Simulator ────────────────────────────────────
+
+# Run the payment event simulator
+simulate *ARGS:
+    cd apps/simulator && uv run stablepay-simulate {{ARGS}}
+
+# Run simulator with realistic timing (delay-multiplier=1.0)
+simulate-realistic:
+    cd apps/simulator && uv run stablepay-simulate --realistic
+
+# Run simulator with periodic burst mode
+simulate-burst:
+    cd apps/simulator && uv run stablepay-simulate --burst
+
 # ─── Stubs (expanded in later phases) ─────────────
 
 # Run all tests
