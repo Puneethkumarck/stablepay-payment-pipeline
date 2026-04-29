@@ -26,7 +26,7 @@ These are loaded from project memory and apply to every Claude Code session:
 
 ### 1. No source-platform references
 
-Zero references to the source company (BVNK) anywhere — no PROJECT.md, code, comments, commits, schemas, or documentation. Use the renamed domain-native vocabulary throughout. The project is generic and forkable; identifying details must not propagate.
+Zero references to the upstream platform whose architecture inspired this project — no name, path, code, comments, commits, schemas, or documentation. Use the renamed domain-native vocabulary throughout. The project is generic and forkable; identifying details must not propagate.
 
 ### 2. Java service follows stablebridge-tx-recovery standards verbatim
 
