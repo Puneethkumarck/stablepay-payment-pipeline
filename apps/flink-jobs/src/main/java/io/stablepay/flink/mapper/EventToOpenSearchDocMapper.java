@@ -25,7 +25,7 @@ public final class EventToOpenSearchDocMapper {
     public static Map<String, Object> toDocument(ValidatedEvent event) {
         var doc = new HashMap<String, Object>();
         var record = event.toRecord();
-        String topic = event.topic();
+        var topic = event.topic();
 
         doc.put("event_id", event.eventId());
         doc.put("event_time", event.eventTimeMillis());
@@ -34,7 +34,7 @@ public final class EventToOpenSearchDocMapper {
 
         extractEnvelopeFields(record, doc);
 
-        String eventType = TOPIC_TO_EVENT_TYPE.getOrDefault(topic, "UNKNOWN");
+        var eventType = TOPIC_TO_EVENT_TYPE.getOrDefault(topic, "UNKNOWN");
         doc.put("event_type", eventType);
         doc.put("flow_type", deriveFlowType(topic));
         doc.put("direction", deriveDirection(topic));
@@ -118,7 +118,7 @@ public final class EventToOpenSearchDocMapper {
     }
 
     private static void extractTransactionReference(GenericRecord record, String topic, Map<String, Object> doc) {
-        String ref = null;
+        var ref = (String) null;
         if (topic.contains("payout")) {
             ref = stringOrNull(record.get("payout_reference"));
         } else if (topic.contains("payin")) {

@@ -21,10 +21,10 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
 
     @Override
     public void open(OpenContext openContext) throws Exception {
-        ValueStateDescriptor<FlowState> descriptor =
+        var descriptor =
                 new ValueStateDescriptor<>("flow-state", FlowState.class);
 
-        StateTtlConfig ttlConfig = StateTtlConfig.newBuilder(Duration.ofHours(24))
+        var ttlConfig = StateTtlConfig.newBuilder(Duration.ofHours(24))
                 .setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite)
                 .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
                 .build();
@@ -40,13 +40,13 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
             return;
         }
 
-        FlowState state = flowState.value();
+        var state = flowState.value();
         if (state == null) {
             state = new FlowState();
         }
 
-        String topic = event.topic();
-        String previousStatus = state.currentFlowStatus();
+        var topic = event.topic();
+        var previousStatus = state.currentFlowStatus();
 
         if ("payment.flow.v1".equals(topic)) {
             handleFlowEvent(state, event);
@@ -54,8 +54,8 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
             handleChildEvent(state, event, topic);
         }
 
-        long eventTime = event.eventTimeMillis();
-        String newStatus = state.deriveFlowStatus();
+        var eventTime = event.eventTimeMillis();
+        var newStatus = state.deriveFlowStatus();
         state.setCurrentFlowStatus(newStatus, eventTime);
         flowState.update(state);
 
@@ -92,10 +92,10 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
         }
 
         var record = event.toRecord();
-        String legType = classifyLegType(topic);
-        String legId = legType + "-" + event.flowId();
-        String status = extractChildStatus(record);
-        String reference = extractReference(record, event.eventId());
+        var legType = classifyLegType(topic);
+        var legId = legType + "-" + event.flowId();
+        var status = extractChildStatus(record);
+        var reference = extractReference(record, event.eventId());
 
         state.updateLeg(legId, legType, status, reference, event.eventTimeMillis());
     }

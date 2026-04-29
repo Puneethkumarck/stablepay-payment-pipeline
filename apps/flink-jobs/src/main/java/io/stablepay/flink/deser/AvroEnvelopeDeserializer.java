@@ -38,11 +38,11 @@ public class AvroEnvelopeDeserializer implements KafkaRecordDeserializationSchem
 
     @Override
     public void deserialize(ConsumerRecord<byte[], byte[]> record, Collector<ValidationResult> out) throws IOException {
-        String topic = record.topic();
-        int partition = record.partition();
-        long offset = record.offset();
-        String key = record.key() != null ? new String(record.key()) : null;
-        byte[] valueBytes = record.value();
+        var topic = record.topic();
+        var partition = record.partition();
+        var offset = record.offset();
+        var key = record.key() != null ? new String(record.key()) : null;
+        var valueBytes = record.value();
 
         if (valueBytes == null || valueBytes.length < 1 + SCHEMA_ID_SIZE) {
             out.collect(toDlqResult(topic, partition, offset, "EMPTY_PAYLOAD", "Null or too-short value", valueBytes));
@@ -54,15 +54,15 @@ public class AvroEnvelopeDeserializer implements KafkaRecordDeserializationSchem
             return;
         }
 
-        int schemaId = ByteBuffer.wrap(valueBytes, 1, SCHEMA_ID_SIZE).getInt();
+        var schemaId = ByteBuffer.wrap(valueBytes, 1, SCHEMA_ID_SIZE).getInt();
 
         try {
-            Schema writerSchema = ((AvroSchema) schemaRegistryClient.getSchemaById(schemaId)).rawSchema();
-            GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(writerSchema);
+            var writerSchema = ((AvroSchema) schemaRegistryClient.getSchemaById(schemaId)).rawSchema();
+            var reader = new GenericDatumReader<GenericRecord>(writerSchema);
             var decoder = DecoderFactory.get().binaryDecoder(
                     new ByteArrayInputStream(valueBytes, 1 + SCHEMA_ID_SIZE, valueBytes.length - 1 - SCHEMA_ID_SIZE),
                     null);
-            GenericRecord genericRecord = reader.read(null, decoder);
+            var genericRecord = reader.read(null, decoder);
             out.collect(EnvelopeValidator.validate(topic, partition, offset, key, genericRecord, valueBytes));
         } catch (Exception e) {
             out.collect(toDlqResult(topic, partition, offset, "SCHEMA_INVALID", e.getMessage(), valueBytes));

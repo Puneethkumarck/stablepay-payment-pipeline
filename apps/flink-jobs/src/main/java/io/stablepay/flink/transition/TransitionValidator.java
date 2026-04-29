@@ -20,12 +20,12 @@ public class TransitionValidator {
 
     public static ValidationOutcome validate(ValueState<String> lastStatusState, ValidatedEvent event)
             throws Exception {
-        String currentStatus = extractStatus(event);
+        var currentStatus = extractStatus(event);
         if (currentStatus == null) {
             return new ValidationOutcome.Valid(null, null);
         }
 
-        String lastStatus = lastStatusState.value();
+        var lastStatus = lastStatusState.value();
 
         if (lastStatus == null) {
             lastStatusState.update(currentStatus);
@@ -36,7 +36,7 @@ public class TransitionValidator {
             return new ValidationOutcome.Valid(lastStatus, currentStatus);
         }
 
-        boolean valid = TransitionGraph.isValidTransition(event.topic(), lastStatus, currentStatus);
+        var valid = TransitionGraph.isValidTransition(event.topic(), lastStatus, currentStatus);
         if (valid) {
             lastStatusState.update(currentStatus);
             return new ValidationOutcome.Valid(lastStatus, currentStatus);

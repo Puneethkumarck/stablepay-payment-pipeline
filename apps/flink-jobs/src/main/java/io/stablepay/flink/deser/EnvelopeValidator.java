@@ -42,7 +42,7 @@ public final class EnvelopeValidator {
                     topic, partition, offset, "INVALID_EVENT_TIME", "Envelope event_time is not positive", rawBytes);
         }
 
-        long now = Instant.now().toEpochMilli();
+        var now = Instant.now().toEpochMilli();
         if (eventTimeMillis > now + MAX_FUTURE_SKEW_MILLIS) {
             return toDlq(
                     topic,

@@ -30,7 +30,7 @@ public class ValidateAndRouteFunction extends KeyedProcessFunction<String, Valid
 
     @Override
     public void processElement(ValidatedEvent event, Context ctx, Collector<ValidatedEvent> out) throws Exception {
-        long watermark = ctx.timerService().currentWatermark();
+        var watermark = ctx.timerService().currentWatermark();
         if (watermark > Long.MIN_VALUE && event.eventTimeMillis() < watermark - LATE_EVENT_BUFFER_MS) {
             var dlq = DlqRouter.lateEvent(event, watermark, "Event arrived after watermark buffer");
             ctx.output(DlqOutputTags.LATE_EVENT, dlq);

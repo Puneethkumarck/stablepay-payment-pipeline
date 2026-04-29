@@ -32,7 +32,7 @@ public class FlowEventSerializer implements KafkaRecordSerializationSchema<byte[
         if (!initialized) {
             schemaRegistryClient = new CachedSchemaRegistryClient(FlinkConfig.schemaRegistryUrl(), 100);
             try {
-                String subject = TOPIC + "-value";
+                var subject = TOPIC + "-value";
                 schemaId = schemaRegistryClient.register(subject, new AvroSchema(SCHEMA));
             } catch (Exception e) {
                 throw new RuntimeException("Failed to register schema with Schema Registry", e);
@@ -45,7 +45,7 @@ public class FlowEventSerializer implements KafkaRecordSerializationSchema<byte[
     public ProducerRecord<byte[], byte[]> serialize(
             byte[] avroBytes, KafkaSinkContext context, Long timestamp) {
         ensureInitialized();
-        String flowId = extractFlowId(avroBytes);
+        var flowId = extractFlowId(avroBytes);
         byte[] key = flowId != null ? flowId.getBytes(StandardCharsets.UTF_8) : null;
         byte[] value = prependConfluentHeader(avroBytes);
         return new ProducerRecord<>(TOPIC, key, value);

@@ -64,14 +64,14 @@ public class IcebergSinkFactory implements Serializable {
 
     public void ensureTablesExist() {
         var catalog = createCatalogLoader().loadCatalog();
-        Namespace namespace = Namespace.of(IcebergCatalogConfig.RAW_NAMESPACE);
+        var namespace = Namespace.of(IcebergCatalogConfig.RAW_NAMESPACE);
 
-        for (String tableName : IcebergCatalogConfig.RAW_TABLES) {
-            TableIdentifier tableId = TableIdentifier.of(namespace, tableName);
+        for (var tableName : IcebergCatalogConfig.RAW_TABLES) {
+            var tableId = TableIdentifier.of(namespace, tableName);
             if (!catalog.tableExists(tableId)) {
-                boolean isChainTx = "raw_chain_transaction".equals(tableName);
-                Schema schema = isChainTx ? CHAIN_TX_SCHEMA : COMMON_SCHEMA;
-                PartitionSpec spec = isChainTx ? CHAIN_TX_PARTITION_SPEC : DEFAULT_PARTITION_SPEC;
+                var isChainTx = "raw_chain_transaction".equals(tableName);
+                var schema = isChainTx ? CHAIN_TX_SCHEMA : COMMON_SCHEMA;
+                var spec = isChainTx ? CHAIN_TX_PARTITION_SPEC : DEFAULT_PARTITION_SPEC;
 
                 catalog.createTable(tableId, schema, spec, Map.of(
                         "format-version", "2",
@@ -82,9 +82,9 @@ public class IcebergSinkFactory implements Serializable {
     }
 
     public void addSink(DataStream<RowData> stream, String tableName) {
-        TableIdentifier tableId = TableIdentifier.of(
+        var tableId = TableIdentifier.of(
                 Namespace.of(IcebergCatalogConfig.RAW_NAMESPACE), tableName);
-        TableLoader tableLoader = TableLoader.fromCatalog(createCatalogLoader(), tableId);
+        var tableLoader = TableLoader.fromCatalog(createCatalogLoader(), tableId);
 
         FlinkSink.forRowData(stream)
                 .tableLoader(tableLoader)

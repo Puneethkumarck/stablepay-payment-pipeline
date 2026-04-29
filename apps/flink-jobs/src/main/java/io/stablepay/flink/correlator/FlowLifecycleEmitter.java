@@ -37,9 +37,9 @@ public final class FlowLifecycleEmitter {
     }
 
     static GenericRecord emit(FlowState state, String newStatus) {
-        long now = System.currentTimeMillis();
+        var now = System.currentTimeMillis();
 
-        GenericRecord envelope = new GenericData.Record(ENVELOPE_SCHEMA);
+        var envelope = new GenericData.Record(ENVELOPE_SCHEMA);
         envelope.put("event_id", UUID.randomUUID().toString());
         envelope.put("event_time", now);
         envelope.put("ingest_time", now);
@@ -48,9 +48,9 @@ public final class FlowLifecycleEmitter {
         envelope.put("correlation_id", null);
         envelope.put("trace_id", null);
 
-        List<GenericRecord> legs = new ArrayList<>();
-        for (FlowState.LegState leg : state.toLegList()) {
-            GenericRecord legRecord = new GenericData.Record(LEG_SCHEMA);
+        var legs = new ArrayList<GenericRecord>();
+        for (var leg : state.toLegList()) {
+            var legRecord = new GenericData.Record(LEG_SCHEMA);
             legRecord.put("leg_id", leg.legId());
             legRecord.put("leg_type", leg.legType());
             legRecord.put("status", leg.status());
@@ -58,7 +58,7 @@ public final class FlowLifecycleEmitter {
             legs.add(legRecord);
         }
 
-        GenericRecord flow = new GenericData.Record(SCHEMA);
+        var flow = new GenericData.Record(SCHEMA);
         flow.put("envelope", envelope);
         flow.put("flow_id", state.flowId());
         flow.put("customer_id", state.customerId());

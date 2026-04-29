@@ -31,14 +31,14 @@ import io.stablepay.flink.watermark.EnvelopeTimestampAssigner;
 public class IngestJob {
 
     public static void main(String[] args) throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        var env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        WatermarkStrategy<ValidatedEvent> watermarkStrategy = WatermarkStrategy
+        var watermarkStrategy = WatermarkStrategy
                 .<ValidatedEvent>forBoundedOutOfOrderness(Duration.ofSeconds(60))
                 .withIdleness(Duration.ofMinutes(1))
                 .withTimestampAssigner(new EnvelopeTimestampAssigner());
 
-        KafkaSource<ValidationResult> kafkaSource = KafkaSource.<ValidationResult>builder()
+        var kafkaSource = KafkaSource.<ValidationResult>builder()
                 .setBootstrapServers(FlinkConfig.kafkaBootstrapServers())
                 .setTopics(FlinkConfig.INPUT_TOPICS)
                 .setGroupId(FlinkConfig.INGEST_CONSUMER_GROUP)
@@ -46,12 +46,11 @@ public class IngestJob {
                 .setDeserializer(new AvroEnvelopeDeserializer(FlinkConfig.schemaRegistryUrl()))
                 .build();
 
-        DataStream<ValidationResult> rawStream = env
+        var rawStream = env
                 .fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "kafka-source")
                 .name("avro-deserialized-events");
 
-        // Schema-invalid events from deserialization
-        DataStream<DlqEnvelope> schemaInvalidStream = rawStream
+        var schemaInvalidStream = rawStream
                 .filter(r -> r instanceof ValidationResult.Invalid)
                 .map(r -> ((ValidationResult.Invalid) r).dlqEnvelope())
                 .name("schema-invalid-events");
@@ -60,14 +59,13 @@ public class IngestJob {
                 .sinkTo(DlqKafkaSinkFactory.createSink(FlinkConfig.DLQ_SCHEMA_INVALID))
                 .name("dlq-schema-invalid-sink");
 
-        SingleOutputStreamOperator<ValidatedEvent> validatedStream = rawStream
+        var validatedStream = rawStream
                 .filter(r -> r instanceof ValidationResult.Valid)
                 .map(r -> ((ValidationResult.Valid) r).event())
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .name("validated-events");
 
-        // Validate transitions and route DLQ side outputs
-        SingleOutputStreamOperator<ValidatedEvent> routedStream = validatedStream
+        var routedStream = validatedStream
                 .keyBy(IngestJob::extractEntityKey)
                 .process(new ValidateAndRouteFunction())
                 .name("validate-and-route");
@@ -86,14 +84,14 @@ public class IngestJob {
                 .name("dlq-sink-failure-sink");
 
         // --- Iceberg raw sink (one table per topic, independent branch) ---
-        IcebergSinkFactory icebergSinkFactory = new IcebergSinkFactory();
+        var icebergSinkFactory = new IcebergSinkFactory();
         icebergSinkFactory.ensureTablesExist();
 
-        for (Map.Entry<String, String> entry : IcebergCatalogConfig.TOPIC_TO_TABLE.entrySet()) {
-            String topic = entry.getKey();
-            String tableName = entry.getValue();
+        for (var entry : IcebergCatalogConfig.TOPIC_TO_TABLE.entrySet()) {
+            var topic = entry.getKey();
+            var tableName = entry.getValue();
 
-            DataStream<RowData> tableStream = routedStream
+            var tableStream = routedStream
                     .filter(e -> topic.equals(e.topic()))
                     .map(EventToIcebergRowMapper::toRowData)
                     .name("iceberg-map-" + tableName);

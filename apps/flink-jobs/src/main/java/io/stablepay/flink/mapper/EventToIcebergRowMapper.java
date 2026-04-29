@@ -20,15 +20,15 @@ public final class EventToIcebergRowMapper {
     }
 
     public static RowData toRowData(ValidatedEvent event) {
-        GenericRecord record = event.toRecord();
-        boolean isChainTx = "chain.transaction.v1".equals(event.topic());
+        var record = event.toRecord();
+        var isChainTx = "chain.transaction.v1".equals(event.topic());
 
-        GenericRowData row = new GenericRowData(isChainTx ? 11 : 10);
+        var row = new GenericRowData(isChainTx ? 11 : 10);
 
         row.setField(0, StringData.fromString(event.eventId()));
         row.setField(1, TimestampData.fromInstant(Instant.ofEpochMilli(event.eventTimeMillis())));
 
-        long ingestTime = extractIngestTime(record);
+        var ingestTime = extractIngestTime(record);
         row.setField(2, TimestampData.fromInstant(Instant.ofEpochMilli(ingestTime)));
 
         row.setField(3, stringDataOrNull(event.schemaVersion()));

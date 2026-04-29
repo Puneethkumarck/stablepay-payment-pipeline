@@ -36,7 +36,7 @@ class OpenSearchSinkWriter implements SinkWriter<ValidatedEvent> {
 
     @Override
     public void write(ValidatedEvent event, Context context) throws IOException, InterruptedException {
-        Map<String, Object> doc = EventToOpenSearchDocMapper.toDocument(event);
+        var doc = EventToOpenSearchDocMapper.toDocument(event);
         bulkWriter.add(event.eventId(), doc);
 
         if (System.currentTimeMillis() - lastFlushTime >= FLUSH_INTERVAL_MS) {

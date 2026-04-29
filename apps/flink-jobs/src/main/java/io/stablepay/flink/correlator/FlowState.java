@@ -80,15 +80,15 @@ public class FlowState implements Serializable {
             return "FAILED";
         }
 
-        boolean hasPayinCompleted = legs.values().stream()
+        var hasPayinCompleted = legs.values().stream()
                 .anyMatch(l -> "PAYIN".equals(l.legType()) && "COMPLETED".equals(l.status()));
-        boolean hasPayoutStarted = legs.values().stream()
+        var hasPayoutStarted = legs.values().stream()
                 .anyMatch(l -> "PAYOUT".equals(l.legType()));
-        boolean hasTradeCompleted = legs.values().stream()
+        var hasTradeCompleted = legs.values().stream()
                 .anyMatch(l -> "TRADE".equals(l.legType()) && "COMPLETED".equals(l.status()));
-        boolean hasTradeStarted = legs.values().stream()
+        var hasTradeStarted = legs.values().stream()
                 .anyMatch(l -> "TRADE".equals(l.legType()));
-        boolean hasPayinStarted = legs.values().stream()
+        var hasPayinStarted = legs.values().stream()
                 .anyMatch(l -> "PAYIN".equals(l.legType()));
 
         if (hasPayoutStarted && hasTradeCompleted) return "PAYOUT_PENDING";

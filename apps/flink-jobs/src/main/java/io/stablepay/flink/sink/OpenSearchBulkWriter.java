@@ -44,14 +44,14 @@ public class OpenSearchBulkWriter {
             return new BulkResult(List.of());
         }
 
-        List<BulkResult.FailedDoc> permanentFailures = new ArrayList<>();
-        List<BulkAction> pending = new ArrayList<>(buffer);
+        var permanentFailures = new ArrayList<BulkResult.FailedDoc>();
+        var pending = new ArrayList<>(buffer);
         buffer.clear();
         currentSizeEstimate = 0;
 
         while (!pending.isEmpty()) {
-            BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
-            for (BulkAction action : pending) {
+            var bulkBuilder = new BulkRequest.Builder();
+            for (var action : pending) {
                 bulkBuilder.operations(op -> op
                         .index(idx -> idx
                                 .index(INDEX_NAME)
@@ -59,16 +59,16 @@ public class OpenSearchBulkWriter {
                                 .document(action.document())));
             }
 
-            BulkResponse response = client.bulk(bulkBuilder.build());
-            List<BulkAction> retryable = new ArrayList<>();
+            var response = client.bulk(bulkBuilder.build());
+            var retryable = new ArrayList<BulkAction>();
 
             if (response.errors()) {
                 for (int i = 0; i < response.items().size(); i++) {
-                    BulkResponseItem item = response.items().get(i);
+                    var item = response.items().get(i);
                     if (item.error() != null) {
-                        int status = item.status();
-                        boolean isTransient = status == 429 || status == 503;
-                        BulkAction original = pending.get(i);
+                        var status = item.status();
+                        var isTransient = status == 429 || status == 503;
+                        var original = pending.get(i);
 
                         if (isTransient && original.retryCount() < MAX_RETRIES) {
                             retryable.add(original.withRetry());
@@ -92,7 +92,7 @@ public class OpenSearchBulkWriter {
     }
 
     private static long estimateSize(Map<String, Object> doc) {
-        long size = 2;
+        var size = 2L;
         for (var entry : doc.entrySet()) {
             size += entry.getKey().length() + 4;
             var val = entry.getValue();

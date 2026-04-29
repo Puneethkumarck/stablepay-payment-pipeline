@@ -29,10 +29,10 @@ public class CorrelatorJob {
             "chain.transaction.v1");
 
     public static void main(String[] args) throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        var env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
 
-        KafkaSource<ValidationResult> kafkaSource = KafkaSource.<ValidationResult>builder()
+        var kafkaSource = KafkaSource.<ValidationResult>builder()
                 .setBootstrapServers(FlinkConfig.kafkaBootstrapServers())
                 .setTopics(CORRELATOR_TOPICS)
                 .setGroupId(FlinkConfig.CORRELATOR_CONSUMER_GROUP)
@@ -40,12 +40,12 @@ public class CorrelatorJob {
                 .setDeserializer(new AvroEnvelopeDeserializer(FlinkConfig.schemaRegistryUrl()))
                 .build();
 
-        WatermarkStrategy<ValidatedEvent> watermarkStrategy = WatermarkStrategy
+        var watermarkStrategy = WatermarkStrategy
                 .<ValidatedEvent>forBoundedOutOfOrderness(Duration.ofSeconds(60))
                 .withIdleness(Duration.ofMinutes(1))
                 .withTimestampAssigner(new EnvelopeTimestampAssigner());
 
-        DataStream<ValidatedEvent> flowEvents = env
+        var flowEvents = env
                 .fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "correlator-kafka-source")
                 .filter(r -> r instanceof ValidationResult.Valid)
                 .map(r -> ((ValidationResult.Valid) r).event())
@@ -53,12 +53,12 @@ public class CorrelatorJob {
                 .filter(e -> e.flowId() != null && !e.flowId().isEmpty())
                 .name("flow-id-filter");
 
-        DataStream<byte[]> lifecycleStream = flowEvents
+        var lifecycleStream = flowEvents
                 .keyBy(ValidatedEvent::flowId)
                 .process(new FlowCorrelatorFunction())
                 .name("flow-correlator");
 
-        KafkaSink<byte[]> flowSink = KafkaSink.<byte[]>builder()
+        var flowSink = KafkaSink.<byte[]>builder()
                 .setBootstrapServers(FlinkConfig.kafkaBootstrapServers())
                 .setRecordSerializer(new FlowEventSerializer())
                 .build();
