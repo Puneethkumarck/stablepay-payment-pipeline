@@ -1,5 +1,6 @@
-# GSD planning artifacts kept local-only
+# GSD planning artifacts and imported standards kept local-only
 .planning/
+docs/
 
 # Environment
 .env
