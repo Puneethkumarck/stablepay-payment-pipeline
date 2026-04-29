@@ -3,6 +3,8 @@ package io.stablepay.flink.model;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -21,6 +23,8 @@ public record ValidatedEvent(
     String flowId,
     String schemaVersion
 ) {
+    private static final ConcurrentMap<String, Schema> SCHEMA_CACHE = new ConcurrentHashMap<>();
+
     public ValidatedEvent {
         recordBytes = recordBytes != null ? recordBytes.clone() : null;
     }
@@ -45,7 +49,8 @@ public record ValidatedEvent(
 
     public GenericRecord toRecord() {
         try {
-            var schema = new Schema.Parser().parse(recordSchemaJson);
+            var schema = SCHEMA_CACHE.computeIfAbsent(
+                    recordSchemaJson, json -> new Schema.Parser().parse(json));
             var reader = new GenericDatumReader<GenericRecord>(schema);
             var decoder = DecoderFactory.get().binaryDecoder(
                     new ByteArrayInputStream(recordBytes), null);

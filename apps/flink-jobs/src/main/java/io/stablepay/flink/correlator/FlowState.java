@@ -46,9 +46,9 @@ public class FlowState implements Serializable {
         };
     }
 
-    public void updateLeg(String legId, String legType, String status, String reference) {
+    public void updateLeg(String legId, String legType, String status, String reference, long eventTimeMillis) {
         legs.put(legId, new LegState(legId, legType, status, reference));
-        lastUpdatedAt = System.currentTimeMillis();
+        lastUpdatedAt = eventTimeMillis;
     }
 
     public boolean allLegsCompleted() {
@@ -100,9 +100,9 @@ public class FlowState implements Serializable {
         return currentFlowStatus != null ? currentFlowStatus : "INITIATED";
     }
 
-    public void setCurrentFlowStatus(String status) {
+    public void setCurrentFlowStatus(String status, long eventTimeMillis) {
         this.currentFlowStatus = status;
-        this.lastUpdatedAt = System.currentTimeMillis();
+        this.lastUpdatedAt = eventTimeMillis;
     }
 
     public List<LegState> toLegList() {

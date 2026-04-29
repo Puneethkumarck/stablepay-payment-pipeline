@@ -3,6 +3,7 @@ package io.stablepay.flink.correlator;
 import java.time.Duration;
 import java.util.Objects;
 
+import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
@@ -53,8 +54,9 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
             handleChildEvent(state, event, topic);
         }
 
+        long eventTime = event.eventTimeMillis();
         String newStatus = state.deriveFlowStatus();
-        state.setCurrentFlowStatus(newStatus);
+        state.setCurrentFlowStatus(newStatus, eventTime);
         flowState.update(state);
 
         if (!Objects.equals(newStatus, previousStatus)) {
@@ -62,7 +64,7 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
             log.info("flow_lifecycle: flow_id={} status={}->{}", event.flowId(), previousStatus, newStatus);
 
             if ("PARTIALLY_COMPLETED".equals(newStatus)) {
-                state.setCurrentFlowStatus("COMPENSATION_INITIATED");
+                state.setCurrentFlowStatus("COMPENSATION_INITIATED", eventTime);
                 flowState.update(state);
                 out.collect(FlowLifecycleEmitter.serializeToBytes(state, "COMPENSATION_INITIATED"));
                 log.info("compensation_initiated: flow_id={}", event.flowId());
@@ -89,12 +91,13 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
             state.initialize(event.flowId(), "", "ONRAMP", event.eventTimeMillis());
         }
 
+        var record = event.toRecord();
         String legType = classifyLegType(topic);
         String legId = legType + "-" + event.flowId();
-        String status = extractChildStatus(event);
-        String reference = extractReference(event);
+        String status = extractChildStatus(record);
+        String reference = extractReference(record, event.eventId());
 
-        state.updateLeg(legId, legType, status, reference);
+        state.updateLeg(legId, legType, status, reference, event.eventTimeMillis());
     }
 
     private static String classifyLegType(String topic) {
@@ -104,8 +107,7 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
         return "TRADE";
     }
 
-    private static String extractChildStatus(ValidatedEvent event) {
-        var record = event.toRecord();
+    private static String extractChildStatus(GenericRecord record) {
         for (String field : new String[]{"internal_status", "status", "flow_status"}) {
             var val = record.get(field);
             if (val != null) return val.toString();
@@ -113,12 +115,11 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
         return "UNKNOWN";
     }
 
-    private static String extractReference(ValidatedEvent event) {
-        var record = event.toRecord();
+    private static String extractReference(GenericRecord record, String fallbackEventId) {
         for (String field : new String[]{"payout_reference", "payin_reference", "tx_hash"}) {
             var val = record.get(field);
             if (val != null) return val.toString();
         }
-        return event.eventId();
+        return fallbackEventId;
     }
 }

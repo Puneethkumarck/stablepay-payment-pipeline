@@ -108,6 +108,18 @@ public class OpenSearchBulkWriter {
     }
 
     private static long estimateSize(Map<String, Object> doc) {
-        return doc.toString().length() * 2L;
+        long size = 2;
+        for (var entry : doc.entrySet()) {
+            size += entry.getKey().length() + 4;
+            var val = entry.getValue();
+            if (val instanceof String s) {
+                size += s.length() + 2;
+            } else if (val != null) {
+                size += 20;
+            } else {
+                size += 4;
+            }
+        }
+        return size;
     }
 }
