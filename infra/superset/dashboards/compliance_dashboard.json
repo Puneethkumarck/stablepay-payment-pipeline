@@ -1,0 +1,22 @@
+{
+  "dashboards": [
+    {
+      "dashboard_title": "Compliance Screening",
+      "description": "Screening outcomes by provider, rule triggered, and score distribution",
+      "slug": "compliance-screening",
+      "position": {},
+      "metadata": {
+        "dataset": "iceberg.analytics.v_screening_outcomes",
+        "refresh_frequency": 300
+      },
+      "slices": []
+    }
+  ],
+  "datasources": [
+    {
+      "database_name": "Trino Iceberg",
+      "schema": "analytics",
+      "table_name": "v_screening_outcomes"
+    }
+  ]
+}
