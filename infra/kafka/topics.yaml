@@ -1,0 +1,110 @@
+# Kafka topic manifest — source of truth for topic configuration.
+# Used by: just preflight (creates topics), ci-schemas.yml (validates), Phase 2 Flink jobs.
+
+topics:
+  # ─── Payment flow topics (6 partitions for high-traffic) ───
+  - name: payment.payout.fiat.v1
+    partitions: 6
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: payment.payout.crypto.v1
+    partitions: 6
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: payment.payin.fiat.v1
+    partitions: 6
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: payment.payin.crypto.v1
+    partitions: 6
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  # ─── Flow + chain + auxiliary topics (3 partitions) ────────
+  - name: payment.flow.v1
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: chain.transaction.v1
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: signing.request.v1
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: screening.result.v1
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: approval.decision.v1
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  # ─── DLQ topics (1 partition each) ─────────────────────────
+  - name: dlq.schema-invalid.v1
+    partitions: 1
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: dlq.late-events.v1
+    partitions: 1
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: dlq.processing-failed.v1
+    partitions: 1
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
+
+  - name: dlq.sink-failed.v1
+    partitions: 1
+    replication_factor: 1
+    config:
+      retention.ms: 604800000
+      cleanup.policy: delete
+      compression.type: zstd
