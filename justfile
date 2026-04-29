@@ -32,6 +32,16 @@ regenerate-schemas:
 preflight:
     uv run infra/preflight.py
 
+# ─── GitHub Issues ────────────────────────────────
+
+# Create GitHub issues from GSD phase plans (dry-run first)
+create-issues phase:
+    uv run scripts/create-github-issues.py {{phase}}
+
+# Preview issues without creating them
+preview-issues phase:
+    uv run scripts/create-github-issues.py {{phase}} --dry-run
+
 # ─── Stubs (expanded in later phases) ─────────────
 
 # Run all tests
