@@ -14,11 +14,13 @@ public class FlowState implements Serializable {
     private String flowType;
     private String currentFlowStatus;
     private Map<String, LegState> legs;
+    private int expectedLegCount;
     private long initiatedAt;
     private long lastUpdatedAt;
 
     public FlowState() {
         this.legs = new HashMap<>();
+        this.expectedLegCount = 3;
     }
 
     public record LegState(
@@ -32,8 +34,16 @@ public class FlowState implements Serializable {
         this.customerId = customerId;
         this.flowType = flowType;
         this.currentFlowStatus = "INITIATED";
+        this.expectedLegCount = deriveExpectedLegCount(flowType);
         this.initiatedAt = initiatedAt;
         this.lastUpdatedAt = initiatedAt;
+    }
+
+    private static int deriveExpectedLegCount(String flowType) {
+        return switch (flowType) {
+            case "ONRAMP", "OFFRAMP", "CRYPTO_TO_CRYPTO" -> 3;
+            default -> 3;
+        };
     }
 
     public void updateLeg(String legId, String legType, String status, String reference) {
@@ -42,7 +52,7 @@ public class FlowState implements Serializable {
     }
 
     public boolean allLegsCompleted() {
-        if (legs.size() < 3) return false;
+        if (legs.size() < expectedLegCount) return false;
         return legs.values().stream().allMatch(l -> "COMPLETED".equals(l.status()));
     }
 
@@ -65,7 +75,7 @@ public class FlowState implements Serializable {
             return "PARTIALLY_COMPLETED";
         }
 
-        if (legs.size() == 3 && legs.values().stream().allMatch(
+        if (legs.size() == expectedLegCount && legs.values().stream().allMatch(
                 l -> "FAILED".equals(l.status()) || "CANCELLED".equals(l.status()))) {
             return "FAILED";
         }

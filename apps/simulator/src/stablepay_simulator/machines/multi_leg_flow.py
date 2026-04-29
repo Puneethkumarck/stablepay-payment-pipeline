@@ -151,6 +151,10 @@ class MultiLegFlowMachine(StateMachine):
         if scenario.name == "payin_failure":
             return
 
+        is_crypto_payout = flow_type in ("ONRAMP", "CRYPTO_TO_CRYPTO")
+        payout_topic = "payment.payout.crypto.v1" if is_crypto_payout else "payment.payout.fiat.v1"
+        payout_schema = "PayoutCryptoV1" if is_crypto_payout else "PayoutFiatV1"
+
         for status in payout_statuses:
             record = _build_payout_record(
                 payout_ref=payout_ref,
@@ -163,9 +167,9 @@ class MultiLegFlowMachine(StateMachine):
             )
             yield PaymentEvent(
                 flow_type="multi_leg_flow",
-                topic="payment.payout.crypto.v1",
+                topic=payout_topic,
                 key=payout_ref,
-                schema_name="PayoutCryptoV1",
+                schema_name=payout_schema,
                 record=record,
             )
 
@@ -181,8 +185,6 @@ def _build_payin_record(
     is_fiat: bool,
     rng: "random.Random",
 ) -> dict:
-    import random
-
     from stablepay_simulator.machines.base import derive_customer_status
 
     base = {
@@ -226,8 +228,6 @@ def _build_payout_record(
     currency: str,
     rng: "random.Random",
 ) -> dict:
-    import random
-
     from stablepay_simulator.machines.base import derive_customer_status
 
     chain = rng.choice(["ETH", "BTC", "SOL"])

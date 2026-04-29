@@ -1,7 +1,5 @@
 package io.stablepay.flink.correlator;
 
-import org.apache.avro.generic.GenericRecord;
-
 public final class CompensationEventEmitter {
 
     private CompensationEventEmitter() {}
@@ -12,11 +10,11 @@ public final class CompensationEventEmitter {
                 && !"COMPENSATION_COMPLETED".equals(state.currentFlowStatus());
     }
 
-    public static GenericRecord emitCompensationInitiated(FlowState state) {
-        return FlowLifecycleEmitter.emit(state, "COMPENSATION_INITIATED");
+    public static byte[] emitCompensationInitiated(FlowState state) {
+        return FlowLifecycleEmitter.serializeToBytes(state, "COMPENSATION_INITIATED");
     }
 
-    public static GenericRecord emitCompensationCompleted(FlowState state) {
-        return FlowLifecycleEmitter.emit(state, "COMPENSATION_COMPLETED");
+    public static byte[] emitCompensationCompleted(FlowState state) {
+        return FlowLifecycleEmitter.serializeToBytes(state, "COMPENSATION_COMPLETED");
     }
 }

@@ -3,8 +3,6 @@ package io.stablepay.flink.correlator;
 import java.time.Duration;
 import java.util.Objects;
 
-import org.apache.avro.generic.GenericRecord;
-
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.StateTtlConfig;
 import org.apache.flink.api.common.state.ValueState;
@@ -16,7 +14,7 @@ import io.stablepay.flink.model.ValidatedEvent;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FlowCorrelatorFunction extends KeyedProcessFunction<String, ValidatedEvent, GenericRecord> {
+public class FlowCorrelatorFunction extends KeyedProcessFunction<String, ValidatedEvent, byte[]> {
 
     private transient ValueState<FlowState> flowState;
 
@@ -35,7 +33,7 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
     }
 
     @Override
-    public void processElement(ValidatedEvent event, Context ctx, Collector<GenericRecord> out)
+    public void processElement(ValidatedEvent event, Context ctx, Collector<byte[]> out)
             throws Exception {
         if (event.flowId() == null || event.flowId().isEmpty()) {
             return;
@@ -60,20 +58,20 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
         flowState.update(state);
 
         if (!Objects.equals(newStatus, previousStatus)) {
-            out.collect(FlowLifecycleEmitter.emit(state, newStatus));
+            out.collect(FlowLifecycleEmitter.serializeToBytes(state, newStatus));
             log.info("flow_lifecycle: flow_id={} status={}->{}", event.flowId(), previousStatus, newStatus);
 
             if ("PARTIALLY_COMPLETED".equals(newStatus)) {
                 state.setCurrentFlowStatus("COMPENSATION_INITIATED");
                 flowState.update(state);
-                out.collect(FlowLifecycleEmitter.emit(state, "COMPENSATION_INITIATED"));
+                out.collect(FlowLifecycleEmitter.serializeToBytes(state, "COMPENSATION_INITIATED"));
                 log.info("compensation_initiated: flow_id={}", event.flowId());
             }
         }
     }
 
     private void handleFlowEvent(FlowState state, ValidatedEvent event) {
-        var record = event.record();
+        var record = event.toRecord();
         var flowStatus = record.get("flow_status");
         if (flowStatus != null && "INITIATED".equals(flowStatus.toString())) {
             var customerId = record.get("customer_id");
@@ -107,7 +105,7 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
     }
 
     private static String extractChildStatus(ValidatedEvent event) {
-        var record = event.record();
+        var record = event.toRecord();
         for (String field : new String[]{"internal_status", "status", "flow_status"}) {
             var val = record.get(field);
             if (val != null) return val.toString();
@@ -116,7 +114,7 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
     }
 
     private static String extractReference(ValidatedEvent event) {
-        var record = event.record();
+        var record = event.toRecord();
         for (String field : new String[]{"payout_reference", "payin_reference", "tx_hash"}) {
             var val = record.get(field);
             if (val != null) return val.toString();

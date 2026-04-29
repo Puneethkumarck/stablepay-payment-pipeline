@@ -56,7 +56,7 @@ public final class EnvelopeValidator {
         var schemaVersion = envelopeRecord.get("schema_version");
         var flowId = envelopeRecord.get("flow_id");
 
-        return new ValidationResult.Valid(new ValidatedEvent(
+        return new ValidationResult.Valid(ValidatedEvent.fromRecord(
                 topic,
                 key,
                 record,

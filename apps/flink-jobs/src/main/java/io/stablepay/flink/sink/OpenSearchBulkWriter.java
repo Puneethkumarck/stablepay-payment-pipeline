@@ -19,7 +19,6 @@ public class OpenSearchBulkWriter {
     private static final long MAX_SIZE_BYTES = 5L * 1024 * 1024;
     private static final String INDEX_NAME = "transactions";
     private static final int MAX_RETRIES = 3;
-    private static final long[] BACKOFF_MS = {1_000L, 5_000L, 25_000L};
 
     private final OpenSearchClient client;
     private final List<BulkAction> buffer = new ArrayList<>();
@@ -61,57 +60,48 @@ public class OpenSearchBulkWriter {
             return new BulkResult(List.of());
         }
 
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
-        for (BulkAction action : buffer) {
-            bulkBuilder.operations(op -> op
-                    .index(idx -> idx
-                            .index(INDEX_NAME)
-                            .id(action.eventId())
-                            .document(action.document())));
-        }
-
-        BulkResponse response = client.bulk(bulkBuilder.build());
         List<BulkResult.FailedDoc> permanentFailures = new ArrayList<>();
-        List<BulkAction> retryable = new ArrayList<>();
-
-        if (response.errors()) {
-            for (int i = 0; i < response.items().size(); i++) {
-                BulkResponseItem item = response.items().get(i);
-                if (item.error() != null) {
-                    int status = item.status();
-                    boolean isTransient = status == 429 || status == 503;
-                    BulkAction original = buffer.get(i);
-
-                    if (isTransient && original.retryCount() < MAX_RETRIES) {
-                        retryable.add(original.withRetry());
-                        log.warn("opensearch_transient_failure: eventId={} status={} retry={}/{}",
-                                item.id(), status, original.retryCount() + 1, MAX_RETRIES);
-                    } else {
-                        permanentFailures.add(new BulkResult.FailedDoc(
-                                item.id(), status,
-                                item.error().type(), item.error().reason(), isTransient));
-                    }
-                }
-            }
-            log.warn("opensearch_bulk_errors: count={} retryable={} permanent={}",
-                    permanentFailures.size() + retryable.size(), retryable.size(), permanentFailures.size());
-        }
-
+        List<BulkAction> pending = new ArrayList<>(buffer);
         buffer.clear();
         currentSizeEstimate = 0;
 
-        if (!retryable.isEmpty()) {
-            long backoffMs = BACKOFF_MS[Math.min(retryable.getFirst().retryCount() - 1, BACKOFF_MS.length - 1)];
-            try {
-                Thread.sleep(backoffMs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Interrupted during retry backoff", e);
+        while (!pending.isEmpty()) {
+            BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+            for (BulkAction action : pending) {
+                bulkBuilder.operations(op -> op
+                        .index(idx -> idx
+                                .index(INDEX_NAME)
+                                .id(action.eventId())
+                                .document(action.document())));
             }
-            buffer.addAll(retryable);
-            retryable.forEach(a -> currentSizeEstimate += estimateSize(a.document()));
-            var retryResult = flush();
-            permanentFailures.addAll(retryResult.failed());
+
+            BulkResponse response = client.bulk(bulkBuilder.build());
+            List<BulkAction> retryable = new ArrayList<>();
+
+            if (response.errors()) {
+                for (int i = 0; i < response.items().size(); i++) {
+                    BulkResponseItem item = response.items().get(i);
+                    if (item.error() != null) {
+                        int status = item.status();
+                        boolean isTransient = status == 429 || status == 503;
+                        BulkAction original = pending.get(i);
+
+                        if (isTransient && original.retryCount() < MAX_RETRIES) {
+                            retryable.add(original.withRetry());
+                            log.warn("opensearch_transient_failure: eventId={} status={} retry={}/{}",
+                                    item.id(), status, original.retryCount() + 1, MAX_RETRIES);
+                        } else {
+                            permanentFailures.add(new BulkResult.FailedDoc(
+                                    item.id(), status,
+                                    item.error().type(), item.error().reason(), isTransient));
+                        }
+                    }
+                }
+                log.warn("opensearch_bulk_errors: count={} retryable={} permanent={}",
+                        permanentFailures.size() + retryable.size(), retryable.size(), permanentFailures.size());
+            }
+
+            pending = retryable;
         }
 
         return new BulkResult(permanentFailures);

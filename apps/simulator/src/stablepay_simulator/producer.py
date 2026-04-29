@@ -38,29 +38,11 @@ SCHEMA_FILE_MAP: dict[str, str] = {
     "ApprovalDecisionV1": "approval/approval_decision.avsc",
 }
 
-COMMON_SCHEMAS = {
-    "common/event_envelope.avsc",
-    "common/money.avsc",
-    "common/party.avsc",
-    "common/address.avsc",
-}
-
 
 def _load_avro_schema_str(schema_name: str) -> str:
     rel = SCHEMA_FILE_MAP[schema_name]
     schema_path = SCHEMA_DIR / rel
     schema = json.loads(schema_path.read_text())
-
-    common_dir = SCHEMA_DIR / "common"
-    referenced_schemas = []
-    for common_file in sorted(COMMON_SCHEMAS):
-        common_path = SCHEMA_DIR / common_file
-        if common_path.exists():
-            referenced_schemas.append(json.loads(common_path.read_text()))
-
-    if schema_name == "PaymentFlowV1":
-        pass
-
     return json.dumps(schema)
 
 

@@ -1,12 +1,16 @@
 package io.stablepay.flink.correlator;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.EncoderFactory;
 
 import io.stablepay.events.flow.PaymentFlowV1;
 
@@ -18,7 +22,21 @@ public final class FlowLifecycleEmitter {
 
     private FlowLifecycleEmitter() {}
 
-    public static GenericRecord emit(FlowState state, String newStatus) {
+    public static byte[] serializeToBytes(FlowState state, String newStatus) {
+        var record = emit(state, newStatus);
+        try {
+            var out = new ByteArrayOutputStream();
+            var writer = new GenericDatumWriter<GenericRecord>(SCHEMA);
+            var encoder = EncoderFactory.get().binaryEncoder(out, null);
+            writer.write(record, encoder);
+            encoder.flush();
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize flow lifecycle event", e);
+        }
+    }
+
+    static GenericRecord emit(FlowState state, String newStatus) {
         long now = System.currentTimeMillis();
 
         GenericRecord envelope = new GenericData.Record(ENVELOPE_SCHEMA);

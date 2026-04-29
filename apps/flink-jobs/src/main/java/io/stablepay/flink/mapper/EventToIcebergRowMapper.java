@@ -20,7 +20,7 @@ public final class EventToIcebergRowMapper {
     }
 
     public static RowData toRowData(ValidatedEvent event) {
-        GenericRecord record = event.record();
+        GenericRecord record = event.toRecord();
         boolean isChainTx = "chain.transaction.v1".equals(event.topic());
 
         GenericRowData row = new GenericRowData(isChainTx ? 11 : 10);

@@ -103,14 +103,14 @@ public class IngestJob {
 
         // --- OpenSearch transactions sink (independent branch) ---
         routedStream
-                .addSink(new OpenSearchAsyncSink(FlinkConfig.opensearchUrl()))
+                .sinkTo(new OpenSearchAsyncSink(FlinkConfig.opensearchUrl()))
                 .name("opensearch-transactions-sink");
 
         env.execute("stablepay-ingest-job");
     }
 
     private static String extractEntityKey(ValidatedEvent event) {
-        var record = event.record();
+        var record = event.toRecord();
         return Stream.of("payout_reference", "payin_reference", "tx_hash")
                 .map(record::get)
                 .filter(Objects::nonNull)

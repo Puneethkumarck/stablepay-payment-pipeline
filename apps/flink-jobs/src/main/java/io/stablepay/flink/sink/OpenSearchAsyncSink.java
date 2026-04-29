@@ -1,8 +1,11 @@
 package io.stablepay.flink.sink;
 
+import java.io.IOException;
 import java.util.Map;
 
-import org.apache.flink.streaming.api.functions.sink.legacy.SinkFunction;
+import org.apache.flink.api.connector.sink2.Sink;
+import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.api.connector.sink2.WriterInitContext;
 import org.apache.hc.core5.http.HttpHost;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -13,62 +16,76 @@ import io.stablepay.flink.model.ValidatedEvent;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@SuppressWarnings("deprecation")
-public class OpenSearchAsyncSink implements SinkFunction<ValidatedEvent> {
-    private static final long FLUSH_INTERVAL_MS = 5000;
+public class OpenSearchAsyncSink implements Sink<ValidatedEvent> {
 
     private final String opensearchUrl;
-    private transient OpenSearchBulkWriter bulkWriter;
-    private transient long lastFlushTime;
 
     public OpenSearchAsyncSink(String opensearchUrl) {
         this.opensearchUrl = opensearchUrl;
     }
 
-    private void ensureInitialized() {
-        if (bulkWriter == null) {
+    @Override
+    public SinkWriter<ValidatedEvent> createWriter(WriterInitContext context) throws IOException {
+        return new OpenSearchSinkWriter(opensearchUrl);
+    }
+
+    @Slf4j
+    private static class OpenSearchSinkWriter implements SinkWriter<ValidatedEvent> {
+
+        private static final long FLUSH_INTERVAL_MS = 5000;
+
+        private final OpenSearchBulkWriter bulkWriter;
+        private long lastFlushTime;
+
+        OpenSearchSinkWriter(String opensearchUrl) {
             try {
                 var transport = ApacheHttpClient5TransportBuilder
                         .builder(HttpHost.create(opensearchUrl))
                         .setMapper(new JacksonJsonpMapper())
                         .build();
-                bulkWriter = new OpenSearchBulkWriter(new OpenSearchClient(transport));
-                lastFlushTime = System.currentTimeMillis();
+                this.bulkWriter = new OpenSearchBulkWriter(new OpenSearchClient(transport));
+                this.lastFlushTime = System.currentTimeMillis();
             } catch (java.net.URISyntaxException e) {
                 throw new IllegalArgumentException("Invalid OpenSearch URL: " + opensearchUrl, e);
             }
         }
-    }
 
-    @Override
-    public void invoke(ValidatedEvent event, Context context) throws Exception {
-        ensureInitialized();
-        Map<String, Object> doc = EventToOpenSearchDocMapper.toDocument(event);
-        bulkWriter.add(event.eventId(), doc);
+        @Override
+        public void write(ValidatedEvent event, Context context) throws IOException, InterruptedException {
+            Map<String, Object> doc = EventToOpenSearchDocMapper.toDocument(event);
+            bulkWriter.add(event.eventId(), doc);
 
-        if (System.currentTimeMillis() - lastFlushTime >= FLUSH_INTERVAL_MS) {
-            flushAndHandleErrors();
+            if (System.currentTimeMillis() - lastFlushTime >= FLUSH_INTERVAL_MS) {
+                flushAndHandleErrors();
+            }
         }
-    }
 
-    @Override
-    public void finish() throws Exception {
-        if (bulkWriter != null && bulkWriter.shouldFlush()) {
-            flushAndHandleErrors();
+        @Override
+        public void flush(boolean endOfInput) throws IOException, InterruptedException {
+            if (bulkWriter.shouldFlush()) {
+                flushAndHandleErrors();
+            }
         }
-    }
 
-    private void flushAndHandleErrors() throws Exception {
-        var result = bulkWriter.flush();
-        lastFlushTime = System.currentTimeMillis();
+        @Override
+        public void close() throws Exception {
+            if (bulkWriter.shouldFlush()) {
+                flushAndHandleErrors();
+            }
+        }
 
-        for (var failed : result.failed()) {
-            if (failed.transient_()) {
-                log.warn("opensearch_transient_failure: eventId={} status={} reason={}",
-                        failed.eventId(), failed.statusCode(), failed.errorReason());
-            } else {
-                log.error("opensearch_permanent_failure: eventId={} status={} type={} reason={}",
-                        failed.eventId(), failed.statusCode(), failed.errorType(), failed.errorReason());
+        private void flushAndHandleErrors() throws IOException {
+            var result = bulkWriter.flush();
+            lastFlushTime = System.currentTimeMillis();
+
+            for (var failed : result.failed()) {
+                if (failed.transient_()) {
+                    log.warn("opensearch_transient_failure: eventId={} status={} reason={}",
+                            failed.eventId(), failed.statusCode(), failed.errorReason());
+                } else {
+                    log.error("opensearch_permanent_failure: eventId={} status={} type={} reason={}",
+                            failed.eventId(), failed.statusCode(), failed.errorType(), failed.errorReason());
+                }
             }
         }
     }

@@ -24,7 +24,7 @@ public final class EventToOpenSearchDocMapper {
 
     public static Map<String, Object> toDocument(ValidatedEvent event) {
         var doc = new HashMap<String, Object>();
-        var record = event.record();
+        var record = event.toRecord();
         String topic = event.topic();
 
         doc.put("event_id", event.eventId());

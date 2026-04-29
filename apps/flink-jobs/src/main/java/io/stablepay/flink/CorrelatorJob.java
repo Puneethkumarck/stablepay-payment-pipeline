@@ -3,7 +3,6 @@ package io.stablepay.flink;
 import java.time.Duration;
 import java.util.List;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
@@ -54,12 +53,12 @@ public class CorrelatorJob {
                 .filter(e -> e.flowId() != null && !e.flowId().isEmpty())
                 .name("flow-id-filter");
 
-        DataStream<GenericRecord> lifecycleStream = flowEvents
+        DataStream<byte[]> lifecycleStream = flowEvents
                 .keyBy(ValidatedEvent::flowId)
                 .process(new FlowCorrelatorFunction())
                 .name("flow-correlator");
 
-        KafkaSink<GenericRecord> flowSink = KafkaSink.<GenericRecord>builder()
+        KafkaSink<byte[]> flowSink = KafkaSink.<byte[]>builder()
                 .setBootstrapServers(FlinkConfig.kafkaBootstrapServers())
                 .setRecordSerializer(new FlowEventSerializer())
                 .build();

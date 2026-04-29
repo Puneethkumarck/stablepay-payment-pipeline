@@ -36,9 +36,9 @@ public class TransitionValidator {
         }
 
         String lastStatus = lastStatusState.value();
-        lastStatusState.update(currentStatus);
 
         if (lastStatus == null) {
+            lastStatusState.update(currentStatus);
             return new ValidationOutcome(TransitionResult.FIRST_EVENT, null, currentStatus);
         }
 
@@ -47,6 +47,9 @@ public class TransitionValidator {
         }
 
         boolean valid = TransitionGraph.isValidTransition(event.topic(), lastStatus, currentStatus);
+        if (valid) {
+            lastStatusState.update(currentStatus);
+        }
         return new ValidationOutcome(
                 valid ? TransitionResult.VALID : TransitionResult.INVALID,
                 lastStatus,
@@ -54,7 +57,7 @@ public class TransitionValidator {
     }
 
     private static String extractStatus(ValidatedEvent event) {
-        var record = event.record();
+        var record = event.toRecord();
         var status = record.get("internal_status");
         if (status != null) return status.toString();
         status = record.get("status");
