@@ -13,14 +13,12 @@ import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.flink.sink.FlinkSink;
 import org.apache.iceberg.types.Types;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.stablepay.flink.catalog.IcebergCatalogConfig;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class IcebergSinkFactory implements Serializable {
-
-    private static final Logger log = LoggerFactory.getLogger(IcebergSinkFactory.class);
 
     private static final Schema COMMON_SCHEMA = new Schema(
             Types.NestedField.required(1, "event_id", Types.StringType.get()),

@@ -2,6 +2,7 @@ package io.stablepay.flink.correlator;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +103,7 @@ public class FlowState implements Serializable {
     public String customerId() { return customerId; }
     public String flowType() { return flowType; }
     public String currentFlowStatus() { return currentFlowStatus; }
-    public Map<String, LegState> legs() { return legs; }
+    public Map<String, LegState> legs() { return Collections.unmodifiableMap(legs); }
     public long initiatedAt() { return initiatedAt; }
     public long lastUpdatedAt() { return lastUpdatedAt; }
 }

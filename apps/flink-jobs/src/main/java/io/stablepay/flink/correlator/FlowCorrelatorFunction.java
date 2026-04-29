@@ -1,7 +1,9 @@
 package io.stablepay.flink.correlator;
 
-import org.apache.avro.generic.GenericRecord;
 import java.time.Duration;
+import java.util.Objects;
+
+import org.apache.avro.generic.GenericRecord;
 
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.StateTtlConfig;
@@ -9,14 +11,12 @@ import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.stablepay.flink.model.ValidatedEvent;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class FlowCorrelatorFunction extends KeyedProcessFunction<String, ValidatedEvent, GenericRecord> {
-
-    private static final Logger log = LoggerFactory.getLogger(FlowCorrelatorFunction.class);
 
     private transient ValueState<FlowState> flowState;
 
@@ -59,7 +59,7 @@ public class FlowCorrelatorFunction extends KeyedProcessFunction<String, Validat
         state.setCurrentFlowStatus(newStatus);
         flowState.update(state);
 
-        if (!newStatus.equals(previousStatus)) {
+        if (!Objects.equals(newStatus, previousStatus)) {
             out.collect(FlowLifecycleEmitter.emit(state, newStatus));
             log.info("flow_lifecycle: flow_id={} status={}->{}", event.flowId(), previousStatus, newStatus);
 

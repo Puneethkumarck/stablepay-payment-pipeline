@@ -1,7 +1,6 @@
 package io.stablepay.flink.sink;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,18 +9,19 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class OpenSearchBulkWriter implements Serializable {
+import lombok.extern.slf4j.Slf4j;
 
-    private static final Logger log = LoggerFactory.getLogger(OpenSearchBulkWriter.class);
+@Slf4j
+public class OpenSearchBulkWriter {
 
     private static final int MAX_DOCS = 1000;
     private static final long MAX_SIZE_BYTES = 5L * 1024 * 1024;
     private static final String INDEX_NAME = "transactions";
+    private static final int MAX_RETRIES = 3;
+    private static final long[] BACKOFF_MS = {1_000L, 5_000L, 25_000L};
 
-    private final transient OpenSearchClient client;
+    private final OpenSearchClient client;
     private final List<BulkAction> buffer = new ArrayList<>();
     private long currentSizeEstimate;
 
@@ -29,7 +29,15 @@ public class OpenSearchBulkWriter implements Serializable {
         this.client = client;
     }
 
-    public record BulkAction(String eventId, Map<String, Object> document) implements Serializable {}
+    public record BulkAction(String eventId, Map<String, Object> document, int retryCount) {
+        BulkAction(String eventId, Map<String, Object> document) {
+            this(eventId, document, 0);
+        }
+
+        BulkAction withRetry() {
+            return new BulkAction(eventId, document, retryCount + 1);
+        }
+    }
 
     public record BulkResult(List<FailedDoc> failed) {
         public record FailedDoc(String eventId, int statusCode, String errorType, String errorReason, boolean transient_) {}
@@ -63,27 +71,50 @@ public class OpenSearchBulkWriter implements Serializable {
         }
 
         BulkResponse response = client.bulk(bulkBuilder.build());
-        List<BulkResult.FailedDoc> failures = new ArrayList<>();
+        List<BulkResult.FailedDoc> permanentFailures = new ArrayList<>();
+        List<BulkAction> retryable = new ArrayList<>();
 
         if (response.errors()) {
-            for (BulkResponseItem item : response.items()) {
+            for (int i = 0; i < response.items().size(); i++) {
+                BulkResponseItem item = response.items().get(i);
                 if (item.error() != null) {
                     int status = item.status();
                     boolean isTransient = status == 429 || status == 503;
-                    failures.add(new BulkResult.FailedDoc(
-                            item.id(),
-                            status,
-                            item.error().type(),
-                            item.error().reason(),
-                            isTransient));
+                    BulkAction original = buffer.get(i);
+
+                    if (isTransient && original.retryCount() < MAX_RETRIES) {
+                        retryable.add(original.withRetry());
+                        log.warn("opensearch_transient_failure: eventId={} status={} retry={}/{}",
+                                item.id(), status, original.retryCount() + 1, MAX_RETRIES);
+                    } else {
+                        permanentFailures.add(new BulkResult.FailedDoc(
+                                item.id(), status,
+                                item.error().type(), item.error().reason(), isTransient));
+                    }
                 }
             }
-            log.warn("opensearch_bulk_errors", failures.size());
+            log.warn("opensearch_bulk_errors: count={} retryable={} permanent={}",
+                    permanentFailures.size() + retryable.size(), retryable.size(), permanentFailures.size());
         }
 
         buffer.clear();
         currentSizeEstimate = 0;
-        return new BulkResult(failures);
+
+        if (!retryable.isEmpty()) {
+            long backoffMs = BACKOFF_MS[Math.min(retryable.getFirst().retryCount() - 1, BACKOFF_MS.length - 1)];
+            try {
+                Thread.sleep(backoffMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted during retry backoff", e);
+            }
+            buffer.addAll(retryable);
+            retryable.forEach(a -> currentSizeEstimate += estimateSize(a.document()));
+            var retryResult = flush();
+            permanentFailures.addAll(retryResult.failed());
+        }
+
+        return new BulkResult(permanentFailures);
     }
 
     private static long estimateSize(Map<String, Object> doc) {

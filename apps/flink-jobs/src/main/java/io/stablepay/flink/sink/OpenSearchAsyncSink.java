@@ -7,16 +7,14 @@ import org.apache.hc.core5.http.HttpHost;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.stablepay.flink.mapper.EventToOpenSearchDocMapper;
 import io.stablepay.flink.model.ValidatedEvent;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @SuppressWarnings("deprecation")
 public class OpenSearchAsyncSink implements SinkFunction<ValidatedEvent> {
-
-    private static final Logger log = LoggerFactory.getLogger(OpenSearchAsyncSink.class);
     private static final long FLUSH_INTERVAL_MS = 5000;
 
     private final String opensearchUrl;

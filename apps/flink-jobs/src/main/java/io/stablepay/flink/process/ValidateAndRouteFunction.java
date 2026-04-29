@@ -4,18 +4,16 @@ import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.stablepay.flink.dlq.DlqMetrics;
 import io.stablepay.flink.dlq.DlqOutputTags;
 import io.stablepay.flink.dlq.DlqRouter;
 import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.transition.TransitionValidator;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ValidateAndRouteFunction extends KeyedProcessFunction<String, ValidatedEvent, ValidatedEvent> {
-
-    private static final Logger log = LoggerFactory.getLogger(ValidateAndRouteFunction.class);
     private static final long LATE_EVENT_BUFFER_MS = 60_000;
 
     private transient ValueState<String> lastStatusState;

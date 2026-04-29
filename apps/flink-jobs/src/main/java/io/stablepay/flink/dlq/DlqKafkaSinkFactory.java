@@ -1,9 +1,7 @@
 package io.stablepay.flink.dlq;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -14,12 +12,6 @@ import io.stablepay.flink.model.DlqEnvelope;
 public final class DlqKafkaSinkFactory {
 
     private DlqKafkaSinkFactory() {}
-
-    private static final Map<String, String> OUTPUT_TAG_TO_TOPIC = Map.of(
-            "dlq-schema-invalid", FlinkConfig.DLQ_SCHEMA_INVALID,
-            "dlq-late-event", FlinkConfig.DLQ_LATE_EVENTS,
-            "dlq-illegal-transition", FlinkConfig.DLQ_PROCESSING_FAILED,
-            "dlq-sink-failure", FlinkConfig.DLQ_SINK_FAILED);
 
     public static KafkaSink<DlqEnvelope> createSink(String dlqTopic) {
         return KafkaSink.<DlqEnvelope>builder()
@@ -46,10 +38,10 @@ public final class DlqKafkaSinkFactory {
         }
 
         private static String toJson(DlqEnvelope e) {
-            return "{\"source_topic\":\"" + e.sourceTopic()
+            return "{\"source_topic\":\"" + escape(e.sourceTopic())
                     + "\",\"source_partition\":" + e.sourcePartition()
                     + ",\"source_offset\":" + e.sourceOffset()
-                    + ",\"error_class\":\"" + e.errorClass()
+                    + ",\"error_class\":\"" + escape(e.errorClass())
                     + "\",\"error_message\":\"" + escape(e.errorMessage())
                     + "\",\"failed_at\":" + e.failedAt()
                     + ",\"retry_count\":" + e.retryCount() + "}";

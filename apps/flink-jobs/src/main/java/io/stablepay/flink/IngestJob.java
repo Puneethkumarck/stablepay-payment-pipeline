@@ -2,6 +2,9 @@ package io.stablepay.flink;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.source.KafkaSource;
@@ -108,13 +111,12 @@ public class IngestJob {
 
     private static String extractEntityKey(ValidatedEvent event) {
         var record = event.record();
-        var ref = record.get("payout_reference");
-        if (ref != null) return ref.toString();
-        ref = record.get("payin_reference");
-        if (ref != null) return ref.toString();
-        ref = record.get("tx_hash");
-        if (ref != null) return ref.toString();
-        if (event.flowId() != null) return event.flowId();
-        return event.eventId();
+        return Stream.of("payout_reference", "payin_reference", "tx_hash")
+                .map(record::get)
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .findFirst()
+                .or(() -> Optional.ofNullable(event.flowId()))
+                .orElse(event.eventId());
     }
 }
