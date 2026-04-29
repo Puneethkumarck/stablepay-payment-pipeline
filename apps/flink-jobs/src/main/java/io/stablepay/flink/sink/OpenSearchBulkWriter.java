@@ -75,9 +75,13 @@ public class OpenSearchBulkWriter {
                             log.warn("opensearch_transient_failure: eventId={} status={} retry={}/{}",
                                     item.id(), status, original.retryCount() + 1, MAX_RETRIES);
                         } else {
-                            permanentFailures.add(new BulkResult.FailedDoc(
-                                    item.id(), status,
-                                    item.error().type(), item.error().reason(), isTransient));
+                            permanentFailures.add(BulkResult.FailedDoc.builder()
+                                    .eventId(item.id())
+                                    .statusCode(status)
+                                    .errorType(item.error().type())
+                                    .errorReason(item.error().reason())
+                                    .transient_(isTransient)
+                                    .build());
                         }
                     }
                 }

@@ -13,6 +13,9 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
 
+import lombok.Builder;
+
+@Builder(toBuilder = true)
 public record ValidatedEvent(
     String topic,
     String key,
@@ -39,9 +42,16 @@ public record ValidatedEvent(
             var encoder = EncoderFactory.get().binaryEncoder(out, null);
             writer.write(record, encoder);
             encoder.flush();
-            return new ValidatedEvent(
-                    topic, key, out.toByteArray(), schema.toString(),
-                    eventId, eventTimeMillis, flowId, schemaVersion);
+            return ValidatedEvent.builder()
+                    .topic(topic)
+                    .key(key)
+                    .recordBytes(out.toByteArray())
+                    .recordSchemaJson(schema.toString())
+                    .eventId(eventId)
+                    .eventTimeMillis(eventTimeMillis)
+                    .flowId(flowId)
+                    .schemaVersion(schemaVersion)
+                    .build();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to serialize GenericRecord", e);
         }

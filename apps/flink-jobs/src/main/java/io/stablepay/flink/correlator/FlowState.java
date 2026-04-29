@@ -23,6 +23,7 @@ public class FlowState implements Serializable {
         this.expectedLegCount = 3;
     }
 
+    @lombok.Builder
     public record LegState(
             String legId,
             String legType,
@@ -47,7 +48,12 @@ public class FlowState implements Serializable {
     }
 
     public void updateLeg(String legId, String legType, String status, String reference, long eventTimeMillis) {
-        legs.put(legId, new LegState(legId, legType, status, reference));
+        legs.put(legId, LegState.builder()
+                .legId(legId)
+                .legType(legType)
+                .status(status)
+                .reference(reference)
+                .build());
         lastUpdatedAt = eventTimeMillis;
     }
 
