@@ -26,20 +26,6 @@ public class OpenSearchBulkWriter {
     private final List<BulkAction> buffer = new ArrayList<>();
     private long currentSizeEstimate;
 
-    public record BulkAction(String eventId, Map<String, Object> document, int retryCount) {
-        BulkAction(String eventId, Map<String, Object> document) {
-            this(eventId, document, 0);
-        }
-
-        BulkAction withRetry() {
-            return new BulkAction(eventId, document, retryCount + 1);
-        }
-    }
-
-    public record BulkResult(List<FailedDoc> failed) {
-        public record FailedDoc(String eventId, int statusCode, String errorType, String errorReason, boolean transient_) {}
-    }
-
     public void add(String eventId, Map<String, Object> document) throws IOException {
         buffer.add(new BulkAction(eventId, document));
         currentSizeEstimate += estimateSize(document);
