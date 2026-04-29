@@ -48,8 +48,7 @@ jobs:
 
       - name: Codegen drift check
         run: |
-          git diff --exit-code -- schemas/ packages/schemas-py/src/_generated/
-          if [ $? -ne 0 ]; then
+          if ! git diff --exit-code -- schemas/ packages/schemas-py/src/_generated/; then
             echo "::error::Generated code is out of sync. Run 'just regenerate-schemas' and commit."
             exit 1
           fi

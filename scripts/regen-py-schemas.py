@@ -9,8 +9,9 @@ import json
 import sys
 from pathlib import Path
 
-SCHEMAS_DIR = Path("schemas/src/main/avro")
-OUTPUT_DIR = Path("packages/schemas-py/src/_generated")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCHEMAS_DIR = REPO_ROOT / "schemas/src/main/avro"
+OUTPUT_DIR = REPO_ROOT / "packages/schemas-py/src/_generated"
 
 
 def main() -> None:
