@@ -33,6 +33,7 @@ def main() -> None:
         fields = schema.get("fields", [])
         lines = [
             f'"""Auto-generated from {avsc_path.relative_to(SCHEMAS_DIR)}. Do not edit."""',
+            "",
             "from __future__ import annotations",
             "from dataclasses import dataclass",
             "from typing import Optional",
@@ -41,6 +42,7 @@ def main() -> None:
             "@dataclass",
             f"class {name}:",
             f'    """{namespace}.{name}"""',
+            "",
         ]
 
         if not fields:
