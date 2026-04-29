@@ -10,6 +10,7 @@ import io.stablepay.flink.dlq.DlqOutputTags;
 import io.stablepay.flink.dlq.DlqRouter;
 import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.transition.TransitionValidator;
+import io.stablepay.flink.transition.ValidationOutcome;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,11 +39,11 @@ public class ValidateAndRouteFunction extends KeyedProcessFunction<String, Valid
         }
 
         var outcome = TransitionValidator.validate(lastStatusState, event);
-        if (outcome.result() == TransitionValidator.TransitionResult.INVALID) {
-            var dlq = DlqRouter.illegalTransition(event, outcome.fromStatus(), outcome.toStatus());
+        if (outcome instanceof ValidationOutcome.Invalid invalid) {
+            var dlq = DlqRouter.illegalTransition(event, invalid.fromStatus(), invalid.toStatus());
             ctx.output(DlqOutputTags.ILLEGAL_TRANSITION, dlq);
             dlqMetrics.incrementIllegalTransition();
-            log.warn("illegal_transition: topic={} from={} to={}", event.topic(), outcome.fromStatus(), outcome.toStatus());
+            log.warn("illegal_transition: topic={} from={} to={}", event.topic(), invalid.fromStatus(), invalid.toStatus());
             if (strictMode) return;
         }
 

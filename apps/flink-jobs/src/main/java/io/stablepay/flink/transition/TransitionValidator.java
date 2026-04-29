@@ -10,14 +10,6 @@ public class TransitionValidator {
 
     private static final String ENV_STRICT_TRANSITIONS = "STBLPAY_FLINK_STRICT_TRANSITIONS";
 
-    public enum TransitionResult {
-        VALID,
-        INVALID,
-        FIRST_EVENT
-    }
-
-    public record ValidationOutcome(TransitionResult result, String fromStatus, String toStatus) {}
-
     public static boolean isStrictMode() {
         return "true".equalsIgnoreCase(System.getenv().getOrDefault(ENV_STRICT_TRANSITIONS, "false"));
     }
@@ -30,28 +22,26 @@ public class TransitionValidator {
             throws Exception {
         String currentStatus = extractStatus(event);
         if (currentStatus == null) {
-            return new ValidationOutcome(TransitionResult.VALID, null, null);
+            return new ValidationOutcome.Valid(null, null);
         }
 
         String lastStatus = lastStatusState.value();
 
         if (lastStatus == null) {
             lastStatusState.update(currentStatus);
-            return new ValidationOutcome(TransitionResult.FIRST_EVENT, null, currentStatus);
+            return new ValidationOutcome.FirstEvent(currentStatus);
         }
 
         if (lastStatus.equals(currentStatus)) {
-            return new ValidationOutcome(TransitionResult.VALID, lastStatus, currentStatus);
+            return new ValidationOutcome.Valid(lastStatus, currentStatus);
         }
 
         boolean valid = TransitionGraph.isValidTransition(event.topic(), lastStatus, currentStatus);
         if (valid) {
             lastStatusState.update(currentStatus);
+            return new ValidationOutcome.Valid(lastStatus, currentStatus);
         }
-        return new ValidationOutcome(
-                valid ? TransitionResult.VALID : TransitionResult.INVALID,
-                lastStatus,
-                currentStatus);
+        return new ValidationOutcome.Invalid(lastStatus, currentStatus);
     }
 
     private static String extractStatus(ValidatedEvent event) {
