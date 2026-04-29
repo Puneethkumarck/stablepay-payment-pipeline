@@ -56,7 +56,30 @@ simulate-realistic:
 simulate-burst:
     cd apps/simulator && uv run stablepay-simulate --burst
 
-# ─── Stubs (expanded in later phases) ─────────────
+# ─── Flink Jobs ────────���──────────────────────────
+
+# Build Flink fat JAR
+flink-build:
+    ./gradlew :apps:flink-jobs:shadowJar
+
+# Submit ingest job to Flink session cluster
+flink-submit-ingest:
+    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
+    docker exec stablepay-flink-jobmanager flink run -d /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.IngestJob
+
+# Submit correlator job to Flink session cluster
+flink-submit-correlator:
+    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
+    docker exec stablepay-flink-jobmanager flink run -d /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.CorrelatorJob
+
+# Build and submit all Flink jobs
+flink-deploy: flink-build flink-submit-ingest flink-submit-correlator
+
+# Open Flink Web UI
+flink-ui:
+    open http://localhost:8082
+
+# ─── Stubs (expanded in later phases) ───���─────────
 
 # Run all tests
 test:
