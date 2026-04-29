@@ -13,16 +13,14 @@ import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBui
 
 import io.stablepay.flink.mapper.EventToOpenSearchDocMapper;
 import io.stablepay.flink.model.ValidatedEvent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@RequiredArgsConstructor
 public class OpenSearchAsyncSink implements Sink<ValidatedEvent> {
 
     private final String opensearchUrl;
-
-    public OpenSearchAsyncSink(String opensearchUrl) {
-        this.opensearchUrl = opensearchUrl;
-    }
 
     @Override
     public SinkWriter<ValidatedEvent> createWriter(WriterInitContext context) throws IOException {

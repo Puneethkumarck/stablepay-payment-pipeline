@@ -10,9 +10,11 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@RequiredArgsConstructor
 public class OpenSearchBulkWriter {
 
     private static final int MAX_DOCS = 1000;
@@ -23,10 +25,6 @@ public class OpenSearchBulkWriter {
     private final OpenSearchClient client;
     private final List<BulkAction> buffer = new ArrayList<>();
     private long currentSizeEstimate;
-
-    public OpenSearchBulkWriter(OpenSearchClient client) {
-        this.client = client;
-    }
 
     public record BulkAction(String eventId, Map<String, Object> document, int retryCount) {
         BulkAction(String eventId, Map<String, Object> document) {

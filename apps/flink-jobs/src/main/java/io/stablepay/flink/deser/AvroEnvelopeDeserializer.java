@@ -20,7 +20,9 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.stablepay.flink.model.DlqEnvelope;
 import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.model.ValidationResult;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public class AvroEnvelopeDeserializer implements KafkaRecordDeserializationSchema<ValidationResult> {
 
     private static final int MAGIC_BYTE = 0x0;
@@ -28,10 +30,6 @@ public class AvroEnvelopeDeserializer implements KafkaRecordDeserializationSchem
 
     private final String schemaRegistryUrl;
     private transient SchemaRegistryClient schemaRegistryClient;
-
-    public AvroEnvelopeDeserializer(String schemaRegistryUrl) {
-        this.schemaRegistryUrl = schemaRegistryUrl;
-    }
 
     @Override
     public void open(DeserializationSchema.InitializationContext context) {
