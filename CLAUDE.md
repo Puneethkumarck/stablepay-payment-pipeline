@@ -28,9 +28,11 @@ These are loaded from project memory and apply to every Claude Code session:
 
 Zero references to the upstream platform whose architecture inspired this project — no name, path, code, comments, commits, schemas, or documentation. Use the renamed domain-native vocabulary throughout. The project is generic and forkable; identifying details must not propagate.
 
-### 2. Java service follows stablebridge-tx-recovery standards verbatim
+### 2. Java service follows the imported reference standards verbatim
 
-The Java/Spring Boot side (`apps/api/`, `apps/flink-jobs/` where Java) follows the conventions in `~/Documents/AI/github/stablebridge-tx-recovery/docs/{ADR,CODING_STANDARDS,PROJECT_STRUCTURE,TESTING_STANDARDS}.md` exactly:
+The Java/Spring Boot side (`apps/api/`, `apps/flink-jobs/` where Java) follows the conventions in [`docs/ADR.md`](docs/ADR.md), [`docs/CODING_STANDARDS.md`](docs/CODING_STANDARDS.md), [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md), and [`docs/TESTING_STANDARDS.md`](docs/TESTING_STANDARDS.md) exactly. See [`docs/JAVA_STANDARDS_README.md`](docs/JAVA_STANDARDS_README.md) for placeholder mapping (org=stablepay, domain=payments, service=stablepay-api, error-code prefix=STBLPAY).
+
+Highlights:
 
 - Hexagonal architecture (`application/` / `domain/` / `infrastructure/`) with ArchUnit-enforced layering
 - Java 25 LTS, Spring Boot 4.0.x, Gradle 9 Kotlin DSL multi-module (`-api`, `-client`, main)
@@ -50,7 +52,7 @@ The Java/Spring Boot side (`apps/api/`, `apps/flink-jobs/` where Java) follows t
 
 ### 3. Testing — golden recursive-comparison rule
 
-Every Java test that verifies an object result MUST construct an expected object and compare with a single `assertThat(...).usingRecursiveComparison()`. Multiple `assertThat` calls on individual fields are forbidden. See stablebridge `TESTING_STANDARDS.md` for narrow exceptions (exception assertions, single primitives, collection size+containment, single enum mappings, Optional checks).
+Every Java test that verifies an object result MUST construct an expected object and compare with a single `assertThat(...).usingRecursiveComparison()`. Multiple `assertThat` calls on individual fields are forbidden. See [`docs/TESTING_STANDARDS.md`](docs/TESTING_STANDARDS.md) for narrow exceptions (exception assertions, single primitives, collection size+containment, single enum mappings, Optional checks).
 
 Four source sets per Java module: `test/` (unit, JUnit 5 + Mockito BDD + AssertJ), `testFixtures/` (shared fixtures + WireMock stubs), `integration-test/` (Spring + Testcontainers), `business-test/` (full-server E2E).
 
@@ -132,13 +134,21 @@ just dlq-replay <id>     # replay a single DLQ entry
 
 ## Documentation links
 
-- `docs/ARCHITECTURE.md` — annotated architecture diagram + data flow
-- `docs/EVENT-MODEL.md` — full state machines + topic listing + event examples
-- `docs/EXTENDING.md` — forking guide with worked example
-- `docs/RUNBOOK.md` — alert response procedures
-- `docs/STACK.md` — auto-updated version pin list
-- `docs/EVAL-METHODOLOGY.md` — agent eval rubrics + reproduction steps
-- `docs/PRIVACY.md` — PII inventory + masking + retention
+**Java service standards (already imported):**
+- `docs/ADR.md` — 21-section architecture decision record
+- `docs/CODING_STANDARDS.md` — hexagonal layout, Lombok policy, naming, functional style
+- `docs/PROJECT_STRUCTURE.md` — multi-module Gradle layout + package tree + file-placement decision tree
+- `docs/TESTING_STANDARDS.md` — four-source-set pyramid + golden recursive-comparison rule + ArchUnit
+- `docs/JAVA_STANDARDS_README.md` — placeholder mapping for this project
+
+**Project documentation (built during phases):**
+- `docs/ARCHITECTURE.md` — annotated architecture diagram + data flow (Phase 8)
+- `docs/EVENT-MODEL.md` — full state machines + topic listing + event examples (Phase 8)
+- `docs/EXTENDING.md` — forking guide with worked example (Phase 8)
+- `docs/RUNBOOK.md` — alert response procedures (Phase 6/8)
+- `docs/STACK.md` — auto-updated version pin list (Phase 7)
+- `docs/EVAL-METHODOLOGY.md` — agent eval rubrics + reproduction steps (Phase 8)
+- `docs/PRIVACY.md` — PII inventory + masking + retention (Phase 6)
 
 ---
 
