@@ -85,6 +85,21 @@ flink-ui:
 opensearch-init:
     bash infra/opensearch/init.sh
 
+# ─── Trino & Superset ─────────────────────────────
+
+# Initialize Trino analytics views (runs the SQL inside the trino container so no host CLI is required)
+trino-init:
+    docker cp infra/trino/analytics-views.sql stablepay-trino:/tmp/analytics-views.sql
+    docker exec stablepay-trino trino --server http://localhost:8080 --file /tmp/analytics-views.sql
+
+# Initialize Superset (db upgrade, admin user, dashboards)
+superset-init:
+    docker exec stablepay-superset bash /app/superset-config/init.sh
+
+# Run a time-travel query (LAK-07 verification)
+trino-time-travel version:
+    docker exec stablepay-trino trino --server http://localhost:8080 --execute "SELECT count(*) FROM iceberg.facts.fact_transactions FOR VERSION AS OF {{version}}"
+
 # ─── DLQ Tools ────────────────────────────────────
 
 # List DLQ entries
@@ -103,7 +118,7 @@ dlq-replay ID *ARGS:
 dlq-replay-class CLASS *ARGS:
     cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} {{ARGS}}
 
-# ─── Stubs (expanded in later phases) ───���─────────
+# ─── Stubs (expanded in later phases) ─────────────
 
 # Run all tests
 test:

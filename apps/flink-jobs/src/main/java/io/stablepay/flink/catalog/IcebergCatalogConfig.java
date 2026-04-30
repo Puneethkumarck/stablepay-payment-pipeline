@@ -10,7 +10,11 @@ public final class IcebergCatalogConfig {
 
     public static final String CATALOG_NAME = "iceberg_catalog";
     public static final String RAW_NAMESPACE = "raw";
+    public static final String FACTS_NAMESPACE = "facts";
     public static final String DLQ_NAMESPACE = "dlq";
+
+    public static final List<String> FACT_TABLES = List.of(
+            "fact_transactions", "fact_flows", "fact_screening_outcomes");
 
     public static final List<String> RAW_TABLES = List.of(
             "raw_payment_payout_fiat",

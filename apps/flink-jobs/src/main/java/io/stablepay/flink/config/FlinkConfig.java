@@ -1,10 +1,18 @@
 package io.stablepay.flink.config;
 
 import java.util.List;
+import java.util.Set;
 
 public final class FlinkConfig {
 
     private FlinkConfig() {}
+
+    public static final Set<String> FACT_TX_TOPICS = Set.of(
+            "payment.payout.fiat.v1",
+            "payment.payout.crypto.v1",
+            "payment.payin.fiat.v1",
+            "payment.payin.crypto.v1",
+            "chain.transaction.v1");
 
     public static final List<String> INPUT_TOPICS = List.of(
             "payment.payout.fiat.v1",
