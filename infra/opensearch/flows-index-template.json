@@ -1,0 +1,36 @@
+{
+  "index_patterns": ["flows*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.mapping.total_fields.limit": 50,
+      "plugins.index_state_management.rollover_alias": "flows-write"
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "flow_id": { "type": "keyword" },
+        "customer_id": { "type": "keyword" },
+        "initiated_at": { "type": "date", "format": "epoch_millis" },
+        "completed_at": { "type": "date", "format": "epoch_millis" },
+        "duration_ms": { "type": "long" },
+        "flow_status": { "type": "keyword" },
+        "flow_type": { "type": "keyword" },
+        "source_currency": { "type": "keyword" },
+        "target_currency": { "type": "keyword" },
+        "source_amount_micros": { "type": "long" },
+        "target_amount_micros": { "type": "long" },
+        "fx_rate": { "type": "double", "doc_values": true },
+        "fee_amount_micros": { "type": "long" },
+        "fee_currency": { "type": "keyword" },
+        "leg_count": { "type": "integer" },
+        "provider": { "type": "keyword" },
+        "route": { "type": "keyword" },
+        "chain": { "type": "keyword" },
+        "screening_outcome": { "type": "keyword" },
+        "description": { "type": "text" }
+      }
+    }
+  }
+}

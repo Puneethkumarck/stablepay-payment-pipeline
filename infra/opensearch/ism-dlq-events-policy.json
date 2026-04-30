@@ -1,0 +1,42 @@
+{
+  "policy": {
+    "description": "Lifecycle for DLQ events indices: hot → delete after 90 days (issue SPP-73, DLQ-05).",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [
+          {
+            "rollover": {
+              "min_index_age": "30d",
+              "min_primary_shard_size": "10gb"
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete",
+            "conditions": {
+              "min_index_age": "90d"
+            }
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": [
+      {
+        "index_patterns": ["dlq-events*"],
+        "priority": 100
+      }
+    ]
+  }
+}

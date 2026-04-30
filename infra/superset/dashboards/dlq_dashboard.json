@@ -1,0 +1,22 @@
+{
+  "dashboards": [
+    {
+      "dashboard_title": "DLQ Health",
+      "description": "Hourly DLQ summary by error class and source topic",
+      "slug": "dlq-health",
+      "position": {},
+      "metadata": {
+        "dataset": "iceberg.analytics.v_dlq_summary",
+        "refresh_frequency": 60
+      },
+      "slices": []
+    }
+  ],
+  "datasources": [
+    {
+      "database_name": "Trino Iceberg",
+      "schema": "analytics",
+      "table_name": "v_dlq_summary"
+    }
+  ]
+}

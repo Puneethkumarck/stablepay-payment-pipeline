@@ -89,7 +89,46 @@ flink-deploy: flink-build flink-submit-ingest flink-submit-correlator flink-subm
 flink-ui:
     open http://localhost:8082
 
-# ─── Stubs (expanded in later phases) ───���─────────
+# ─── OpenSearch ───────────────────────────────────
+
+# Initialize OpenSearch index templates and ISM policies
+opensearch-init:
+    bash infra/opensearch/init.sh
+
+# ─── Trino & Superset ─────────────────────────────
+
+# Initialize Trino analytics views (runs the SQL inside the trino container so no host CLI is required)
+trino-init:
+    docker cp infra/trino/analytics-views.sql stablepay-trino:/tmp/analytics-views.sql
+    docker exec stablepay-trino trino --server http://localhost:8080 --file /tmp/analytics-views.sql
+
+# Initialize Superset (db upgrade, admin user, dashboards)
+superset-init:
+    docker exec stablepay-superset bash /app/superset-config/init.sh
+
+# Run a time-travel query (LAK-07 verification)
+trino-time-travel version:
+    docker exec stablepay-trino trino --server http://localhost:8080 --execute "SELECT count(*) FROM iceberg.facts.fact_transactions FOR VERSION AS OF {{version}}"
+
+# ─── DLQ Tools ────────────────────────────────────
+
+# List DLQ entries
+dlq-list *ARGS:
+    cd apps/dlq-tools && uv run dlq list {{ARGS}}
+
+# Inspect a single DLQ event
+dlq-inspect ID:
+    cd apps/dlq-tools && uv run dlq inspect {{ID}}
+
+# Replay a single DLQ event
+dlq-replay ID *ARGS:
+    cd apps/dlq-tools && uv run dlq replay {{ID}} {{ARGS}}
+
+# Replay all events by error class. Pass --dry-run explicitly to preview without producing.
+dlq-replay-class CLASS *ARGS:
+    cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} {{ARGS}}
+
+# ─── Stubs (expanded in later phases) ─────────────
 
 # Run all tests
 test:

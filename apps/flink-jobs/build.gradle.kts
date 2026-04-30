@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.flink.table.common)
     implementation(libs.flink.table.api.bridge)
     compileOnly(libs.flink.table.planner)
+    runtimeOnly(libs.flink.table.planner)
     implementation(libs.iceberg.flink.runtime)
     implementation(libs.opensearch.java)
     implementation(libs.httpclient5)

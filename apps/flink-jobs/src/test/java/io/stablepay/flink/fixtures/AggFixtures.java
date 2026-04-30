@@ -35,7 +35,7 @@ public final class AggFixtures {
                 .set("internal_status", internalStatus)
                 .build();
         return ValidatedEvent.fromRecord(
-                "payment.payout.fiat.v1", "key-1", record,
+                "payment.payout.fiat.v1", 0, 0L, "key-1", record,
                 SOME_EVENT_ID, SOME_EVENT_TIME_MILLIS, SOME_FLOW_ID, SOME_SCHEMA_VERSION);
     }
 
@@ -51,7 +51,7 @@ public final class AggFixtures {
                 .set("internal_status", "PENDING")
                 .build();
         return ValidatedEvent.fromRecord(
-                "payment.payin.crypto.v1", "key-1", record,
+                "payment.payin.crypto.v1", 0, 0L, "key-1", record,
                 SOME_EVENT_ID, SOME_EVENT_TIME_MILLIS, SOME_FLOW_ID, SOME_SCHEMA_VERSION);
     }
 
@@ -65,7 +65,7 @@ public final class AggFixtures {
                 .set("risk_score", riskScore)
                 .build();
         return ValidatedEvent.fromRecord(
-                "screening.result.v1", "key-1", record,
+                "screening.result.v1", 0, 0L, "key-1", record,
                 SOME_EVENT_ID, eventTime, SOME_FLOW_ID, SOME_SCHEMA_VERSION);
     }
 
