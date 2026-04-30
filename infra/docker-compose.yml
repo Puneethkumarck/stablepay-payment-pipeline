@@ -252,13 +252,18 @@ services:
       - stablepay_default
 
   # ─── Lakehouse Maintenance Jobs ───────────────────
+  # Gated behind the `lakehouse` profile until Trino is added in Plan 3.4.
+  # Run with: docker compose --profile lakehouse up -d lakehouse-jobs
   lakehouse-jobs:
     build:
       context: ../apps/lakehouse-jobs
     container_name: stablepay-lakehouse-jobs
+    profiles: ["lakehouse"]
+    restart: unless-stopped
     environment:
       STBLPAY_TRINO_HOST: trino
       STBLPAY_TRINO_PORT: 8080
+      STBLPAY_TRINO_USER: ${STBLPAY_TRINO_USER:-stablepay}
       POSTGRES_HOST: postgres
       POSTGRES_USER: ${POSTGRES_USER:-stablepay}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stablepay_dev}
@@ -266,8 +271,6 @@ services:
       - lakehouse_backups:/data/backups
     mem_limit: 256m
     depends_on:
-      trino:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     networks:

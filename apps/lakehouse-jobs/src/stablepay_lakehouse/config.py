@@ -6,6 +6,7 @@ import os
 
 TRINO_HOST = os.getenv("STBLPAY_TRINO_HOST", "trino")
 TRINO_PORT = int(os.getenv("STBLPAY_TRINO_PORT", "8080"))
+TRINO_USER = os.getenv("STBLPAY_TRINO_USER", "stablepay")
 TRINO_CATALOG = "iceberg"
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
@@ -16,7 +17,8 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "stablepay_dev")
 COMPACTION_TARGET_SIZE_MB = int(os.getenv("COMPACTION_TARGET_SIZE_MB", "128"))
 SNAPSHOT_RETAIN_DAYS = int(os.getenv("SNAPSHOT_RETAIN_DAYS", "7"))
 SNAPSHOT_RETAIN_COUNT = int(os.getenv("SNAPSHOT_RETAIN_COUNT", "10"))
-ORPHAN_OLDER_THAN_DAYS = int(os.getenv("ORPHAN_OLDER_THAN_DAYS", "3"))
+# Must be >= Trino's iceberg.remove-orphan-files.min-retention (default 7d)
+ORPHAN_OLDER_THAN_DAYS = int(os.getenv("ORPHAN_OLDER_THAN_DAYS", "7"))
 BACKUP_DIR = os.getenv("BACKUP_DIR", "/data/backups")
 
 ALL_NAMESPACES = ["raw", "facts", "agg", "dlq"]

@@ -16,6 +16,9 @@ stablepay-lakehouse = "stablepay_lakehouse.main:main"
 [tool.uv.sources]
 stablepay-schemas-py = { workspace = true }
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/stablepay_lakehouse"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
