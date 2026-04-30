@@ -68,7 +68,7 @@ public final class FactFixtures {
                 .build();
 
         return ValidatedEvent.fromRecord(
-                "payment.payout.fiat.v1", "key-1", record,
+                "payment.payout.fiat.v1", 0, 0L, "key-1", record,
                 SOME_EVENT_ID, SOME_EVENT_TIME_MILLIS, SOME_FLOW_ID, SOME_SCHEMA_VERSION);
     }
 
@@ -89,7 +89,7 @@ public final class FactFixtures {
                 .build();
 
         return ValidatedEvent.fromRecord(
-                "screening.result.v1", "key-1", record,
+                "screening.result.v1", 0, 0L, "key-1", record,
                 SOME_EVENT_ID, SOME_EVENT_TIME_MILLIS, SOME_FLOW_ID, SOME_SCHEMA_VERSION);
     }
 

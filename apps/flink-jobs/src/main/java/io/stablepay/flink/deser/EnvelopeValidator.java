@@ -58,6 +58,8 @@ public final class EnvelopeValidator {
 
         return new ValidationResult.Valid(ValidatedEvent.fromRecord(
                 topic,
+                partition,
+                offset,
                 key,
                 record,
                 eventId.toString(),

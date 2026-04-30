@@ -1,7 +1,6 @@
 package io.stablepay.flink.sink;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.hc.core5.http.HttpHost;
@@ -9,19 +8,19 @@ import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
-import io.stablepay.flink.mapper.EventToOpenSearchDocMapper;
-import io.stablepay.flink.model.ValidatedEvent;
+import io.stablepay.flink.mapper.DlqToOpenSearchDocMapper;
+import io.stablepay.flink.model.DlqEnvelope;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-class OpenSearchSinkWriter implements SinkWriter<ValidatedEvent> {
+class DlqOpenSearchSinkWriter implements SinkWriter<DlqEnvelope> {
 
     private static final long FLUSH_INTERVAL_MS = 5000;
 
     private final OpenSearchBulkWriter bulkWriter;
     private long lastFlushTime;
 
-    OpenSearchSinkWriter(String opensearchUrl, String indexName) {
+    DlqOpenSearchSinkWriter(String opensearchUrl, String indexName) {
         try {
             var transport = ApacheHttpClient5TransportBuilder
                     .builder(HttpHost.create(opensearchUrl))
@@ -35,9 +34,10 @@ class OpenSearchSinkWriter implements SinkWriter<ValidatedEvent> {
     }
 
     @Override
-    public void write(ValidatedEvent event, Context context) throws IOException, InterruptedException {
-        var doc = EventToOpenSearchDocMapper.toDocument(event);
-        bulkWriter.add(event.eventId(), doc);
+    public void write(DlqEnvelope envelope, Context context) throws IOException, InterruptedException {
+        var doc = DlqToOpenSearchDocMapper.toDocument(envelope);
+        var eventId = doc.getOrDefault("event_id", "unknown").toString();
+        bulkWriter.add(eventId, doc);
 
         if (System.currentTimeMillis() - lastFlushTime >= FLUSH_INTERVAL_MS) {
             flushAndHandleErrors();
@@ -64,10 +64,10 @@ class OpenSearchSinkWriter implements SinkWriter<ValidatedEvent> {
 
         for (var failed : result.failed()) {
             if (failed.transient_()) {
-                log.warn("opensearch_transient_failure: eventId={} status={} reason={}",
+                log.warn("dlq_opensearch_transient_failure: eventId={} status={} reason={}",
                         failed.eventId(), failed.statusCode(), failed.errorReason());
             } else {
-                log.error("opensearch_permanent_failure: eventId={} status={} type={} reason={}",
+                log.error("dlq_opensearch_permanent_failure: eventId={} status={} type={} reason={}",
                         failed.eventId(), failed.statusCode(), failed.errorType(), failed.errorReason());
             }
         }

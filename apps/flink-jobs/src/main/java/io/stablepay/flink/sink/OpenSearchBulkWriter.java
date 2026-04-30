@@ -19,10 +19,10 @@ public class OpenSearchBulkWriter {
 
     private static final int MAX_DOCS = 1000;
     private static final long MAX_SIZE_BYTES = 5L * 1024 * 1024;
-    private static final String INDEX_NAME = "transactions";
     private static final int MAX_RETRIES = 3;
 
     private final OpenSearchClient client;
+    private final String indexName;
     private final List<BulkAction> buffer = new ArrayList<>();
     private long currentSizeEstimate;
 
@@ -54,7 +54,7 @@ public class OpenSearchBulkWriter {
             for (var action : pending) {
                 bulkBuilder.operations(op -> op
                         .index(idx -> idx
-                                .index(INDEX_NAME)
+                                .index(indexName)
                                 .id(action.eventId())
                                 .document(action.document())));
             }

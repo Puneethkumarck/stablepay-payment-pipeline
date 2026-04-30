@@ -45,4 +45,5 @@ tasks.shadowJar {
     archiveVersion.set("")
     isZip64 = true
     mergeServiceFiles()
+    isZip64 = true
 }
