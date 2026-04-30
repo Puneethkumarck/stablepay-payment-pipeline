@@ -18,6 +18,8 @@ dependencies {
     implementation(libs.flink.avro)
     implementation(libs.flink.avro.confluent.registry)
     implementation(libs.flink.table.common)
+    implementation(libs.flink.table.api.bridge)
+    compileOnly(libs.flink.table.planner)
     implementation(libs.iceberg.flink.runtime)
     implementation(libs.opensearch.java)
     implementation(libs.httpclient5)
@@ -40,4 +42,5 @@ tasks.shadowJar {
     archiveClassifier.set("")
     archiveVersion.set("")
     mergeServiceFiles()
+    isZip64 = true
 }
