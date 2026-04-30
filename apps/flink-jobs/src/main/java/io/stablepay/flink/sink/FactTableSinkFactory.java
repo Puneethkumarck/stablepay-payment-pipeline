@@ -8,6 +8,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.TableLoader;
@@ -129,6 +130,11 @@ public class FactTableSinkFactory implements Serializable {
     public void ensureFactTablesExist() {
         var catalog = createCatalogLoader().loadCatalog();
         var namespace = Namespace.of(IcebergCatalogConfig.FACTS_NAMESPACE);
+
+        if (catalog instanceof SupportsNamespaces nsCatalog && !nsCatalog.namespaceExists(namespace)) {
+            nsCatalog.createNamespace(namespace);
+            log.info("Created Iceberg namespace: {}", namespace);
+        }
 
         for (var tableName : IcebergCatalogConfig.FACT_TABLES) {
             var tableId = TableIdentifier.of(namespace, tableName);
