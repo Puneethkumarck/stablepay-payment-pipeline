@@ -198,6 +198,28 @@ services:
     networks:
       - stablepay_default
 
+  # ─── Lakehouse Maintenance Jobs ───────────────────
+  lakehouse-jobs:
+    build:
+      context: ../apps/lakehouse-jobs
+    container_name: stablepay-lakehouse-jobs
+    environment:
+      STBLPAY_TRINO_HOST: trino
+      STBLPAY_TRINO_PORT: 8080
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-stablepay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stablepay_dev}
+    volumes:
+      - lakehouse_backups:/data/backups
+    mem_limit: 256m
+    depends_on:
+      trino:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - stablepay_default
+
   # ─── MinIO bucket init (one-shot) ─────────────────
   minio-init:
     image: minio/mc:latest
@@ -224,6 +246,7 @@ volumes:
   minio_data:
   flink_data:
   opensearch_data:
+  lakehouse_backups:
 
 networks:
   stablepay_default:
