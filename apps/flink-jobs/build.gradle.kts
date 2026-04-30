@@ -18,6 +18,8 @@ dependencies {
     implementation(libs.flink.avro)
     implementation(libs.flink.avro.confluent.registry)
     implementation(libs.flink.table.common)
+    implementation(libs.flink.table.api.bridge)
+    runtimeOnly(libs.flink.table.planner)
     implementation(libs.iceberg.flink.runtime)
     implementation(libs.opensearch.java)
     implementation(libs.httpclient5)
@@ -30,7 +32,9 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
+    testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation(libs.assertj.core)
     testImplementation(libs.mockito.core)
 }
@@ -39,5 +43,6 @@ tasks.shadowJar {
     archiveBaseName.set("stablepay-flink-jobs")
     archiveClassifier.set("")
     archiveVersion.set("")
+    isZip64 = true
     mergeServiceFiles()
 }
