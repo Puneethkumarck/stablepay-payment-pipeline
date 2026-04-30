@@ -9,7 +9,9 @@ import org.apache.flink.table.data.StringData;
 
 import io.stablepay.flink.model.ValidatedEvent;
 
-public class SuccessRateAggregator implements AggregateFunction<ValidatedEvent, SuccessRateAccumulator, RowData> {
+class SuccessRateAggregator implements AggregateFunction<ValidatedEvent, SuccessRateAccumulator, RowData> {
+
+    static final String UNKNOWN = "UNKNOWN";
 
     private static final Set<String> COMPLETED_STATUSES = Set.of("COMPLETED");
     private static final Set<String> FAILED_STATUSES = Set.of(
@@ -17,7 +19,7 @@ public class SuccessRateAggregator implements AggregateFunction<ValidatedEvent, 
 
     @Override
     public SuccessRateAccumulator createAccumulator() {
-        return new SuccessRateAccumulator(0L, 0L, 0L, "UNKNOWN");
+        return new SuccessRateAccumulator(0L, 0L, 0L, UNKNOWN);
     }
 
     @Override
@@ -60,6 +62,7 @@ public class SuccessRateAggregator implements AggregateFunction<ValidatedEvent, 
                 .totalCount(a.totalCount() + b.totalCount())
                 .completedCount(a.completedCount() + b.completedCount())
                 .failedCount(a.failedCount() + b.failedCount())
+                .flowType(UNKNOWN.equals(a.flowType()) ? b.flowType() : a.flowType())
                 .build();
     }
 

@@ -5,15 +5,16 @@ import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
-import org.apache.flink.table.data.TimestampData;
 
 import io.stablepay.flink.model.ValidatedEvent;
 
-public class VolumeAggregator implements AggregateFunction<ValidatedEvent, VolumeAccumulator, RowData> {
+class VolumeAggregator implements AggregateFunction<ValidatedEvent, VolumeAccumulator, RowData> {
+
+    static final String UNKNOWN = "UNKNOWN";
 
     @Override
     public VolumeAccumulator createAccumulator() {
-        return new VolumeAccumulator(0L, 0L, "UNKNOWN", "UNKNOWN", "UNKNOWN");
+        return new VolumeAccumulator(0L, 0L, UNKNOWN, UNKNOWN, UNKNOWN);
     }
 
     @Override
@@ -51,6 +52,9 @@ public class VolumeAggregator implements AggregateFunction<ValidatedEvent, Volum
         return a.toBuilder()
                 .totalAmountMicros(a.totalAmountMicros() + b.totalAmountMicros())
                 .transactionCount(a.transactionCount() + b.transactionCount())
+                .flowType(preferKnown(a.flowType(), b.flowType()))
+                .direction(preferKnown(a.direction(), b.direction()))
+                .currencyCode(preferKnown(a.currencyCode(), b.currencyCode()))
                 .build();
     }
 
@@ -70,7 +74,7 @@ public class VolumeAggregator implements AggregateFunction<ValidatedEvent, Volum
             var code = moneyRecord.get("currency_code");
             if (code != null) return code.toString();
         }
-        return "UNKNOWN";
+        return UNKNOWN;
     }
 
     private static String deriveFlowType(String topic) {
@@ -83,5 +87,9 @@ public class VolumeAggregator implements AggregateFunction<ValidatedEvent, Volum
         if (topic.contains("payin")) return "INBOUND";
         if (topic.contains("payout")) return "OUTBOUND";
         return "INTERNAL";
+    }
+
+    private static String preferKnown(String a, String b) {
+        return UNKNOWN.equals(a) ? b : a;
     }
 }

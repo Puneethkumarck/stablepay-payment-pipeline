@@ -1,5 +1,6 @@
 package io.stablepay.flink.agg;
 
+import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
@@ -7,27 +8,25 @@ import org.apache.flink.table.data.StringData;
 
 import io.stablepay.flink.model.ValidatedEvent;
 
-public class ScreeningOutcomesAggregator
+class ScreeningOutcomesAggregator
         implements AggregateFunction<ValidatedEvent, ScreeningAccumulator, RowData> {
+
+    static final String UNKNOWN = "UNKNOWN";
 
     @Override
     public ScreeningAccumulator createAccumulator() {
-        return new ScreeningAccumulator(0L, 0L, 0.0, 0L, "UNKNOWN", "UNKNOWN");
+        return new ScreeningAccumulator(0L, 0L, 0.0, 0L, UNKNOWN, UNKNOWN);
     }
 
     @Override
     public ScreeningAccumulator add(ValidatedEvent event, ScreeningAccumulator acc) {
         var record = event.toRecord();
-        var outcome = record.get("screening_outcome");
+        var outcome = record.get("outcome");
         var provider = record.get("provider");
-        var durationMs = 0L;
-        var durationField = record.get("duration_ms");
-        if (durationField instanceof Number n) {
-            durationMs = n.longValue();
-        }
+        var durationMs = extractScreeningLatencyMs(record);
         var score = 0.0;
         var scoreCount = 0L;
-        var scoreField = record.get("score");
+        var scoreField = record.get("risk_score");
         if (scoreField instanceof Number n) {
             score = n.doubleValue();
             scoreCount = 1L;
@@ -68,6 +67,21 @@ public class ScreeningOutcomesAggregator
                 .totalDurationMs(a.totalDurationMs() + b.totalDurationMs())
                 .totalScore(a.totalScore() + b.totalScore())
                 .scoreCount(a.scoreCount() + b.scoreCount())
+                .outcome(UNKNOWN.equals(a.outcome()) ? b.outcome() : a.outcome())
+                .provider(UNKNOWN.equals(a.provider()) ? b.provider() : a.provider())
                 .build();
+    }
+
+    private static long extractScreeningLatencyMs(GenericRecord record) {
+        var envelope = record.get("envelope");
+        if (envelope instanceof GenericRecord env) {
+            var eventTime = env.get("event_time");
+            var ingestTime = env.get("ingest_time");
+            if (eventTime instanceof Number e && ingestTime instanceof Number i) {
+                var diff = i.longValue() - e.longValue();
+                return Math.max(diff, 0L);
+            }
+        }
+        return 0L;
     }
 }

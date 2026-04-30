@@ -1,23 +1,26 @@
 package io.stablepay.flink;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.PipelineOptions;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.TableEnvironment;
 
 import io.stablepay.flink.catalog.IcebergCatalogConfig;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class StuckWithdrawalsJob {
 
-    public static void main(String[] args) {
-        var config = new Configuration();
-        config.set(PipelineOptions.NAME, "stablepay-stuck-withdrawals-job");
-        var settings = EnvironmentSettings.newInstance().inBatchMode().withConfiguration(config).build();
+    private static final String JOB_NAME = "stablepay-stuck-withdrawals-job";
+
+    public static void main(String[] args) throws Exception {
+        log.info("Starting {}", JOB_NAME);
+        var settings = EnvironmentSettings.newInstance().inBatchMode().build();
         var tableEnv = TableEnvironment.create(settings);
+        tableEnv.getConfig().set(PipelineOptions.NAME, JOB_NAME);
 
         var catalogProps = IcebergCatalogConfig.catalogProperties();
         tableEnv.executeSql(String.format(
-                "CREATE CATALOG %s WITH ("
+                "CREATE CATALOG IF NOT EXISTS %s WITH ("
                 + "'type'='iceberg',"
                 + "'catalog-impl'='org.apache.iceberg.jdbc.JdbcCatalog',"
                 + "'uri'='%s',"
@@ -42,7 +45,7 @@ public class StuckWithdrawalsJob {
 
         tableEnv.useCatalog(IcebergCatalogConfig.CATALOG_NAME);
 
-        tableEnv.executeSql(
+        var insertResult = tableEnv.executeSql(
                 "INSERT OVERWRITE " + IcebergCatalogConfig.AGG_NAMESPACE + ".agg_stuck_withdrawals "
                 + "SELECT "
                 + "  CURRENT_TIMESTAMP AS snapshot_time, "
@@ -57,5 +60,8 @@ public class StuckWithdrawalsJob {
                 + "  AND internal_status NOT IN ("
                 + "    'COMPLETED','FAILED','CANCELLED','REJECTED','REFUNDED','CONFISCATED') "
                 + "  AND event_time < CURRENT_TIMESTAMP - INTERVAL '1' HOUR");
+
+        insertResult.await();
+        log.info("{} completed successfully", JOB_NAME);
     }
 }

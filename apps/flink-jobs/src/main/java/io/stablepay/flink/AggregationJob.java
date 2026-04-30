@@ -8,10 +8,7 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 
-import io.stablepay.flink.agg.DlqSummaryAggregator;
-import io.stablepay.flink.agg.ScreeningOutcomesAggregator;
-import io.stablepay.flink.agg.SuccessRateAggregator;
-import io.stablepay.flink.agg.VolumeAggregator;
+import io.stablepay.flink.agg.Aggregators;
 import io.stablepay.flink.config.FlinkConfig;
 import io.stablepay.flink.deser.AvroEnvelopeDeserializer;
 import io.stablepay.flink.deser.DlqDeserializer;
@@ -20,10 +17,13 @@ import io.stablepay.flink.model.ValidatedEvent;
 import io.stablepay.flink.model.ValidationResult;
 import io.stablepay.flink.sink.AggTableSinkFactory;
 import io.stablepay.flink.watermark.EnvelopeTimestampAssigner;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class AggregationJob {
 
     public static void main(String[] args) throws Exception {
+        log.info("Starting stablepay-aggregation-job");
         var env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         var watermarkStrategy = WatermarkStrategy
@@ -54,7 +54,7 @@ public class AggregationJob {
                 .filter(e -> FlinkConfig.PAYMENT_TOPICS.contains(e.topic()))
                 .keyBy(e -> deriveFlowType(e.topic()) + "|" + deriveDirection(e.topic()) + "|" + extractCurrency(e))
                 .window(TumblingEventTimeWindows.of(Duration.ofMinutes(1)))
-                .aggregate(new VolumeAggregator())
+                .aggregate(Aggregators.volume(), Aggregators.<String>windowTimestamptz(0, 1))
                 .name("agg-volume-hourly");
 
         aggSinkFactory.addSink(volumeStream, "agg_volume_hourly");
@@ -64,7 +64,7 @@ public class AggregationJob {
                 .filter(e -> FlinkConfig.PAYMENT_TOPICS.contains(e.topic()))
                 .keyBy(e -> deriveFlowType(e.topic()))
                 .window(TumblingEventTimeWindows.of(Duration.ofMinutes(1)))
-                .aggregate(new SuccessRateAggregator())
+                .aggregate(Aggregators.successRate(), Aggregators.<String>windowTimestamptz(0, 1))
                 .name("agg-success-rate-hourly");
 
         aggSinkFactory.addSink(successRateStream, "agg_success_rate_hourly");
@@ -72,9 +72,9 @@ public class AggregationJob {
         // --- Screening outcomes aggregation: screening.result.v1 → keyBy(outcome, provider) ---
         var screeningStream = validatedStream
                 .filter(e -> "screening.result.v1".equals(e.topic()))
-                .keyBy(e -> extractField(e, "screening_outcome") + "|" + extractField(e, "provider"))
+                .keyBy(e -> extractField(e, "outcome") + "|" + extractField(e, "provider"))
                 .window(TumblingEventTimeWindows.of(Duration.ofDays(1)))
-                .aggregate(new ScreeningOutcomesAggregator())
+                .aggregate(Aggregators.screeningOutcomes(), Aggregators.<String>windowDate(0))
                 .name("agg-screening-outcomes-daily");
 
         aggSinkFactory.addSink(screeningStream, "agg_screening_outcomes_daily");
@@ -97,7 +97,7 @@ public class AggregationJob {
                 .fromSource(dlqSource, dlqWatermark, "agg-dlq-kafka-source")
                 .keyBy(e -> e.errorClass() + "|" + e.sourceTopic())
                 .window(TumblingEventTimeWindows.of(Duration.ofMinutes(1)))
-                .aggregate(new DlqSummaryAggregator())
+                .aggregate(Aggregators.dlqSummary(), Aggregators.<String>windowTimestamptz(0, 1))
                 .name("agg-dlq-summary-hourly");
 
         aggSinkFactory.addSink(dlqSummaryStream, "agg_dlq_summary_hourly");

@@ -7,11 +7,13 @@ import org.apache.flink.table.data.StringData;
 
 import io.stablepay.flink.model.DlqEnvelope;
 
-public class DlqSummaryAggregator implements AggregateFunction<DlqEnvelope, DlqAccumulator, RowData> {
+class DlqSummaryAggregator implements AggregateFunction<DlqEnvelope, DlqAccumulator, RowData> {
+
+    static final String UNKNOWN = "UNKNOWN";
 
     @Override
     public DlqAccumulator createAccumulator() {
-        return new DlqAccumulator(0L, 0, "UNKNOWN", "UNKNOWN");
+        return new DlqAccumulator(0L, 0, UNKNOWN, UNKNOWN);
     }
 
     @Override
@@ -19,8 +21,8 @@ public class DlqSummaryAggregator implements AggregateFunction<DlqEnvelope, DlqA
         return acc.toBuilder()
                 .eventCount(acc.eventCount() + 1)
                 .maxRetryCount(Math.max(acc.maxRetryCount(), envelope.retryCount()))
-                .errorClass(envelope.errorClass())
-                .sourceTopic(envelope.sourceTopic())
+                .errorClass(envelope.errorClass() != null ? envelope.errorClass() : acc.errorClass())
+                .sourceTopic(envelope.sourceTopic() != null ? envelope.sourceTopic() : acc.sourceTopic())
                 .build();
     }
 
@@ -41,6 +43,8 @@ public class DlqSummaryAggregator implements AggregateFunction<DlqEnvelope, DlqA
         return a.toBuilder()
                 .eventCount(a.eventCount() + b.eventCount())
                 .maxRetryCount(Math.max(a.maxRetryCount(), b.maxRetryCount()))
+                .errorClass(UNKNOWN.equals(a.errorClass()) ? b.errorClass() : a.errorClass())
+                .sourceTopic(UNKNOWN.equals(a.sourceTopic()) ? b.sourceTopic() : a.sourceTopic())
                 .build();
     }
 }
