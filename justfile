@@ -72,8 +72,18 @@ flink-submit-correlator:
     docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
     docker exec stablepay-flink-jobmanager flink run -d /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.CorrelatorJob
 
+# Submit aggregation job to Flink session cluster
+flink-submit-aggregation:
+    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
+    docker exec stablepay-flink-jobmanager flink run -d /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.AggregationJob
+
+# Submit stuck-withdrawals batch job to Flink
+flink-submit-stuck-withdrawals:
+    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
+    docker exec stablepay-flink-jobmanager flink run /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.StuckWithdrawalsJob
+
 # Build and submit all Flink jobs
-flink-deploy: flink-build flink-submit-ingest flink-submit-correlator
+flink-deploy: flink-build flink-submit-ingest flink-submit-correlator flink-submit-aggregation
 
 # Open Flink Web UI
 flink-ui:

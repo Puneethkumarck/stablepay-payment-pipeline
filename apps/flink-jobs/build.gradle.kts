@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.flink.avro.confluent.registry)
     implementation(libs.flink.table.common)
     implementation(libs.flink.table.api.bridge)
+    compileOnly(libs.flink.table.planner)
     runtimeOnly(libs.flink.table.planner)
     implementation(libs.iceberg.flink.runtime)
     implementation(libs.opensearch.java)
@@ -43,7 +44,6 @@ tasks.shadowJar {
     archiveBaseName.set("stablepay-flink-jobs")
     archiveClassifier.set("")
     archiveVersion.set("")
-    isZip64 = true
     mergeServiceFiles()
     isZip64 = true
 }

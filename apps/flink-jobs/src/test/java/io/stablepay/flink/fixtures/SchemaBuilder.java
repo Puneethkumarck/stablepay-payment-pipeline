@@ -54,6 +54,13 @@ final class SchemaBuilder {
                 """);
     }
 
+    static Schema payoutFiat(Schema envelope, Schema money) {
+        return record("PayoutFiatV1", "io.stablepay.events.payments",
+                field("envelope", envelope),
+                field("amount", money),
+                field("internal_status", Schema.create(Schema.Type.STRING)));
+    }
+
     static Schema payoutFiat(Schema envelope, Schema money, Schema party) {
         return record("PayoutFiatV1", "io.stablepay.events.payments",
                 field("envelope", envelope),
@@ -84,6 +91,21 @@ final class SchemaBuilder {
                 field("sender", nullable(party)),
                 field("description", nullable(Schema.create(Schema.Type.STRING))),
                 field("notes", nullable(Schema.create(Schema.Type.STRING))));
+    }
+
+    static Schema payoutCrypto(Schema envelope, Schema money) {
+        return record("PayoutCryptoV1", "io.stablepay.events.payments",
+                field("envelope", envelope),
+                field("amount", money),
+                field("internal_status", Schema.create(Schema.Type.STRING)));
+    }
+
+    static Schema screening(Schema envelope) {
+        return record("ScreeningResultV1", "io.stablepay.events.screening",
+                field("envelope", envelope),
+                field("outcome", Schema.create(Schema.Type.STRING)),
+                field("provider", Schema.create(Schema.Type.STRING)),
+                field("risk_score", Schema.create(Schema.Type.DOUBLE)));
     }
 
     static Schema screeningResult(Schema envelope) {
