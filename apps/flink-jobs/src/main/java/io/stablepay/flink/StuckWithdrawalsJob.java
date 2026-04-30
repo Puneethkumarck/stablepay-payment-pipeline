@@ -34,14 +34,14 @@ public class StuckWithdrawalsJob {
                 + "'s3.path-style-access'='true'"
                 + ")",
                 IcebergCatalogConfig.CATALOG_NAME,
-                catalogProps.get("uri"),
-                catalogProps.get("jdbc.user"),
-                catalogProps.get("jdbc.password"),
-                catalogProps.get("warehouse"),
-                catalogProps.get("io-impl"),
-                catalogProps.get("s3.endpoint"),
-                catalogProps.get("s3.access-key-id"),
-                catalogProps.get("s3.secret-access-key")));
+                sqlLiteral(catalogProps.get("uri")),
+                sqlLiteral(catalogProps.get("jdbc.user")),
+                sqlLiteral(catalogProps.get("jdbc.password")),
+                sqlLiteral(catalogProps.get("warehouse")),
+                sqlLiteral(catalogProps.get("io-impl")),
+                sqlLiteral(catalogProps.get("s3.endpoint")),
+                sqlLiteral(catalogProps.get("s3.access-key-id")),
+                sqlLiteral(catalogProps.get("s3.secret-access-key"))));
 
         tableEnv.useCatalog(IcebergCatalogConfig.CATALOG_NAME);
 
@@ -63,5 +63,9 @@ public class StuckWithdrawalsJob {
 
         insertResult.await();
         log.info("{} completed successfully", JOB_NAME);
+    }
+
+    private static String sqlLiteral(String value) {
+        return value == null ? "" : value.replace("'", "''");
     }
 }

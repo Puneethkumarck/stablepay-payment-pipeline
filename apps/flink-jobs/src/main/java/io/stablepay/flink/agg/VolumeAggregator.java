@@ -7,6 +7,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 
 import io.stablepay.flink.model.ValidatedEvent;
+import io.stablepay.flink.topic.TopicDerivation;
 
 class VolumeAggregator implements AggregateFunction<ValidatedEvent, VolumeAccumulator, RowData> {
 
@@ -21,8 +22,8 @@ class VolumeAggregator implements AggregateFunction<ValidatedEvent, VolumeAccumu
     public VolumeAccumulator add(ValidatedEvent event, VolumeAccumulator acc) {
         var record = event.toRecord();
         var amountMicros = extractAmountMicros(record);
-        var flowType = deriveFlowType(event.topic());
-        var direction = deriveDirection(event.topic());
+        var flowType = TopicDerivation.deriveFlowType(event.topic());
+        var direction = TopicDerivation.deriveDirection(event.topic());
         var currency = extractCurrencyCode(record);
 
         return acc.toBuilder()
@@ -75,18 +76,6 @@ class VolumeAggregator implements AggregateFunction<ValidatedEvent, VolumeAccumu
             if (code != null) return code.toString();
         }
         return UNKNOWN;
-    }
-
-    private static String deriveFlowType(String topic) {
-        if (topic.contains("crypto") || topic.contains("chain")) return "CRYPTO";
-        if (topic.contains("fiat")) return "FIAT";
-        return "MIXED";
-    }
-
-    private static String deriveDirection(String topic) {
-        if (topic.contains("payin")) return "INBOUND";
-        if (topic.contains("payout")) return "OUTBOUND";
-        return "INTERNAL";
     }
 
     private static String preferKnown(String a, String b) {

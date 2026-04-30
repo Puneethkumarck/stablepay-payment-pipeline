@@ -46,6 +46,36 @@ class DlqDeserializerTest {
         assertThat(collected).usingRecursiveFieldByFieldElementComparator().containsExactly(expected);
     }
 
+    @Test
+    void shouldEmitFallbackEnvelopeWhenPayloadIsNotValidJson() throws Exception {
+        // given
+        var deserializer = new DlqDeserializer();
+        var payload = "not-json".getBytes();
+        var record = new ConsumerRecord<byte[], byte[]>(
+                "dlq.schema-invalid.v1", 5, 99L, 1_711_500_000_000L,
+                org.apache.kafka.common.record.TimestampType.CREATE_TIME,
+                0, payload.length, null, payload,
+                new org.apache.kafka.common.header.internals.RecordHeaders(), java.util.Optional.empty());
+        var collected = new ArrayList<DlqEnvelope>();
+        Collector<DlqEnvelope> collector = collectingCollector(collected);
+
+        // when
+        deserializer.deserialize(record, collector);
+
+        // then
+        var expected = DlqEnvelope.builder()
+                .sourceTopic("dlq.schema-invalid.v1")
+                .sourcePartition(5)
+                .sourceOffset(99L)
+                .errorClass(DlqDeserializer.DESERIALIZATION_FAILED)
+                .errorMessage("JsonParseException")
+                .originalPayloadBytes(payload)
+                .failedAt(1_711_500_000_000L)
+                .retryCount(0)
+                .build();
+        assertThat(collected).usingRecursiveFieldByFieldElementComparator().containsExactly(expected);
+    }
+
     private static Collector<DlqEnvelope> collectingCollector(List<DlqEnvelope> sink) {
         return new Collector<>() {
             @Override

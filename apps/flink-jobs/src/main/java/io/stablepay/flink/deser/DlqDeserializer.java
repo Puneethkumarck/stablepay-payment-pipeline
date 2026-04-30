@@ -17,6 +17,8 @@ public class DlqDeserializer implements KafkaRecordDeserializationSchema<DlqEnve
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    static final String DESERIALIZATION_FAILED = "DESERIALIZATION_FAILED";
+
     @Override
     public void deserialize(ConsumerRecord<byte[], byte[]> record, Collector<DlqEnvelope> out)
             throws IOException {
@@ -35,8 +37,18 @@ public class DlqDeserializer implements KafkaRecordDeserializationSchema<DlqEnve
                     .build();
             out.collect(envelope);
         } catch (Exception e) {
-            log.warn("Failed to deserialize DLQ record from topic={} partition={} offset={}",
-                    record.topic(), record.partition(), record.offset(), e);
+            log.warn("Failed to deserialize DLQ record from topic={} partition={} offset={} cause={}",
+                    record.topic(), record.partition(), record.offset(), e.getClass().getSimpleName());
+            out.collect(DlqEnvelope.builder()
+                    .sourceTopic(record.topic())
+                    .sourcePartition(record.partition())
+                    .sourceOffset(record.offset())
+                    .errorClass(DESERIALIZATION_FAILED)
+                    .errorMessage(e.getClass().getSimpleName())
+                    .originalPayloadBytes(record.value())
+                    .failedAt(record.timestamp())
+                    .retryCount(0)
+                    .build());
         }
     }
 
