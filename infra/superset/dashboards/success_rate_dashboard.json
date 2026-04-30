@@ -1,0 +1,22 @@
+{
+  "dashboards": [
+    {
+      "dashboard_title": "Success Rate",
+      "description": "Hourly success rate by flow type with completed/failed/total breakdown",
+      "slug": "success-rate",
+      "position": {},
+      "metadata": {
+        "dataset": "iceberg.analytics.v_success_rate",
+        "refresh_frequency": 60
+      },
+      "slices": []
+    }
+  ],
+  "datasources": [
+    {
+      "database_name": "Trino Iceberg",
+      "schema": "analytics",
+      "table_name": "v_success_rate"
+    }
+  ]
+}

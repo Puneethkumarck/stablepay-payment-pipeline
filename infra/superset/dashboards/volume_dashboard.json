@@ -1,0 +1,22 @@
+{
+  "dashboards": [
+    {
+      "dashboard_title": "Transaction Volume",
+      "description": "Hourly transaction volume by flow type, direction, and currency",
+      "slug": "transaction-volume",
+      "position": {},
+      "metadata": {
+        "dataset": "iceberg.analytics.v_volume_hourly",
+        "refresh_frequency": 60
+      },
+      "slices": []
+    }
+  ],
+  "datasources": [
+    {
+      "database_name": "Trino Iceberg",
+      "schema": "analytics",
+      "table_name": "v_volume_hourly"
+    }
+  ]
+}
