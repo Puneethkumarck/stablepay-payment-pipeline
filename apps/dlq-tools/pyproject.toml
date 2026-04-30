@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
     "stablepay-schemas-py",
-    "typer>=0.15.1",
-    "pyiceberg>=0.9.1",
+    "typer[all]>=0.15.2",
+    "pyiceberg[s3fs]>=0.9.1",
     "confluent-kafka>=2.8.0",
     "pyarrow>=19.0.0",
     "rich>=14.0.0",

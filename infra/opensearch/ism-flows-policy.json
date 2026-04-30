@@ -1,6 +1,6 @@
 {
   "policy": {
-    "description": "Lifecycle for flows indices: hot 7d → warm 30d → delete 90d",
+    "description": "Lifecycle for flows indices: hot 30d → warm 60d (force-merged) → delete 365d.",
     "default_state": "hot",
     "states": [
       {
@@ -8,8 +8,8 @@
         "actions": [
           {
             "rollover": {
-              "min_index_age": "7d",
-              "min_primary_shard_size": "25gb"
+              "min_index_age": "30d",
+              "min_primary_shard_size": "50gb"
             }
           }
         ],
@@ -17,7 +17,7 @@
           {
             "state_name": "warm",
             "conditions": {
-              "min_index_age": "7d"
+              "min_index_age": "30d"
             }
           }
         ]
@@ -40,7 +40,7 @@
           {
             "state_name": "delete",
             "conditions": {
-              "min_index_age": "90d"
+              "min_index_age": "365d"
             }
           }
         ]

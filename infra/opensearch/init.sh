@@ -32,4 +32,31 @@ for policy in transactions flows dlq-events; do
     fi
 done
 
+# Create initial rollover-managed write indices with write+read aliases.
+# Each {name}-write alias is the rollover write target; {name}-read is for queries.
+create_initial_index() {
+    local name="$1"
+    local initial="${name}-000001"
+
+    if curl -sf "${OPENSEARCH_URL}/${initial}" > /dev/null 2>&1; then
+        echo "Initial index ${initial} already exists; skipping."
+        return
+    fi
+
+    echo "Creating initial index ${initial} with write/read aliases..."
+    curl -sf -X PUT "${OPENSEARCH_URL}/${initial}" \
+        -H 'Content-Type: application/json' \
+        -d "{
+            \"aliases\": {
+                \"${name}-write\": { \"is_write_index\": true },
+                \"${name}-read\": {}
+            }
+        }"
+    echo ""
+}
+
+for name in transactions flows dlq-events; do
+    create_initial_index "$name"
+done
+
 echo "OpenSearch initialization complete."

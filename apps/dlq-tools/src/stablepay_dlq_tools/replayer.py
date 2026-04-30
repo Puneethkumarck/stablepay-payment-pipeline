@@ -3,23 +3,35 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Callable
 
-from confluent_kafka import Producer
-
+from confluent_kafka import KafkaError, Message, Producer
 
 TransformFn = Callable[[dict[str, Any]], bytes | None]
 
 
-def _producer() -> Producer:
-    import os
+def _producer_config() -> dict[str, Any]:
+    return {
+        "bootstrap.servers": os.getenv("STBLPAY_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        "client.id": "dlq-replayer",
+        "acks": "all",
+        "enable.idempotence": True,
+        "retries": 10,
+        "retry.backoff.ms": 100,
+    }
 
-    return Producer(
-        {
-            "bootstrap.servers": os.getenv("STBLPAY_KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-            "client.id": "dlq-replayer",
-        }
-    )
+
+def _build_producer() -> Producer:
+    return Producer(_producer_config())
+
+
+def _next_replay_count(event: dict[str, Any]) -> int:
+    raw = event.get("replay_count", 0)
+    try:
+        return int(raw) + 1
+    except (TypeError, ValueError):
+        return 1
 
 
 def identity_transform(event: dict[str, Any]) -> bytes | None:
@@ -44,11 +56,34 @@ TRANSFORMS: dict[str, TransformFn] = {
 }
 
 
+class _DeliveryTracker:
+    def __init__(self) -> None:
+        self.failures = 0
+
+    def __call__(self, err: KafkaError | None, _msg: Message) -> None:
+        if err is not None:
+            self.failures += 1
+
+
+def _produce(
+    producer: Producer,
+    *,
+    topic: str,
+    payload: bytes,
+    replay_count: int,
+    callback: Callable[[KafkaError | None, Message], None],
+) -> None:
+    headers = [("replay_count", str(replay_count).encode("utf-8"))]
+    producer.produce(topic, value=payload, headers=headers, on_delivery=callback)
+    producer.poll(0)
+
+
 def replay_event(
     event: dict[str, Any],
     *,
     transform: TransformFn = identity_transform,
     target_topic: str | None = None,
+    producer: Producer | None = None,
 ) -> bool:
     topic = target_topic or event.get("source_topic")
     if not topic:
@@ -58,10 +93,16 @@ def replay_event(
     if payload is None:
         return False
 
-    producer = _producer()
-    producer.produce(topic, value=payload)
-    producer.flush(timeout=10)
-    return True
+    owns_producer = producer is None
+    p = producer if producer is not None else _build_producer()
+    tracker = _DeliveryTracker()
+
+    _produce(p, topic=topic, payload=payload, replay_count=_next_replay_count(event), callback=tracker)
+
+    if owns_producer:
+        p.flush(timeout=10)
+
+    return tracker.failures == 0
 
 
 def replay_batch(
@@ -70,23 +111,26 @@ def replay_batch(
     transform: TransformFn = identity_transform,
     target_topic: str | None = None,
 ) -> tuple[int, int]:
-    producer = _producer()
-    success = 0
-    failed = 0
+    producer = _build_producer()
+    tracker = _DeliveryTracker()
+    enqueued = 0
+    skipped = 0
 
     for event in events:
         topic = target_topic or event.get("source_topic")
         if not topic:
-            failed += 1
+            skipped += 1
             continue
 
         payload = transform(event)
         if payload is None:
-            failed += 1
+            skipped += 1
             continue
 
-        producer.produce(topic, value=payload)
-        success += 1
+        _produce(producer, topic=topic, payload=payload, replay_count=_next_replay_count(event), callback=tracker)
+        enqueued += 1
 
     producer.flush(timeout=30)
+    success = enqueued - tracker.failures
+    failed = skipped + tracker.failures
     return success, failed

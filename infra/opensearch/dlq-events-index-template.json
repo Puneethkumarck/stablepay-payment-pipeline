@@ -4,7 +4,8 @@
     "settings": {
       "number_of_shards": 1,
       "number_of_replicas": 0,
-      "index.mapping.total_fields.limit": 20
+      "index.mapping.total_fields.limit": 20,
+      "plugins.index_state_management.rollover_alias": "dlq-events-write"
     },
     "mappings": {
       "dynamic": "strict",
@@ -17,7 +18,7 @@
         "error_message": { "type": "text" },
         "failed_at": { "type": "date", "format": "epoch_millis" },
         "retry_count": { "type": "integer" },
-        "original_payload_json": { "type": "text" }
+        "original_payload_json": { "type": "text", "index": false }
       }
     }
   }

@@ -99,9 +99,9 @@ dlq-inspect ID:
 dlq-replay ID *ARGS:
     cd apps/dlq-tools && uv run dlq replay {{ID}} {{ARGS}}
 
-# Replay all events by error class (dry-run by default)
+# Replay all events by error class. Pass --dry-run explicitly to preview without producing.
 dlq-replay-class CLASS *ARGS:
-    cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} --dry-run {{ARGS}}
+    cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} {{ARGS}}
 
 # ─── Stubs (expanded in later phases) ───���─────────
 

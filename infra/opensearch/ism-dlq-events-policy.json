@@ -1,6 +1,6 @@
 {
   "policy": {
-    "description": "Lifecycle for DLQ events indices: hot 3d → warm 14d → delete 30d",
+    "description": "Lifecycle for DLQ events indices: hot → delete after 90 days (issue SPP-73, DLQ-05).",
     "default_state": "hot",
     "states": [
       {
@@ -8,31 +8,8 @@
         "actions": [
           {
             "rollover": {
-              "min_index_age": "3d",
+              "min_index_age": "30d",
               "min_primary_shard_size": "10gb"
-            }
-          }
-        ],
-        "transitions": [
-          {
-            "state_name": "warm",
-            "conditions": {
-              "min_index_age": "3d"
-            }
-          }
-        ]
-      },
-      {
-        "name": "warm",
-        "actions": [
-          {
-            "replica_count": {
-              "number_of_replicas": 0
-            }
-          },
-          {
-            "force_merge": {
-              "max_num_segments": 1
             }
           }
         ],
@@ -40,7 +17,7 @@
           {
             "state_name": "delete",
             "conditions": {
-              "min_index_age": "30d"
+              "min_index_age": "90d"
             }
           }
         ]
