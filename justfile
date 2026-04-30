@@ -95,11 +95,6 @@ superset-init:
 trino-time-travel version:
     trino --server http://localhost:8083 --execute "SELECT count(*) FROM iceberg.facts.fact_transactions FOR VERSION AS OF {{version}}"
 
-# Submit fact-flows merge job to Flink
-flink-submit-fact-flows:
-    docker cp apps/flink-jobs/build/libs/stablepay-flink-jobs.jar stablepay-flink-jobmanager:/opt/flink/usrlib/
-    docker exec stablepay-flink-jobmanager flink run /opt/flink/usrlib/stablepay-flink-jobs.jar --job-class io.stablepay.flink.FactFlowsMergeJob
-
 # ─── Stubs (expanded in later phases) ─────────────
 
 # Run all tests

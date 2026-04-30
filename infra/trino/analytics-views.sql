@@ -1,3 +1,8 @@
+-- Prerequisites: iceberg.facts.* and iceberg.agg.* tables must exist first.
+-- They are created by the Flink streaming jobs in plans 3.1 and 3.2.
+-- Running `just trino-init` before those jobs have produced tables will fail
+-- with "Table not found" — this is expected on a fresh stack.
+
 CREATE SCHEMA IF NOT EXISTS iceberg.analytics;
 
 CREATE OR REPLACE VIEW iceberg.analytics.v_transactions AS

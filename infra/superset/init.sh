@@ -22,12 +22,9 @@ superset set-database-uri \
   -d "Trino Iceberg" \
   -u "trino://trino:8080/iceberg" || true
 
-echo "Importing dashboards..."
-for dashboard in /app/superset-config/dashboards/*.json; do
-  if [ -f "$dashboard" ]; then
-    echo "Importing $(basename "$dashboard")..."
-    superset import-dashboards -p "$dashboard" || echo "Warning: failed to import $(basename "$dashboard")"
-  fi
-done
+echo "Skipping dashboard import."
+echo "Dashboard JSON stubs in infra/superset/dashboards/ are placeholders only."
+echo "Real dashboards will be exported as versioned ZIPs from the Superset UI"
+echo "and imported via 'superset import-dashboards -p <file>.zip' in a later plan."
 
 echo "=== Superset initialization complete ==="
