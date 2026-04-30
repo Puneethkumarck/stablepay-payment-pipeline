@@ -39,8 +39,8 @@ public final class EventToFactTransactionMapper {
         row.setField(9, isCrypto(topic));
         row.setField(10, extractBoolean(record, "is_user_facing"));
         row.setField(11, stringDataOrNull(extractTransactionReference(record, topic)));
-        row.setField(12, stringDataOrNull(stringVal(record.get("customer_id"))));
-        row.setField(13, stringDataOrNull(stringVal(record.get("account_id"))));
+        row.setField(12, stringDataOrNull(PiiMasker.mask(stringVal(record.get("customer_id")))));
+        row.setField(13, stringDataOrNull(PiiMasker.mask(stringVal(record.get("account_id")))));
 
         extractMoneyField(record, "amount", row, 14, 15);
         extractMoneyField(record, "fee", row, 16, 17);
@@ -55,8 +55,8 @@ public final class EventToFactTransactionMapper {
         row.setField(25, stringDataOrNull(stringVal(record.get("screening_outcome"))));
         row.setField(26, stringDataOrNull(stringVal(record.get("chain"))));
         row.setField(27, stringDataOrNull(stringVal(record.get("asset"))));
-        row.setField(28, stringDataOrNull(stringVal(record.get("source_address"))));
-        row.setField(29, stringDataOrNull(stringVal(record.get("destination_address"))));
+        row.setField(28, stringDataOrNull(PiiMasker.mask(stringVal(record.get("source_address")))));
+        row.setField(29, stringDataOrNull(PiiMasker.mask(stringVal(record.get("destination_address")))));
         row.setField(30, stringDataOrNull(stringVal(record.get("tx_hash"))));
 
         var confirmations = record.get("confirmations");
@@ -75,11 +75,11 @@ public final class EventToFactTransactionMapper {
         row.setField(35, stringDataOrNull(stringVal(record.get("provider"))));
         row.setField(36, stringDataOrNull(stringVal(record.get("route"))));
 
-        row.setField(37, extractNestedName(record, "beneficiary"));
-        row.setField(38, extractNestedName(record, "sender"));
+        row.setField(37, maskedNestedName(record, "beneficiary"));
+        row.setField(38, maskedNestedName(record, "sender"));
 
-        row.setField(39, stringDataOrNull(stringVal(record.get("description"))));
-        row.setField(40, stringDataOrNull(stringVal(record.get("notes"))));
+        row.setField(39, stringDataOrNull(PiiMasker.mask(stringVal(record.get("description")))));
+        row.setField(40, stringDataOrNull(PiiMasker.mask(stringVal(record.get("notes")))));
 
         return row;
     }
@@ -125,6 +125,14 @@ public final class EventToFactTransactionMapper {
         var nested = record.get(field);
         if (nested instanceof GenericRecord party) {
             return stringDataOrNull(stringVal(party.get("name")));
+        }
+        return null;
+    }
+
+    private static StringData maskedNestedName(GenericRecord record, String field) {
+        var nested = record.get(field);
+        if (nested instanceof GenericRecord party) {
+            return stringDataOrNull(PiiMasker.mask(stringVal(party.get("name"))));
         }
         return null;
     }
