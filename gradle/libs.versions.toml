@@ -32,6 +32,8 @@ flink-connector-kafka = { module = "org.apache.flink:flink-connector-kafka", ver
 flink-avro = { module = "org.apache.flink:flink-avro", version.ref = "flink" }
 flink-avro-confluent-registry = { module = "org.apache.flink:flink-avro-confluent-registry", version.ref = "flink" }
 flink-table-common = { module = "org.apache.flink:flink-table-common", version.ref = "flink" }
+flink-table-api-bridge = { module = "org.apache.flink:flink-table-api-java-bridge", version.ref = "flink" }
+flink-table-planner = { module = "org.apache.flink:flink-table-planner_2.12", version.ref = "flink" }
 iceberg-flink-runtime = { module = "org.apache.iceberg:iceberg-flink-runtime-2.0", version.ref = "iceberg" }
 opensearch-java = { module = "org.opensearch.client:opensearch-java", version.ref = "opensearch-java" }
 httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "httpclient5" }

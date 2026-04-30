@@ -21,13 +21,13 @@ class OpenSearchSinkWriter implements SinkWriter<ValidatedEvent> {
     private final OpenSearchBulkWriter bulkWriter;
     private long lastFlushTime;
 
-    OpenSearchSinkWriter(String opensearchUrl) {
+    OpenSearchSinkWriter(String opensearchUrl, String indexName) {
         try {
             var transport = ApacheHttpClient5TransportBuilder
                     .builder(HttpHost.create(opensearchUrl))
                     .setMapper(new JacksonJsonpMapper())
                     .build();
-            this.bulkWriter = new OpenSearchBulkWriter(new OpenSearchClient(transport));
+            this.bulkWriter = new OpenSearchBulkWriter(new OpenSearchClient(transport), indexName);
             this.lastFlushTime = System.currentTimeMillis();
         } catch (java.net.URISyntaxException e) {
             throw new IllegalArgumentException("Invalid OpenSearch URL: " + opensearchUrl, e);

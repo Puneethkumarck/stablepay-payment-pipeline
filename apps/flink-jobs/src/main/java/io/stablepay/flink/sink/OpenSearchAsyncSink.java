@@ -13,9 +13,14 @@ import lombok.RequiredArgsConstructor;
 public class OpenSearchAsyncSink implements Sink<ValidatedEvent> {
 
     private final String opensearchUrl;
+    private final String indexName;
+
+    public OpenSearchAsyncSink(String opensearchUrl) {
+        this(opensearchUrl, "transactions-write");
+    }
 
     @Override
     public SinkWriter<ValidatedEvent> createWriter(WriterInitContext context) throws IOException {
-        return new OpenSearchSinkWriter(opensearchUrl);
+        return new OpenSearchSinkWriter(opensearchUrl, indexName);
     }
 }
