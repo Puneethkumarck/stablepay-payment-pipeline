@@ -3,18 +3,24 @@ package io.stablepay.flink.mapper;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Objects;
 
 import io.stablepay.flink.model.DlqEnvelope;
+import io.stablepay.flink.model.DlqEventIds;
 
 public final class DlqToOpenSearchDocMapper {
 
     private DlqToOpenSearchDocMapper() {}
 
     public static Map<String, Object> toDocument(DlqEnvelope envelope) {
+        Objects.requireNonNull(envelope, "envelope");
+        Objects.requireNonNull(envelope.sourceTopic(), "sourceTopic");
+        Objects.requireNonNull(envelope.errorClass(), "errorClass");
+        Objects.requireNonNull(envelope.errorMessage(), "errorMessage");
+
         var doc = new HashMap<String, Object>();
 
-        doc.put("event_id", UUID.randomUUID().toString());
+        doc.put("event_id", DlqEventIds.of(envelope));
         doc.put("source_topic", envelope.sourceTopic());
         doc.put("source_partition", envelope.sourcePartition());
         doc.put("source_offset", envelope.sourceOffset());

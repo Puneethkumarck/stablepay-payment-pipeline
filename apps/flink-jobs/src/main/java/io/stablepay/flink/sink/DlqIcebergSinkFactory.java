@@ -8,6 +8,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.TableLoader;
@@ -19,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DlqIcebergSinkFactory implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     static final Schema DLQ_EVENTS_SCHEMA = new Schema(
             Types.NestedField.required(1, "event_id", Types.StringType.get()),
@@ -48,8 +51,13 @@ public class DlqIcebergSinkFactory implements Serializable {
     public void ensureDlqTableExists() {
         var catalog = createCatalogLoader().loadCatalog();
         var namespace = Namespace.of(IcebergCatalogConfig.DLQ_NAMESPACE);
-        var tableId = TableIdentifier.of(namespace, "dlq_events");
 
+        if (catalog instanceof SupportsNamespaces nsCatalog && !nsCatalog.namespaceExists(namespace)) {
+            nsCatalog.createNamespace(namespace);
+            log.info("Created Iceberg namespace: {}", namespace);
+        }
+
+        var tableId = TableIdentifier.of(namespace, "dlq_events");
         if (!catalog.tableExists(tableId)) {
             catalog.createTable(tableId, DLQ_EVENTS_SCHEMA, DLQ_EVENTS_PARTITION_SPEC, Map.of(
                     "format-version", "2",

@@ -18,6 +18,8 @@ import lombok.Builder;
 @Builder(toBuilder = true)
 public record ValidatedEvent(
     String topic,
+    int sourcePartition,
+    long sourceOffset,
     String key,
     byte[] recordBytes,
     String recordSchemaJson,
@@ -33,7 +35,7 @@ public record ValidatedEvent(
     }
 
     public static ValidatedEvent fromRecord(
-            String topic, String key, GenericRecord record,
+            String topic, int sourcePartition, long sourceOffset, String key, GenericRecord record,
             String eventId, long eventTimeMillis, String flowId, String schemaVersion) {
         try {
             var schema = record.getSchema();
@@ -44,6 +46,8 @@ public record ValidatedEvent(
             encoder.flush();
             return ValidatedEvent.builder()
                     .topic(topic)
+                    .sourcePartition(sourcePartition)
+                    .sourceOffset(sourceOffset)
                     .key(key)
                     .recordBytes(out.toByteArray())
                     .recordSchemaJson(schema.toString())
