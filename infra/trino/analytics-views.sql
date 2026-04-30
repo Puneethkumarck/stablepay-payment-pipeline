@@ -5,8 +5,25 @@
 
 CREATE SCHEMA IF NOT EXISTS iceberg.analytics;
 
+-- v_transactions excludes PII columns (beneficiary_name, sender_name) per the
+-- masking constraint. Add new fact_transactions columns here explicitly when
+-- they ship — SELECT * would silently re-expose PII.
 CREATE OR REPLACE VIEW iceberg.analytics.v_transactions AS
-SELECT *,
+SELECT
+  event_id, event_time, ingest_time,
+  flow_id, correlation_id, trace_id,
+  event_type, flow_type, direction, is_crypto, is_user_facing,
+  transaction_reference, customer_id, account_id,
+  amount_micros, currency_code,
+  fee_amount_micros, fee_currency_code,
+  source_amount_micros, source_currency_code,
+  target_amount_micros, target_currency_code,
+  fx_rate,
+  internal_status, customer_status, screening_outcome,
+  chain, asset, source_address, destination_address, tx_hash,
+  confirmations, gas_fee_micros, block_number, block_timestamp,
+  provider, route,
+  description, notes,
   CASE WHEN internal_status IN ('COMPLETED') THEN 'SUCCESS'
        WHEN internal_status IN ('FAILED','CANCELLED','REJECTED','CONFISCATED') THEN 'FAILED'
        ELSE 'PENDING' END AS status_bucket

@@ -7,20 +7,36 @@ echo "Upgrading database..."
 superset db upgrade
 
 echo "Creating admin user..."
-superset fab create-admin \
+admin_output=$(superset fab create-admin \
   --username admin \
   --firstname Admin \
   --lastname User \
   --email admin@stablepay.local \
-  --password admin || true
+  --password admin 2>&1) || {
+    if echo "$admin_output" | grep -qiE 'already exists|duplicate'; then
+      echo "Admin user already exists — skipping."
+    else
+      echo "$admin_output" >&2
+      echo "ERROR: failed to create admin user" >&2
+      exit 1
+    fi
+  }
 
 echo "Initializing roles and permissions..."
 superset init
 
 echo "Registering Trino Iceberg database..."
-superset set-database-uri \
+db_output=$(superset set-database-uri \
   -d "Trino Iceberg" \
-  -u "trino://trino:8080/iceberg" || true
+  -u "trino://trino:8080/iceberg" 2>&1) || {
+    if echo "$db_output" | grep -qiE 'already exists|duplicate'; then
+      echo "Trino Iceberg database already registered — skipping."
+    else
+      echo "$db_output" >&2
+      echo "ERROR: failed to register Trino Iceberg database" >&2
+      exit 1
+    fi
+  }
 
 echo "Skipping dashboard import."
 echo "Dashboard JSON stubs in infra/superset/dashboards/ are placeholders only."
