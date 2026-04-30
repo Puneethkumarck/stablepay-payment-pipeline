@@ -2,10 +2,22 @@
 name = "stablepay-lakehouse-jobs"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = ["stablepay-schemas-py"]
+dependencies = [
+    "stablepay-schemas-py",
+    "trino>=0.332.0",
+    "apscheduler>=3.10.4,<4.0",
+    "structlog>=25.1.0",
+    "psycopg[binary]>=3.2.6",
+]
+
+[project.scripts]
+stablepay-lakehouse = "stablepay_lakehouse.main:main"
 
 [tool.uv.sources]
 stablepay-schemas-py = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stablepay_lakehouse"]
 
 [build-system]
 requires = ["hatchling"]
