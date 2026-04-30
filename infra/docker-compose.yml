@@ -131,7 +131,7 @@ services:
         restart-strategy.type: fixed-delay
         restart-strategy.fixed-delay.attempts: 3
         restart-strategy.fixed-delay.delay: 30s
-        taskmanager.numberOfTaskSlots: 3
+        taskmanager.numberOfTaskSlots: 5
     volumes:
       - flink_data:/opt/flink/data
     mem_limit: 512m
@@ -164,11 +164,11 @@ services:
         s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
         s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin123}
         s3.path.style.access: true
-        taskmanager.numberOfTaskSlots: 3
-        taskmanager.memory.process.size: 1536m
+        taskmanager.numberOfTaskSlots: 5
+        taskmanager.memory.process.size: 2048m
     volumes:
       - flink_data:/opt/flink/data
-    mem_limit: 1536m
+    mem_limit: 2048m
     depends_on:
       flink-jobmanager:
         condition: service_healthy
