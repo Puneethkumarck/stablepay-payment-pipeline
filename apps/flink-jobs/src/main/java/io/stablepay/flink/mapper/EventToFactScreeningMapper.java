@@ -20,7 +20,7 @@ public final class EventToFactScreeningMapper {
 
         row.setField(0, StringData.fromString(event.eventId()));
         row.setField(1, stringDataOrNull(stringVal(record.get("screening_id"))));
-        row.setField(2, stringDataOrNull(PiiMasker.mask(stringVal(record.get("customer_id")))));
+        row.setField(2, stringDataOrNull(stringVal(record.get("customer_id"))));
         row.setField(3, stringDataOrNull(extractTransactionReference(record)));
         row.setField(4, stringDataOrNull(stringVal(record.get("outcome"))));
         row.setField(5, stringDataOrNull(stringVal(record.get("provider"))));

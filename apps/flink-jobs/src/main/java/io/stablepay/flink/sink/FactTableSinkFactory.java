@@ -1,5 +1,7 @@
 package io.stablepay.flink.sink;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -129,25 +131,35 @@ public class FactTableSinkFactory implements Serializable {
 
     public void ensureFactTablesExist() {
         var catalog = createCatalogLoader().loadCatalog();
-        var namespace = Namespace.of(IcebergCatalogConfig.FACTS_NAMESPACE);
+        try {
+            var namespace = Namespace.of(IcebergCatalogConfig.FACTS_NAMESPACE);
 
-        if (catalog instanceof SupportsNamespaces nsCatalog && !nsCatalog.namespaceExists(namespace)) {
-            nsCatalog.createNamespace(namespace);
-            log.info("Created Iceberg namespace: {}", namespace);
-        }
-
-        for (var tableName : IcebergCatalogConfig.FACT_TABLES) {
-            var def = TABLE_DEFINITIONS.get(tableName);
-            if (def == null) {
-                throw new IllegalStateException(
-                        "No schema definition for fact table '" + tableName + "' — add it to TABLE_DEFINITIONS");
+            if (catalog instanceof SupportsNamespaces nsCatalog && !nsCatalog.namespaceExists(namespace)) {
+                nsCatalog.createNamespace(namespace);
+                log.info("Created Iceberg namespace: {}", namespace);
             }
-            var tableId = TableIdentifier.of(namespace, tableName);
-            if (!catalog.tableExists(tableId)) {
-                catalog.createTable(tableId, def.schema(), def.spec(), Map.of(
-                        "format-version", "2",
-                        "write.parquet.compression-codec", "zstd"));
-                log.info("Created Iceberg fact table: {}", tableId);
+
+            for (var tableName : IcebergCatalogConfig.FACT_TABLES) {
+                var def = TABLE_DEFINITIONS.get(tableName);
+                if (def == null) {
+                    throw new IllegalStateException(
+                            "No schema definition for fact table '" + tableName + "' — add it to TABLE_DEFINITIONS");
+                }
+                var tableId = TableIdentifier.of(namespace, tableName);
+                if (!catalog.tableExists(tableId)) {
+                    catalog.createTable(tableId, def.schema(), def.spec(), Map.of(
+                            "format-version", "2",
+                            "write.parquet.compression-codec", "zstd"));
+                    log.info("Created Iceberg fact table: {}", tableId);
+                }
+            }
+        } finally {
+            if (catalog instanceof Closeable closeable) {
+                try {
+                    closeable.close();
+                } catch (IOException e) {
+                    log.warn("Failed to close Iceberg catalog", e);
+                }
             }
         }
     }

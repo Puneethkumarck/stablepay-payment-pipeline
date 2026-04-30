@@ -39,8 +39,8 @@ public final class EventToFactTransactionMapper {
         row.setField(9, isCrypto(topic));
         row.setField(10, extractBoolean(record, "is_user_facing"));
         row.setField(11, stringDataOrNull(extractTransactionReference(record, topic)));
-        row.setField(12, stringDataOrNull(PiiMasker.mask(stringVal(record.get("customer_id")))));
-        row.setField(13, stringDataOrNull(PiiMasker.mask(stringVal(record.get("account_id")))));
+        row.setField(12, stringDataOrNull(stringVal(record.get("customer_id"))));
+        row.setField(13, stringDataOrNull(stringVal(record.get("account_id"))));
 
         extractMoneyField(record, "amount", row, 14, 15);
         extractMoneyField(record, "fee", row, 16, 17);
@@ -119,14 +119,6 @@ public final class EventToFactTransactionMapper {
     private static Boolean extractBoolean(GenericRecord record, String field) {
         var val = record.get(field);
         return val instanceof Boolean b ? b : null;
-    }
-
-    private static StringData extractNestedName(GenericRecord record, String field) {
-        var nested = record.get(field);
-        if (nested instanceof GenericRecord party) {
-            return stringDataOrNull(stringVal(party.get("name")));
-        }
-        return null;
     }
 
     private static StringData maskedNestedName(GenericRecord record, String field) {
