@@ -2,14 +2,13 @@ package io.stablepay.auth.infrastructure.db;
 
 import io.stablepay.auth.domain.model.RefreshToken;
 import io.stablepay.auth.domain.model.RefreshTokenId;
-import io.stablepay.auth.domain.model.UserId;
 import io.stablepay.auth.domain.port.RefreshTokenRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.DataClassRowMapper;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -21,7 +20,11 @@ public class PostgresRefreshTokenRepository implements RefreshTokenRepository {
   private static final String SELECT_COLUMNS =
       "token_id, user_id, token_hash, issued_at, expires_at, revoked_at";
 
+  private static final RowMapper<RefreshTokenRow> ROW_MAPPER =
+      new DataClassRowMapper<>(RefreshTokenRow.class);
+
   private final NamedParameterJdbcTemplate jdbc;
+  private final RefreshTokenRowMapper mapper;
 
   @Override
   public void save(RefreshToken token) {
@@ -45,14 +48,17 @@ public class PostgresRefreshTokenRepository implements RefreshTokenRepository {
         new MapSqlParameterSource()
             .addValue("tokenHash", tokenHash)
             .addValue("now", Timestamp.from(now));
-    var rows =
-        jdbc.queryForList(
+    return jdbc
+        .query(
             "SELECT "
                 + SELECT_COLUMNS
                 + " FROM refresh_tokens "
                 + "WHERE token_hash = :tokenHash AND expires_at > :now AND revoked_at IS NULL",
-            params);
-    return rows.stream().findFirst().map(PostgresRefreshTokenRepository::toDomain);
+            params,
+            ROW_MAPPER)
+        .stream()
+        .findFirst()
+        .map(mapper::toDomain);
   }
 
   @Override
@@ -69,16 +75,5 @@ public class PostgresRefreshTokenRepository implements RefreshTokenRepository {
     var params = new MapSqlParameterSource("cutoff", Timestamp.from(cutoff));
     return jdbc.update(
         "DELETE FROM refresh_tokens WHERE revoked_at < :cutoff OR expires_at < :cutoff", params);
-  }
-
-  private static RefreshToken toDomain(Map<String, Object> row) {
-    return RefreshToken.builder()
-        .id(RefreshTokenId.of((UUID) row.get("token_id")))
-        .userId(UserId.of((UUID) row.get("user_id")))
-        .tokenHash((String) row.get("token_hash"))
-        .issuedAt(((Timestamp) row.get("issued_at")).toInstant())
-        .expiresAt(((Timestamp) row.get("expires_at")).toInstant())
-        .revokedAt(Optional.ofNullable((Timestamp) row.get("revoked_at")).map(Timestamp::toInstant))
-        .build();
   }
 }

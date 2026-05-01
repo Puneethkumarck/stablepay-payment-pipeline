@@ -4,9 +4,10 @@ import io.stablepay.auth.domain.model.SigningKey;
 import io.stablepay.auth.domain.port.SigningKeyRepository;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.DataClassRowMapper;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -18,24 +19,34 @@ public class PostgresSigningKeyRepository implements SigningKeyRepository {
   private static final String SELECT_COLUMNS =
       "kid, private_key_pem, public_key_pem, algorithm, created_at, is_active";
 
+  private static final RowMapper<SigningKeyRow> ROW_MAPPER =
+      new DataClassRowMapper<>(SigningKeyRow.class);
+
   private final NamedParameterJdbcTemplate jdbc;
+  private final SigningKeyRowMapper mapper;
 
   @Override
   public Optional<SigningKey> findActive() {
-    var rows =
-        jdbc.queryForList(
+    return jdbc
+        .query(
             "SELECT " + SELECT_COLUMNS + " FROM jwt_signing_keys WHERE is_active = TRUE LIMIT 1",
-            new MapSqlParameterSource());
-    return rows.stream().findFirst().map(PostgresSigningKeyRepository::toDomain);
+            new MapSqlParameterSource(),
+            ROW_MAPPER)
+        .stream()
+        .findFirst()
+        .map(mapper::toDomain);
   }
 
   @Override
   public List<SigningKey> findAll() {
-    var rows =
-        jdbc.queryForList(
+    return jdbc
+        .query(
             "SELECT " + SELECT_COLUMNS + " FROM jwt_signing_keys ORDER BY created_at DESC",
-            new MapSqlParameterSource());
-    return rows.stream().map(PostgresSigningKeyRepository::toDomain).toList();
+            new MapSqlParameterSource(),
+            ROW_MAPPER)
+        .stream()
+        .map(mapper::toDomain)
+        .toList();
   }
 
   @Override
@@ -52,16 +63,5 @@ public class PostgresSigningKeyRepository implements SigningKeyRepository {
         "INSERT INTO jwt_signing_keys (kid, private_key_pem, public_key_pem, algorithm, created_at, is_active) "
             + "VALUES (:kid, :privateKeyPem, :publicKeyPem, :algorithm, :createdAt, :isActive)",
         params);
-  }
-
-  private static SigningKey toDomain(Map<String, Object> row) {
-    return SigningKey.builder()
-        .kid((String) row.get("kid"))
-        .privateKeyPem((String) row.get("private_key_pem"))
-        .publicKeyPem((String) row.get("public_key_pem"))
-        .algorithm((String) row.get("algorithm"))
-        .createdAt(((Timestamp) row.get("created_at")).toInstant())
-        .isActive((Boolean) row.get("is_active"))
-        .build();
   }
 }

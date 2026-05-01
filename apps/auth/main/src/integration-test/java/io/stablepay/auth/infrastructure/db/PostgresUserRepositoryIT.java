@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
 
@@ -18,53 +19,59 @@ class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
   private static final UUID BOB_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
   private static final UUID ADMIN_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
   private static final UUID AGENT_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
+  private static final UserRowMapper USER_ROW_MAPPER = Mappers.getMapper(UserRowMapper.class);
 
   @Test
   void findByEmailReturnsAliceWithCustomerIdAndAdminCustomerRoles() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findByEmail("alice@stablepay.io");
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .ignoringFields("value.createdAt", "value.updatedAt")
-        .isEqualTo(
-            Optional.of(
-                User.builder()
-                    .id(UserId.of(ALICE_ID))
-                    .customerId(Optional.of(CustomerId.of(ALICE_ID)))
-                    .email("alice@stablepay.io")
-                    .passwordHash(passwordOf(ALICE_ID))
-                    .roles(Set.of(Role.ADMIN, Role.CUSTOMER))
-                    .createdAt(Instant.EPOCH)
-                    .updatedAt(Instant.EPOCH)
-                    .build()));
+        .isEqualTo(Optional.of(seededAlice()));
   }
 
   @Test
   void findByEmailIsCaseInsensitive() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findByEmail("ALICE@STABLEPAY.IO");
 
-    assertThat(actual).map(User::id).contains(UserId.of(ALICE_ID));
+    // then
+    assertThat(actual)
+        .usingRecursiveComparison()
+        .ignoringFields("value.createdAt", "value.updatedAt")
+        .isEqualTo(Optional.of(seededAlice()));
   }
 
   @Test
   void findByEmailReturnsEmptyWhenUserMissing() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findByEmail("ghost@stablepay.io");
 
+    // then
     assertThat(actual).isEmpty();
   }
 
   @Test
   void findByIdReturnsBobWithCustomerScopeAndCustomerRole() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findById(UserId.of(BOB_ID));
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .ignoringFields("value.createdAt", "value.updatedAt")
@@ -83,10 +90,13 @@ class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
 
   @Test
   void findByIdMapsNullCustomerIdToEmptyOptionalForAdminUser() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findById(UserId.of(ADMIN_ID));
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .ignoringFields("value.createdAt", "value.updatedAt")
@@ -105,10 +115,13 @@ class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
 
   @Test
   void findByIdMapsNullCustomerIdToEmptyOptionalForAgentUser() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findById(UserId.of(AGENT_ID));
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .ignoringFields("value.createdAt", "value.updatedAt")
@@ -127,11 +140,26 @@ class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
 
   @Test
   void findByIdReturnsEmptyWhenUserMissing() {
-    var repository = new PostgresUserRepository(namedJdbc);
+    // given
+    var repository = new PostgresUserRepository(namedJdbc, USER_ROW_MAPPER);
 
+    // when
     var actual = repository.findById(UserId.of(UUID.randomUUID()));
 
+    // then
     assertThat(actual).isEmpty();
+  }
+
+  private static User seededAlice() {
+    return User.builder()
+        .id(UserId.of(ALICE_ID))
+        .customerId(Optional.of(CustomerId.of(ALICE_ID)))
+        .email("alice@stablepay.io")
+        .passwordHash(passwordOf(ALICE_ID))
+        .roles(Set.of(Role.ADMIN, Role.CUSTOMER))
+        .createdAt(Instant.EPOCH)
+        .updatedAt(Instant.EPOCH)
+        .build();
   }
 
   private static String passwordOf(UUID userId) {
