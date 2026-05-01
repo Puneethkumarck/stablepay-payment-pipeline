@@ -1,57 +1,75 @@
 package io.stablepay.flink;
 
+import io.stablepay.flink.catalog.IcebergCatalogConfig;
+import io.stablepay.flink.sink.FactTableSinkFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
-import io.stablepay.flink.catalog.IcebergCatalogConfig;
-import io.stablepay.flink.sink.FactTableSinkFactory;
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 public class FactFlowsMergeJob {
 
-    public static void main(String[] args) throws Exception {
-        var env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setRuntimeMode(RuntimeExecutionMode.BATCH);
-        var tableEnv = StreamTableEnvironment.create(env);
+  public static void main(String[] args) throws Exception {
+    var env = StreamExecutionEnvironment.getExecutionEnvironment();
+    env.setRuntimeMode(RuntimeExecutionMode.BATCH);
+    var tableEnv = StreamTableEnvironment.create(env);
 
-        var factSinkFactory = new FactTableSinkFactory();
-        factSinkFactory.ensureFactTablesExist();
+    var factSinkFactory = new FactTableSinkFactory();
+    factSinkFactory.ensureFactTablesExist();
 
-        registerIcebergCatalog(tableEnv);
+    registerIcebergCatalog(tableEnv);
 
-        log.info("Executing INSERT OVERWRITE facts.fact_flows from raw tables");
-        tableEnv.executeSql(buildInsertOverwriteSql());
-        log.info("INSERT OVERWRITE facts.fact_flows completed");
-    }
+    log.info("Executing INSERT OVERWRITE facts.fact_flows from raw tables");
+    tableEnv.executeSql(buildInsertOverwriteSql());
+    log.info("INSERT OVERWRITE facts.fact_flows completed");
+  }
 
-    private static void registerIcebergCatalog(StreamTableEnvironment tableEnv) {
-        var props = IcebergCatalogConfig.catalogProperties();
-        var sql = "CREATE CATALOG " + IcebergCatalogConfig.CATALOG_NAME + " WITH ("
-                + "'type'='iceberg',"
-                + "'catalog-impl'='org.apache.iceberg.jdbc.JdbcCatalog',"
-                + "'uri'='" + escapeSql(props.get("uri")) + "',"
-                + "'jdbc.user'='" + escapeSql(props.get("jdbc.user")) + "',"
-                + "'jdbc.password'='" + escapeSql(props.get("jdbc.password")) + "',"
-                + "'warehouse'='" + escapeSql(props.get("warehouse")) + "',"
-                + "'io-impl'='" + escapeSql(props.get("io-impl")) + "',"
-                + "'s3.endpoint'='" + escapeSql(props.get("s3.endpoint")) + "',"
-                + "'s3.access-key-id'='" + escapeSql(props.get("s3.access-key-id")) + "',"
-                + "'s3.secret-access-key'='" + escapeSql(props.get("s3.secret-access-key")) + "',"
-                + "'s3.path-style-access'='true'"
-                + ")";
+  private static void registerIcebergCatalog(StreamTableEnvironment tableEnv) {
+    var props = IcebergCatalogConfig.catalogProperties();
+    var sql =
+        "CREATE CATALOG "
+            + IcebergCatalogConfig.CATALOG_NAME
+            + " WITH ("
+            + "'type'='iceberg',"
+            + "'catalog-impl'='org.apache.iceberg.jdbc.JdbcCatalog',"
+            + "'uri'='"
+            + escapeSql(props.get("uri"))
+            + "',"
+            + "'jdbc.user'='"
+            + escapeSql(props.get("jdbc.user"))
+            + "',"
+            + "'jdbc.password'='"
+            + escapeSql(props.get("jdbc.password"))
+            + "',"
+            + "'warehouse'='"
+            + escapeSql(props.get("warehouse"))
+            + "',"
+            + "'io-impl'='"
+            + escapeSql(props.get("io-impl"))
+            + "',"
+            + "'s3.endpoint'='"
+            + escapeSql(props.get("s3.endpoint"))
+            + "',"
+            + "'s3.access-key-id'='"
+            + escapeSql(props.get("s3.access-key-id"))
+            + "',"
+            + "'s3.secret-access-key'='"
+            + escapeSql(props.get("s3.secret-access-key"))
+            + "',"
+            + "'s3.path-style-access'='true'"
+            + ")";
 
-        tableEnv.executeSql(sql);
-        tableEnv.executeSql("USE CATALOG " + IcebergCatalogConfig.CATALOG_NAME);
-    }
+    tableEnv.executeSql(sql);
+    tableEnv.executeSql("USE CATALOG " + IcebergCatalogConfig.CATALOG_NAME);
+  }
 
-    static String escapeSql(String value) {
-        return value != null ? value.replace("'", "''") : "";
-    }
+  static String escapeSql(String value) {
+    return value != null ? value.replace("'", "''") : "";
+  }
 
-    static String buildInsertOverwriteSql() {
-        return """
+  static String buildInsertOverwriteSql() {
+    return """
                 INSERT OVERWRITE facts.fact_flows
                 SELECT
                     f.flow_id,
@@ -180,5 +198,5 @@ public class FactFlowsMergeJob {
                     ) WHERE rn = 1
                 ) po ON f.flow_id = po.flow_id
                 """;
-    }
+  }
 }
