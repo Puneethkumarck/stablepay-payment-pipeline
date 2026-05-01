@@ -11,7 +11,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
 
 class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
 
@@ -19,7 +18,7 @@ class PostgresUserRepositoryIT extends PostgresRepositoryIntegrationTest {
   private static final UUID BOB_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
   private static final UUID ADMIN_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
   private static final UUID AGENT_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
-  private static final UserRowMapper USER_ROW_MAPPER = Mappers.getMapper(UserRowMapper.class);
+  private static final UserRowMapper USER_ROW_MAPPER = new UserRowMapperImpl();
 
   @Test
   void findByEmailReturnsAliceWithCustomerIdAndAdminCustomerRoles() {

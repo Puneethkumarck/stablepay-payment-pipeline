@@ -9,14 +9,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
 
 class PostgresSigningKeyRepositoryIT extends PostgresRepositoryIntegrationTest {
 
   private static final Instant NOW =
       Instant.parse("2026-05-01T10:00:00Z").truncatedTo(ChronoUnit.MILLIS);
-  private static final SigningKeyRowMapper KEY_ROW_MAPPER =
-      Mappers.getMapper(SigningKeyRowMapper.class);
+  private static final SigningKeyRowMapper KEY_ROW_MAPPER = new SigningKeyRowMapperImpl();
 
   @Test
   void saveThenFindActiveRoundTripsAllFields() {

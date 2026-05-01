@@ -10,7 +10,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
 
 class PostgresRefreshTokenRepositoryIT extends PostgresRepositoryIntegrationTest {
 
@@ -19,8 +18,7 @@ class PostgresRefreshTokenRepositoryIT extends PostgresRepositoryIntegrationTest
   private static final Instant NOW =
       Instant.parse("2026-05-01T10:00:00Z").truncatedTo(ChronoUnit.MILLIS);
   private static final Instant EXPIRES_AT = NOW.plus(7, ChronoUnit.DAYS);
-  private static final RefreshTokenRowMapper TOKEN_ROW_MAPPER =
-      Mappers.getMapper(RefreshTokenRowMapper.class);
+  private static final RefreshTokenRowMapper TOKEN_ROW_MAPPER = new RefreshTokenRowMapperImpl();
 
   @Test
   void saveThenFindActiveByHashRoundTripsAllFields() {
