@@ -2,6 +2,7 @@ package io.stablepay.auth.application;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import io.stablepay.auth.domain.exception.SigningKeyGenerationException;
 import io.stablepay.auth.domain.exception.SigningKeyParseException;
@@ -66,6 +67,7 @@ public class SigningKeyManager {
         new RSAKey.Builder(activePublicKey)
             .keyID(activeKey.kid())
             .algorithm(JWSAlgorithm.RS256)
+            .keyUse(KeyUse.SIGNATURE)
             .build()
             .toJSONObject();
     return Map.of("keys", List.of(jwk));
