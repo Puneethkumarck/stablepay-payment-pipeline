@@ -46,7 +46,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
       chain.doFilter(request, response);
       return;
     }
-    var bucket = buckets.computeIfAbsent(clientIp(request), key -> newBucket());
+    var bucket = buckets.computeIfAbsent(request.getRemoteAddr(), key -> newBucket());
     if (bucket.tryConsume(1)) {
       chain.doFilter(request, response);
       return;
@@ -57,14 +57,6 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
   private boolean isLoginRequest(HttpServletRequest request) {
     return "POST".equalsIgnoreCase(request.getMethod())
         && LOGIN_PATH.equals(request.getRequestURI());
-  }
-
-  private String clientIp(HttpServletRequest request) {
-    var forwarded = request.getHeader("X-Forwarded-For");
-    if (forwarded != null && !forwarded.isBlank()) {
-      return forwarded.split(",")[0].trim();
-    }
-    return request.getRemoteAddr();
   }
 
   private Bucket newBucket() {
