@@ -3,12 +3,12 @@ java = "25"
 avro = "1.12.0"
 avro-plugin = "1.9.1"
 spotless = "7.0.4"
-spring-boot = "4.0.0"
-spring-cloud = "2025.0.0"
+spring-boot = "4.0.6"
+spring-cloud = "2025.1.1"
 flink = "2.0.0"
 flink-connector-kafka = "4.0.1-2.0"
 iceberg = "1.10.1"
-opensearch-java = "2.20.0"
+opensearch-java = "3.0.0"
 httpclient5 = "5.4.4"
 hadoop = "3.4.1"
 shadow = "8.3.5"
@@ -19,8 +19,14 @@ mapstruct = "1.6.3"
 lombok = "1.18.38"
 slf4j = "2.0.17"
 nv-i18n = "1.29"
-archunit = "1.4.0"
+archunit = "1.4.2"
 testcontainers = "1.20.6"
+namastack-outbox = "1.4.1"
+bucket4j = "8.18.0"
+nimbus-jose-jwt = "10.9"
+flyway = "12.5.0"
+springdoc-openapi = "3.0.0"
+trino-jdbc = "475"
 
 [libraries]
 avro-core = { module = "org.apache.avro:avro", version.ref = "avro" }
@@ -52,6 +58,26 @@ archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka" }
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter" }
+
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-data-jdbc = { module = "org.springframework.boot:spring-boot-starter-data-jdbc" }
+spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+
+namastack-outbox-starter-jdbc = { module = "io.namastack:namastack-outbox-starter-jdbc", version.ref = "namastack-outbox" }
+bucket4j-core = { module = "com.bucket4j:bucket4j_jdk17-core", version.ref = "bucket4j" }
+bucket4j-redis = { module = "com.bucket4j:bucket4j_jdk17-redis-common", version.ref = "bucket4j" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc-openapi" }
+trino-jdbc = { module = "io.trino:trino-jdbc", version.ref = "trino-jdbc" }
+trino-parser = { module = "io.trino:trino-parser", version.ref = "trino-jdbc" }
 
 [plugins]
 avro = { id = "com.github.davidmc24.gradle.plugin.avro", version.ref = "avro-plugin" }
