@@ -10,6 +10,8 @@ dependencies {
 
     testFixturesCompileOnly(libs.lombok)
     testFixturesAnnotationProcessor(libs.lombok)
+    testFixturesImplementation(libs.assertj.core)
+    testFixturesImplementation(libs.mockito.core)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
