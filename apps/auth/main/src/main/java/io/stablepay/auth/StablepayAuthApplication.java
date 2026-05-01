@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class StablepayAuthApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(StablepayAuthApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(StablepayAuthApplication.class, args);
+  }
 }

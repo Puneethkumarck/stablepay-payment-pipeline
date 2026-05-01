@@ -4,7 +4,4 @@ import lombok.Builder;
 
 @Builder(toBuilder = true)
 record SuccessRateAccumulator(
-        long totalCount,
-        long completedCount,
-        long failedCount,
-        String flowType) {}
+    long totalCount, long completedCount, long failedCount, String flowType) {}

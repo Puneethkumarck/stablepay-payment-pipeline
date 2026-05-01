@@ -11,9 +11,8 @@ public record DlqEnvelope(
     String errorMessage,
     byte[] originalPayloadBytes,
     long failedAt,
-    int retryCount
-) {
-    public DlqEnvelope {
-        originalPayloadBytes = originalPayloadBytes != null ? originalPayloadBytes.clone() : null;
-    }
+    int retryCount) {
+  public DlqEnvelope {
+    originalPayloadBytes = originalPayloadBytes != null ? originalPayloadBytes.clone() : null;
+  }
 }
