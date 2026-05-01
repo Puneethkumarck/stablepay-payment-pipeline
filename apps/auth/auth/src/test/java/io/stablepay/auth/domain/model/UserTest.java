@@ -15,7 +15,8 @@ import org.junit.jupiter.api.Test;
 class UserTest {
 
   @Test
-  void buildsCustomerUserWithOptionalCustomerId() {
+  void shouldBuildCustomerUserWithCustomerId() {
+    // when
     var actual =
         User.builder()
             .id(SOME_USER_ID)
@@ -27,6 +28,7 @@ class UserTest {
             .updatedAt(SOME_INSTANT)
             .build();
 
+    // then
     var expected =
         new User(
             SOME_USER_ID,
@@ -40,7 +42,8 @@ class UserTest {
   }
 
   @Test
-  void buildsAdminUserWithEmptyCustomerId() {
+  void shouldBuildAdminUserWithEmptyCustomerId() {
+    // when
     var actual =
         User.builder()
             .id(SOME_USER_ID)
@@ -52,6 +55,7 @@ class UserTest {
             .updatedAt(SOME_INSTANT)
             .build();
 
+    // then
     var expected =
         new User(
             SOME_USER_ID,
@@ -65,7 +69,8 @@ class UserTest {
   }
 
   @Test
-  void toBuilderReturnsNewInstanceWithUpdatedField() {
+  void shouldReturnNewInstanceWithUpdatedFieldViaToBuilder() {
+    // given
     var original =
         User.builder()
             .id(SOME_USER_ID)
@@ -77,8 +82,10 @@ class UserTest {
             .updatedAt(SOME_INSTANT)
             .build();
 
+    // when
     var actual = original.toBuilder().updatedAt(SOME_LATER_INSTANT).build();
 
+    // then
     var expected =
         new User(
             SOME_USER_ID,

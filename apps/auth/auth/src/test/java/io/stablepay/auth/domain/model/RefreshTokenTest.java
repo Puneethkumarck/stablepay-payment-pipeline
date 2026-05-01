@@ -16,9 +16,11 @@ import org.junit.jupiter.api.Test;
 class RefreshTokenTest {
 
   @Test
-  void buildsActiveTokenWithEmptyRevokedAt() {
+  void shouldBuildActiveTokenWithEmptyRevokedAt() {
+    // when
     var actual = activeRefreshToken();
 
+    // then
     var expected =
         new RefreshToken(
             SOME_REFRESH_TOKEN_ID,
@@ -31,46 +33,60 @@ class RefreshTokenTest {
   }
 
   @Test
-  void isActiveReturnsTrueWhenNotRevokedAndNotExpired() {
+  void shouldReturnActiveWhenNotRevokedAndNotExpired() {
+    // given
     var token = activeRefreshToken();
 
+    // when
     var actual = token.isActive(SOME_LATER_INSTANT);
 
+    // then
     assertThat(actual).isTrue();
   }
 
   @Test
-  void isActiveReturnsFalseWhenExpired() {
+  void shouldReturnInactiveWhenExpired() {
+    // given
     var token = activeRefreshToken();
     var afterExpiry = SOME_EXPIRES_AT.plusSeconds(1);
 
+    // when
     var actual = token.isActive(afterExpiry);
 
+    // then
     assertThat(actual).isFalse();
   }
 
   @Test
-  void isActiveReturnsFalseAtExactExpiryInstant() {
+  void shouldReturnInactiveAtExactExpiryInstant() {
+    // given
     var token = activeRefreshToken();
 
+    // when
     var actual = token.isActive(SOME_EXPIRES_AT);
 
+    // then
     assertThat(actual).isFalse();
   }
 
   @Test
-  void isActiveReturnsFalseWhenRevokedEvenIfNotExpired() {
+  void shouldReturnInactiveWhenRevokedEvenIfNotExpired() {
+    // given
     var token = activeRefreshToken().revoke(SOME_LATER_INSTANT);
 
+    // when
     var actual = token.isActive(SOME_LATER_INSTANT);
 
+    // then
     assertThat(actual).isFalse();
   }
 
   @Test
-  void revokeReturnsNewInstanceWithRevokedAtSet() {
+  void shouldReturnNewInstanceWithRevokedAtSetWhenRevoked() {
+    // when
     var actual = activeRefreshToken().revoke(SOME_LATER_INSTANT);
 
+    // then
     var expected =
         new RefreshToken(
             SOME_REFRESH_TOKEN_ID,
@@ -83,11 +99,14 @@ class RefreshTokenTest {
   }
 
   @Test
-  void revokeDoesNotMutateOriginalInstance() {
+  void shouldNotMutateOriginalInstanceWhenRevoked() {
+    // given
     var original = activeRefreshToken();
 
+    // when
     original.revoke(SOME_LATER_INSTANT);
 
+    // then
     assertThat(original.revokedAt()).isEqualTo(Optional.<Instant>empty());
   }
 }

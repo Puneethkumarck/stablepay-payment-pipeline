@@ -1,5 +1,7 @@
 package io.stablepay.auth.config;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideOutsideOfPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
@@ -30,13 +32,24 @@ class AuthArchitectureTest {
           .withOptionalLayers(true);
 
   @ArchTest
-  static final ArchRule domainHasNoSpringDependencies =
+  static final ArchRule domainHasNoSpringDependenciesExceptStereotypeAndTransaction =
+      noClasses()
+          .that()
+          .resideInAPackage("io.stablepay.auth.domain..")
+          .should()
+          .dependOnClassesThat(
+              resideInAPackage("org.springframework..")
+                  .and(resideOutsideOfPackage("org.springframework.stereotype.."))
+                  .and(resideOutsideOfPackage("org.springframework.transaction..")));
+
+  @ArchTest
+  static final ArchRule domainHasNoJpaDependencies =
       noClasses()
           .that()
           .resideInAPackage("io.stablepay.auth.domain..")
           .should()
           .dependOnClassesThat()
-          .resideInAPackage("org.springframework..");
+          .resideInAPackage("jakarta.persistence..");
 
   @ArchTest
   static final ArchRule noFieldInjection =

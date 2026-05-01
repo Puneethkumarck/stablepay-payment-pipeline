@@ -10,25 +10,31 @@ class IdsTest {
   private static final UUID SOME_UUID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
   @Test
-  void userIdOfWrapsUuid() {
+  void shouldWrapUuidInUserId() {
+    // when
     var actual = UserId.of(SOME_UUID);
 
+    // then
     var expected = new UserId(SOME_UUID);
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }
 
   @Test
-  void customerIdOfWrapsUuid() {
+  void shouldWrapUuidInCustomerId() {
+    // when
     var actual = CustomerId.of(SOME_UUID);
 
+    // then
     var expected = new CustomerId(SOME_UUID);
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }
 
   @Test
-  void refreshTokenIdOfWrapsUuid() {
+  void shouldWrapUuidInRefreshTokenId() {
+    // when
     var actual = RefreshTokenId.of(SOME_UUID);
 
+    // then
     var expected = new RefreshTokenId(SOME_UUID);
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }

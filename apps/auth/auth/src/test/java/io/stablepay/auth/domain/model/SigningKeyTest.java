@@ -13,9 +13,11 @@ import org.junit.jupiter.api.Test;
 class SigningKeyTest {
 
   @Test
-  void buildsActiveSigningKey() {
+  void shouldBuildActiveSigningKey() {
+    // when
     var actual = activeSigningKey();
 
+    // then
     var expected =
         new SigningKey(
             SOME_KID,
@@ -28,9 +30,11 @@ class SigningKeyTest {
   }
 
   @Test
-  void toBuilderDeactivatesKey() {
+  void shouldDeactivateSigningKeyViaToBuilder() {
+    // when
     var actual = activeSigningKey().toBuilder().isActive(false).build();
 
+    // then
     var expected =
         new SigningKey(
             SOME_KID,
@@ -40,5 +44,17 @@ class SigningKeyTest {
             SOME_INSTANT,
             false);
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+  }
+
+  @Test
+  void shouldRedactPrivateKeyPemInToString() {
+    // given
+    var key = activeSigningKey();
+
+    // when
+    var actual = key.toString();
+
+    // then
+    assertThat(actual).contains("***REDACTED***").doesNotContain(SOME_PRIVATE_KEY_PEM);
   }
 }
