@@ -10,7 +10,7 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: ${AUTH_PORT:8085}
+  port: ${AUTH_PORT:9000}
 
 management:
   endpoints:

@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
 plugins {
     id("stablepay.java-conventions")
     alias(libs.plugins.spring.boot)
@@ -20,12 +22,18 @@ val businessTest: SourceSet by sourceSets.creating {
 }
 
 val integrationTestImplementation: Configuration by configurations.getting {
-    extendsFrom(configurations.testImplementation.get())
+    extendsFrom(
+        configurations.testImplementation.get(),
+        configurations["testFixturesApi"],
+    )
 }
 configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 
 val businessTestImplementation: Configuration by configurations.getting {
-    extendsFrom(configurations.testImplementation.get())
+    extendsFrom(
+        configurations.testImplementation.get(),
+        configurations["testFixturesApi"],
+    )
 }
 configurations["businessTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 
@@ -40,8 +48,8 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
 
     implementation(libs.flyway.core)
-    implementation(libs.flyway.database.postgresql)
-    runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly(libs.flyway.database.postgresql)
+    runtimeOnly(libs.postgresql.driver)
 
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
@@ -54,8 +62,8 @@ dependencies {
     annotationProcessor(libs.lombok)
 
     testFixturesApi(libs.spring.boot.starter.test)
-    testFixturesApi("org.springframework.security:spring-security-test")
-    testFixturesApi("org.testcontainers:postgresql:${libs.versions.testcontainers.get()}")
+    testFixturesApi(libs.spring.security.test)
+    testFixturesApi(libs.testcontainers.postgres)
     testFixturesCompileOnly(libs.lombok)
     testFixturesAnnotationProcessor(libs.lombok)
 
@@ -68,12 +76,16 @@ dependencies {
     testAnnotationProcessor(libs.lombok)
 
     integrationTestImplementation(libs.spring.boot.starter.test)
-    integrationTestImplementation("org.testcontainers:postgresql:${libs.versions.testcontainers.get()}")
+    integrationTestImplementation(libs.testcontainers.postgres)
     integrationTestImplementation(libs.testcontainers.junit)
+    "integrationTestCompileOnly"(libs.lombok)
+    "integrationTestAnnotationProcessor"(libs.lombok)
 
     businessTestImplementation(libs.spring.boot.starter.test)
-    businessTestImplementation("org.testcontainers:postgresql:${libs.versions.testcontainers.get()}")
+    businessTestImplementation(libs.testcontainers.postgres)
     businessTestImplementation(libs.testcontainers.junit)
+    "businessTestCompileOnly"(libs.lombok)
+    "businessTestAnnotationProcessor"(libs.lombok)
 }
 
 val integrationTestTask = tasks.register<Test>("integrationTest") {
@@ -96,6 +108,6 @@ tasks.named("check") {
     dependsOn(integrationTestTask, businessTestTask)
 }
 
-tasks.bootJar {
+tasks.named<BootJar>("bootJar") {
     archiveBaseName.set("stablepay-auth")
 }
