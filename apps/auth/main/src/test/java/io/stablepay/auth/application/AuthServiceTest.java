@@ -7,20 +7,20 @@ import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_PASSWORD_HA
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.activeRefreshToken;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.adminUser;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.customerUser;
+import static io.stablepay.auth.test.TestUtils.eqIgnoring;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.stablepay.auth.domain.model.RefreshToken;
 import io.stablepay.auth.domain.model.SigningKey;
 import io.stablepay.auth.domain.port.RefreshTokenRepository;
 import io.stablepay.auth.domain.port.UserRepository;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
@@ -30,12 +30,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -78,37 +79,60 @@ class AuthServiceTest {
 
   @Test
   void loginReturnsSuccessForValidCredentials() throws Exception {
+    // given
     var user = customerUser();
     given(users.findByEmail(SOME_EMAIL)).willReturn(Optional.of(user));
     given(hasher.matches("demo1234", SOME_PASSWORD_HASH)).willReturn(true);
     givenSigningKey();
+    var expectedClaims =
+        new JWTClaimsSet.Builder()
+            .subject(user.id().value().toString())
+            .claim("email", SOME_EMAIL)
+            .claim("roles", List.of("CUSTOMER"))
+            .issuer(ISSUER)
+            .audience(AUDIENCE)
+            .issueTime(Date.from(SOME_INSTANT))
+            .expirationTime(Date.from(SOME_INSTANT.plus(Duration.ofMinutes(15))))
+            .claim("customer_id", user.customerId().orElseThrow().value().toString())
+            .build();
 
+    // when
     var actual = service.login(SOME_EMAIL, "demo1234", SOME_INSTANT);
 
+    // then
     assertThat(actual).isInstanceOf(AuthService.LoginOutcome.Success.class);
     var success = (AuthService.LoginOutcome.Success) actual;
     assertThat(success.expiresIn()).isEqualTo(Duration.ofMinutes(15));
-    var claims = verifyAndExtractClaims(success.accessToken());
-    assertThat(claims.getSubject()).isEqualTo(user.id().value().toString());
-    assertThat(claims.getStringClaim("email")).isEqualTo(SOME_EMAIL);
-    assertThat(claims.getStringListClaim("roles")).containsExactly("CUSTOMER");
-    assertThat(claims.getIssuer()).isEqualTo(ISSUER);
-    assertThat(claims.getAudience()).containsExactly(AUDIENCE);
-    assertThat(claims.getStringClaim("customer_id"))
-        .isEqualTo(user.customerId().orElseThrow().value().toString());
-    assertThat(claims.getJWTID()).isNotBlank();
-    then(tokens).should().save(any(RefreshToken.class));
+    var actualClaims = verifyAndExtractClaims(success.accessToken());
+    assertThat(actualClaims.toJSONObject())
+        .usingRecursiveComparison()
+        .ignoringFields("jti")
+        .isEqualTo(expectedClaims.toJSONObject());
+    assertThat(actualClaims.getJWTID()).isNotBlank();
+    var expectedRefreshToken =
+        RefreshToken.builder()
+            .id(activeRefreshToken().id())
+            .userId(user.id())
+            .tokenHash(sha256(success.refreshToken()))
+            .issuedAt(SOME_INSTANT)
+            .expiresAt(SOME_INSTANT.plus(Duration.ofDays(7)))
+            .revokedAt(Optional.empty())
+            .build();
+    then(tokens).should().save(eqIgnoring(expectedRefreshToken, "id"));
   }
 
   @Test
   void loginIncludesNoCustomerIdClaimForAdminUser() throws Exception {
+    // given
     var admin = adminUser();
     given(users.findByEmail("admin@stablepay.io")).willReturn(Optional.of(admin));
     given(hasher.matches("demo1234", SOME_PASSWORD_HASH)).willReturn(true);
     givenSigningKey();
 
+    // when
     var actual = service.login("admin@stablepay.io", "demo1234", SOME_INSTANT);
 
+    // then
     var success = (AuthService.LoginOutcome.Success) actual;
     var claims = verifyAndExtractClaims(success.accessToken());
     assertThat(claims.getClaim("customer_id")).isNull();
@@ -116,35 +140,42 @@ class AuthServiceTest {
 
   @Test
   void loginReturnsInvalidCredentialsForWrongPassword() {
+    // given
     var user = customerUser();
     given(users.findByEmail(SOME_EMAIL)).willReturn(Optional.of(user));
     given(hasher.matches("wrong", SOME_PASSWORD_HASH)).willReturn(false);
 
+    // when
     var actual = service.login(SOME_EMAIL, "wrong", SOME_INSTANT);
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .isEqualTo(new AuthService.LoginOutcome.InvalidCredentials());
-    then(tokens).should(never()).save(any());
+    then(tokens).shouldHaveNoInteractions();
   }
 
   @Test
   void loginRunsBcryptEvenWhenUserNotFoundToMitigateTimingAttack() {
+    // given
     given(users.findByEmail("ghost@stablepay.io")).willReturn(Optional.empty());
     given(hasher.dummyHash()).willReturn("dummy-hash");
     given(hasher.matches("any-password", "dummy-hash")).willReturn(false);
 
+    // when
     var actual = service.login("ghost@stablepay.io", "any-password", SOME_INSTANT);
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .isEqualTo(new AuthService.LoginOutcome.InvalidCredentials());
     then(hasher).should().matches("any-password", "dummy-hash");
-    then(tokens).should(never()).save(any());
+    then(tokens).shouldHaveNoInteractions();
   }
 
   @Test
   void refreshRotatesToken() throws Exception {
+    // given
     var user = customerUser();
     var existing = activeRefreshToken();
     var refreshTokenPlain = "old-refresh-token";
@@ -152,76 +183,102 @@ class AuthServiceTest {
         .willReturn(Optional.of(existing));
     given(users.findById(user.id())).willReturn(Optional.of(user));
     givenSigningKey();
+    var expectedNewToken =
+        RefreshToken.builder()
+            .id(existing.id())
+            .userId(user.id())
+            .tokenHash("ignored")
+            .issuedAt(SOME_LATER_INSTANT)
+            .expiresAt(SOME_LATER_INSTANT.plus(Duration.ofDays(7)))
+            .revokedAt(Optional.empty())
+            .build();
 
+    // when
     var actual = service.refresh(refreshTokenPlain, SOME_LATER_INSTANT);
 
+    // then
     assertThat(actual).isInstanceOf(AuthService.LoginOutcome.Success.class);
-    var success = (AuthService.LoginOutcome.Success) actual;
     then(tokens).should().revoke(existing.id(), SOME_LATER_INSTANT);
-    var captor = ArgumentCaptor.forClass(RefreshToken.class);
-    then(tokens).should().save(captor.capture());
-    var saved = captor.getValue();
-    assertThat(saved)
-        .usingRecursiveComparison()
-        .ignoringFields("id", "tokenHash")
-        .isEqualTo(
-            RefreshToken.builder()
-                .id(saved.id())
-                .userId(user.id())
-                .tokenHash(saved.tokenHash())
-                .issuedAt(SOME_LATER_INSTANT)
-                .expiresAt(SOME_LATER_INSTANT.plus(Duration.ofDays(7)))
-                .revokedAt(Optional.empty())
-                .build());
-    assertThat(saved.tokenHash()).isEqualTo(sha256(success.refreshToken()));
+    then(tokens).should().save(eqIgnoring(expectedNewToken, "id", "tokenHash"));
   }
 
   @Test
   void refreshReturnsInvalidCredentialsWhenTokenNotFound() throws Exception {
+    // given
     given(tokens.findActiveByHash(sha256("missing"), SOME_LATER_INSTANT))
         .willReturn(Optional.empty());
 
+    // when
     var actual = service.refresh("missing", SOME_LATER_INSTANT);
 
+    // then
     assertThat(actual)
         .usingRecursiveComparison()
         .isEqualTo(new AuthService.LoginOutcome.InvalidCredentials());
-    then(tokens).should(never()).revoke(any(), any());
-    then(tokens).should(never()).save(any());
+    then(tokens).should().findActiveByHash(sha256("missing"), SOME_LATER_INSTANT);
+    then(tokens).shouldHaveNoMoreInteractions();
+  }
+
+  @Test
+  void refreshReturnsInvalidCredentialsWhenUserNoLongerExists() throws Exception {
+    // given
+    var existing = activeRefreshToken();
+    var refreshTokenPlain = "orphan-token";
+    given(tokens.findActiveByHash(sha256(refreshTokenPlain), SOME_LATER_INSTANT))
+        .willReturn(Optional.of(existing));
+    given(users.findById(existing.userId())).willReturn(Optional.empty());
+
+    // when
+    var actual = service.refresh(refreshTokenPlain, SOME_LATER_INSTANT);
+
+    // then
+    assertThat(actual)
+        .usingRecursiveComparison()
+        .isEqualTo(new AuthService.LoginOutcome.InvalidCredentials());
+    then(tokens).should().findActiveByHash(sha256(refreshTokenPlain), SOME_LATER_INSTANT);
+    then(tokens).shouldHaveNoMoreInteractions();
   }
 
   @Test
   void logoutRevokesActiveRefreshToken() throws Exception {
+    // given
     var existing = activeRefreshToken();
     var refreshTokenPlain = "active-token";
     given(tokens.findActiveByHash(sha256(refreshTokenPlain), SOME_LATER_INSTANT))
         .willReturn(Optional.of(existing));
 
+    // when
     service.logout(refreshTokenPlain, SOME_LATER_INSTANT);
 
+    // then
     then(tokens).should().revoke(existing.id(), SOME_LATER_INSTANT);
   }
 
   @Test
   void logoutIsNoOpWhenTokenNotActive() throws Exception {
+    // given
     given(tokens.findActiveByHash(sha256("stale"), SOME_LATER_INSTANT))
         .willReturn(Optional.empty());
 
+    // when
     service.logout("stale", SOME_LATER_INSTANT);
 
-    then(tokens).should(never()).revoke(any(), any());
+    // then
+    then(tokens).should().findActiveByHash(sha256("stale"), SOME_LATER_INSTANT);
+    then(tokens).shouldHaveNoMoreInteractions();
   }
 
   @Test
   void cleanupDeletesRefreshTokensOlderThanThirtyDays() {
-    given(tokens.deleteRevokedAndExpiredOlderThan(SOME_INSTANT.minus(Duration.ofDays(30))))
-        .willReturn(7);
+    // given
+    var cutoff = SOME_INSTANT.minus(Duration.ofDays(30));
+    given(tokens.deleteRevokedAndExpiredOlderThan(cutoff)).willReturn(7);
 
+    // when
     service.cleanupExpiredRefreshTokens();
 
-    then(tokens)
-        .should()
-        .deleteRevokedAndExpiredOlderThan(eq(SOME_INSTANT.minus(Duration.ofDays(30))));
+    // then
+    then(tokens).should().deleteRevokedAndExpiredOlderThan(cutoff);
   }
 
   private void givenSigningKey() {
@@ -238,7 +295,7 @@ class AuthServiceTest {
     given(keys.getActiveSigner()).willReturn(signer);
   }
 
-  private static com.nimbusds.jwt.JWTClaimsSet verifyAndExtractClaims(String jwt) throws Exception {
+  private static JWTClaimsSet verifyAndExtractClaims(String jwt) throws Exception {
     var parsed = SignedJWT.parse(jwt);
     assertThat(parsed.getHeader().getKeyID()).isEqualTo(SOME_KID);
     assertThat(parsed.getHeader().getAlgorithm().getName()).isEqualTo("RS256");
@@ -247,7 +304,8 @@ class AuthServiceTest {
   }
 
   private static String sha256(String input) throws Exception {
-    var digest = MessageDigest.getInstance("SHA-256").digest(input.getBytes());
+    var digest =
+        MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8));
     return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
   }
 }

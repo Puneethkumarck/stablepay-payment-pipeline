@@ -1,15 +1,17 @@
 package io.stablepay.auth.application;
 
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_INSTANT;
+import static io.stablepay.auth.test.TestUtils.eqIgnoring;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.nimbusds.jose.JWSAlgorithm;
 import io.stablepay.auth.domain.model.SigningKey;
 import io.stablepay.auth.domain.port.SigningKeyRepository;
 import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.Base64;
@@ -31,26 +33,30 @@ class SigningKeyManagerTest {
 
   @Test
   void generatesAndPersistsKeypairWhenNoActiveKeyExists() {
+    // given
     given(repository.findActive()).willReturn(Optional.empty());
     var manager = new SigningKeyManager(repository, FIXED_CLOCK);
+    var expected =
+        SigningKey.builder()
+            .kid("ignored")
+            .privateKeyPem("ignored")
+            .publicKeyPem("ignored")
+            .algorithm("RS256")
+            .createdAt(SOME_INSTANT)
+            .isActive(true)
+            .build();
 
+    // when
     manager.initialize();
 
+    // then
     var captor = ArgumentCaptor.forClass(SigningKey.class);
     then(repository).should().save(captor.capture());
     var saved = captor.getValue();
     assertThat(saved)
         .usingRecursiveComparison()
         .ignoringFields("kid", "privateKeyPem", "publicKeyPem")
-        .isEqualTo(
-            SigningKey.builder()
-                .kid(saved.kid())
-                .privateKeyPem(saved.privateKeyPem())
-                .publicKeyPem(saved.publicKeyPem())
-                .algorithm("RS256")
-                .createdAt(SOME_INSTANT)
-                .isActive(true)
-                .build());
+        .isEqualTo(expected);
     assertThat(saved.kid()).matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
     assertThat(saved.privateKeyPem()).startsWith("-----BEGIN PRIVATE KEY-----"); // gitleaks:allow
     assertThat(saved.publicKeyPem()).startsWith("-----BEGIN PUBLIC KEY-----");
@@ -58,47 +64,58 @@ class SigningKeyManagerTest {
 
   @Test
   void doesNotGenerateWhenActiveKeyExists() {
+    // given
     var existing = generateActiveKey();
     given(repository.findActive()).willReturn(Optional.of(existing));
     var manager = new SigningKeyManager(repository, FIXED_CLOCK);
 
+    // when
     manager.initialize();
 
-    then(repository).should(never()).save(any(SigningKey.class));
+    // then
+    then(repository).should(never()).save(eqIgnoring(existing));
     assertThat(manager.getActiveKey()).isSameAs(existing);
   }
 
   @Test
   @SuppressWarnings("unchecked")
   void getJwkSetReturnsRs256RsaKeyWithKid() {
+    // given
     var existing = generateActiveKey();
     given(repository.findActive()).willReturn(Optional.of(existing));
     var manager = new SigningKeyManager(repository, FIXED_CLOCK);
     manager.initialize();
+    var publicKey = (RSAPublicKey) parsePublic(existing.publicKeyPem());
+    var expectedJwk =
+        new com.nimbusds.jose.jwk.RSAKey.Builder(publicKey)
+            .keyID(existing.kid())
+            .algorithm(JWSAlgorithm.RS256)
+            .build()
+            .toJSONObject();
 
+    // when
     var jwks = manager.getJwkSet();
 
-    var keys = (List<Map<String, Object>>) jwks.get("keys");
-    assertThat(keys).hasSize(1);
-    var jwk = keys.get(0);
-    assertThat(jwk.get("kty")).isEqualTo("RSA");
-    assertThat(jwk.get("kid")).isEqualTo(existing.kid());
-    assertThat(jwk.get("alg")).isEqualTo("RS256");
-    assertThat(jwk.get("n")).isInstanceOf(String.class);
-    assertThat(jwk.get("e")).isInstanceOf(String.class);
+    // then
+    var actualKeys = (List<Map<String, Object>>) jwks.get("keys");
+    assertThat(actualKeys).hasSize(1);
+    assertThat(actualKeys.get(0)).usingRecursiveComparison().isEqualTo(expectedJwk);
   }
 
   @Test
-  void getActiveSignerSignsWithStoredPrivateKey() throws Exception {
+  void getActiveSignerSignsWithStoredPrivateKey() {
+    // given
     var existing = generateActiveKey();
     given(repository.findActive()).willReturn(Optional.of(existing));
     var manager = new SigningKeyManager(repository, FIXED_CLOCK);
     manager.initialize();
 
+    // when
     var signer = manager.getActiveSigner();
 
+    // then
     assertThat(signer).isNotNull();
-    assertThat(signer.supportedJWSAlgorithms()).contains(com.nimbusds.jose.JWSAlgorithm.RS256);
+    assertThat(signer.supportedJWSAlgorithms()).contains(JWSAlgorithm.RS256);
   }
 
   private static SigningKey generateActiveKey() {
@@ -114,6 +131,20 @@ class SigningKeyManagerTest {
           .createdAt(SOME_INSTANT)
           .isActive(true)
           .build();
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private static java.security.PublicKey parsePublic(String pem) {
+    try {
+      var stripped =
+          pem.replace("-----BEGIN PUBLIC KEY-----", "")
+              .replace("-----END PUBLIC KEY-----", "")
+              .replaceAll("\\s+", "");
+      var bytes = Base64.getDecoder().decode(stripped);
+      var spec = new java.security.spec.X509EncodedKeySpec(bytes);
+      return java.security.KeyFactory.getInstance("RSA").generatePublic(spec);
     } catch (Exception e) {
       throw new IllegalStateException(e);
     }

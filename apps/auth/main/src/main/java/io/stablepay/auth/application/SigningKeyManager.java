@@ -3,13 +3,17 @@ package io.stablepay.auth.application;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
+import io.stablepay.auth.domain.exception.SigningKeyGenerationException;
+import io.stablepay.auth.domain.exception.SigningKeyParseException;
 import io.stablepay.auth.domain.model.SigningKey;
 import io.stablepay.auth.domain.port.SigningKeyRepository;
 import jakarta.annotation.PostConstruct;
 import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Clock;
@@ -36,10 +40,10 @@ public class SigningKeyManager {
   private final SigningKeyRepository repository;
   private final Clock clock;
 
-  private SigningKey activeKey;
-  private RSAPrivateKey activePrivateKey;
-  private RSAPublicKey activePublicKey;
-  private RSASSASigner activeSigner;
+  private volatile SigningKey activeKey;
+  private volatile RSAPrivateKey activePrivateKey;
+  private volatile RSAPublicKey activePublicKey;
+  private volatile RSASSASigner activeSigner;
 
   @PostConstruct
   public void initialize() {
@@ -85,8 +89,8 @@ public class SigningKeyManager {
       repository.save(key);
       log.info("Generated new RS256 signing key kid={}", kid);
       return key;
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to generate RSA signing key", e);
+    } catch (NoSuchAlgorithmException e) {
+      throw new SigningKeyGenerationException("Failed to generate RSA signing key", e);
     }
   }
 
@@ -95,8 +99,8 @@ public class SigningKeyManager {
       var bytes = decodePem(pem, PRIVATE_PEM_HEADER, PRIVATE_PEM_FOOTER);
       var spec = new PKCS8EncodedKeySpec(bytes);
       return (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(spec);
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to parse private key PEM", e);
+    } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+      throw new SigningKeyParseException("Failed to parse private key PEM", e);
     }
   }
 
@@ -105,8 +109,8 @@ public class SigningKeyManager {
       var bytes = decodePem(pem, PUBLIC_PEM_HEADER, PUBLIC_PEM_FOOTER);
       var spec = new X509EncodedKeySpec(bytes);
       return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to parse public key PEM", e);
+    } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+      throw new SigningKeyParseException("Failed to parse public key PEM", e);
     }
   }
 

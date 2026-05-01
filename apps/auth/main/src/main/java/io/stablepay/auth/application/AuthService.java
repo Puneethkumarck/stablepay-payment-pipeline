@@ -5,11 +5,14 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.stablepay.auth.domain.exception.CryptoUnavailableException;
+import io.stablepay.auth.domain.exception.JwtSigningException;
 import io.stablepay.auth.domain.model.RefreshToken;
 import io.stablepay.auth.domain.model.RefreshTokenId;
 import io.stablepay.auth.domain.model.User;
 import io.stablepay.auth.domain.port.RefreshTokenRepository;
 import io.stablepay.auth.domain.port.UserRepository;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -82,8 +85,13 @@ public class AuthService {
     if (existing.isEmpty()) {
       return new LoginOutcome.InvalidCredentials();
     }
-    var rt = existing.orElseThrow();
-    var user = users.findById(rt.userId()).orElseThrow();
+    var rt = existing.get();
+    var maybeUser = users.findById(rt.userId());
+    if (maybeUser.isEmpty()) {
+      log.warn("Refresh token {} references unknown user {}", rt.id(), rt.userId());
+      return new LoginOutcome.InvalidCredentials();
+    }
+    var user = maybeUser.get();
     tokens.revoke(rt.id(), now);
     return new LoginOutcome.Success(
         issueAccessToken(user, now), issueRefreshToken(user, now), ACCESS_TTL);
@@ -121,7 +129,7 @@ public class AuthService {
       jwt.sign(keys.getActiveSigner());
       return jwt.serialize();
     } catch (JOSEException e) {
-      throw new IllegalStateException("Failed to sign access token", e);
+      throw new JwtSigningException("Failed to sign access token", e);
     }
   }
 
@@ -144,10 +152,11 @@ public class AuthService {
 
   private static String sha256(String input) {
     try {
-      var digest = MessageDigest.getInstance("SHA-256").digest(input.getBytes());
+      var digest =
+          MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8));
       return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
     } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 unavailable", e);
+      throw new CryptoUnavailableException("SHA-256 unavailable", e);
     }
   }
 }
