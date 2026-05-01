@@ -78,6 +78,7 @@ dependencies {
     integrationTestImplementation(libs.spring.boot.starter.test)
     integrationTestImplementation(libs.testcontainers.postgres)
     integrationTestImplementation(libs.testcontainers.junit)
+    integrationTestImplementation(testFixtures(project(":apps:auth:auth")))
     "integrationTestCompileOnly"(libs.lombok)
     "integrationTestAnnotationProcessor"(libs.lombok)
 

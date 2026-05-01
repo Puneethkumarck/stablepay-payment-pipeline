@@ -54,24 +54,30 @@ public final class AuthDomainFixtures {
   }
 
   public static RefreshToken activeRefreshToken() {
+    return refreshTokenBuilder().build();
+  }
+
+  public static SigningKey activeSigningKey() {
+    return signingKeyBuilder().build();
+  }
+
+  public static RefreshToken.RefreshTokenBuilder refreshTokenBuilder() {
     return RefreshToken.builder()
-        .id(SOME_REFRESH_TOKEN_ID)
+        .id(RefreshTokenId.of(UUID.randomUUID()))
         .userId(SOME_USER_ID)
         .tokenHash(SOME_TOKEN_HASH)
         .issuedAt(SOME_INSTANT)
         .expiresAt(SOME_EXPIRES_AT)
-        .revokedAt(Optional.empty())
-        .build();
+        .revokedAt(Optional.empty());
   }
 
-  public static SigningKey activeSigningKey() {
+  public static SigningKey.SigningKeyBuilder signingKeyBuilder() {
     return SigningKey.builder()
         .kid(SOME_KID)
         .privateKeyPem(SOME_PRIVATE_KEY_PEM)
         .publicKeyPem(SOME_PUBLIC_KEY_PEM)
         .algorithm(SOME_ALGORITHM)
         .createdAt(SOME_INSTANT)
-        .isActive(true)
-        .build();
+        .isActive(true);
   }
 }
