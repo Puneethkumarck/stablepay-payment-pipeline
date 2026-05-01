@@ -43,5 +43,10 @@ class AuthArchitectureTest {
       noFields().should().beAnnotatedWith("org.springframework.beans.factory.annotation.Autowired");
 
   @ArchTest
-  static final ArchRule noSystemOut = noClasses().should().callMethod(System.class, "out");
+  static final ArchRule noSystemOut =
+      noClasses()
+          .should()
+          .accessField(System.class, "out")
+          .orShould()
+          .accessField(System.class, "err");
 }
