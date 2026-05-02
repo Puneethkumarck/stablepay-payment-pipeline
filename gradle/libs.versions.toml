@@ -75,6 +75,10 @@ spring-boot-starter-validation = { module = "org.springframework.boot:spring-boo
 spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
+spring-boot-resttestclient = { module = "org.springframework.boot:spring-boot-resttestclient" }
+spring-boot-http-client = { module = "org.springframework.boot:spring-boot-http-client" }
+spring-boot-restclient = { module = "org.springframework.boot:spring-boot-restclient" }
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
 
 namastack-outbox-starter-jdbc = { module = "io.namastack:namastack-outbox-starter-jdbc", version.ref = "namastack-outbox" }

@@ -3,7 +3,6 @@ package io.stablepay.auth.domain.model;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_EXPIRES_AT;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_INSTANT;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_LATER_INSTANT;
-import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_REFRESH_TOKEN_ID;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_TOKEN_HASH;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_USER_ID;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.activeRefreshToken;
@@ -23,7 +22,7 @@ class RefreshTokenTest {
     // then
     var expected =
         new RefreshToken(
-            SOME_REFRESH_TOKEN_ID,
+            actual.id(),
             SOME_USER_ID,
             SOME_TOKEN_HASH,
             SOME_INSTANT,
@@ -89,7 +88,7 @@ class RefreshTokenTest {
     // then
     var expected =
         new RefreshToken(
-            SOME_REFRESH_TOKEN_ID,
+            actual.id(),
             SOME_USER_ID,
             SOME_TOKEN_HASH,
             SOME_INSTANT,
