@@ -1,6 +1,6 @@
 package io.stablepay.auth.infrastructure.security;
 
-import static io.stablepay.auth.infrastructure.security.FixedClockConfig.FIXED_NOW;
+import static io.stablepay.auth.infrastructure.security.TestConfig.FIXED_NOW;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
   SecurityConfig.class,
   LoginRateLimitFilter.class,
   GlobalExceptionHandler.class,
-  FixedClockConfig.class
+  TestConfig.class
 })
 class SecurityFilterChainIT {
 

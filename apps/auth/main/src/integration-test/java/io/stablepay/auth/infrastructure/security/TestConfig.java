@@ -8,7 +8,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 
 @TestConfiguration
-class FixedClockConfig {
+class TestConfig {
 
   static final Instant FIXED_NOW = Instant.parse("2026-05-02T10:15:30Z");
 
