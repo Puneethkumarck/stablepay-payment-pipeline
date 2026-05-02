@@ -92,6 +92,7 @@ dependencies {
     testImplementation(libs.assertj.core)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit)
+    testImplementation(libs.trino.parser)
     testCompileOnly(libs.lombok)
     testAnnotationProcessor(libs.lombok)
 
@@ -99,6 +100,7 @@ dependencies {
     integrationTestImplementation(libs.spring.boot.starter.webmvc.test)
     integrationTestImplementation(libs.spring.security.test)
     integrationTestImplementation(libs.testcontainers.postgres)
+    integrationTestImplementation(libs.opensearch.testcontainers)
     integrationTestImplementation(libs.testcontainers.junit)
     "integrationTestCompileOnly"(libs.lombok)
     "integrationTestAnnotationProcessor"(libs.lombok)
