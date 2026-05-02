@@ -127,6 +127,9 @@ public class TrinoDlqRepository implements DlqRepository {
 
   static TrinoDlqCursor decodeCursor(String cursor) {
     var part = Base64PipeCursor.decode(cursor, CURSOR_ERROR_CODE);
-    return new TrinoDlqCursor(Instant.ofEpochMilli(part.longPart()), part.stringPart());
+    return TrinoDlqCursor.builder()
+        .failedAt(Instant.ofEpochMilli(part.longPart()))
+        .dlqId(part.stringPart())
+        .build();
   }
 }

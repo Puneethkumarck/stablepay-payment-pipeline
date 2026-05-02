@@ -89,7 +89,11 @@ class TrinoFlowRepositoryTest {
     var createdAtMillis = FlowFixtures.SOME_FLOW_CREATED_AT.toEpochMilli();
     var flowIdString = FlowFixtures.SOME_FLOW_ID.value().toString();
     var encoded = TrinoFlowRepository.encodeCursor(createdAtMillis, flowIdString);
-    var expected = new TrinoFlowCursor(FlowFixtures.SOME_FLOW_CREATED_AT, flowIdString);
+    var expected =
+        TrinoFlowCursor.builder()
+            .createdAt(FlowFixtures.SOME_FLOW_CREATED_AT)
+            .id(flowIdString)
+            .build();
 
     // when
     var actual = TrinoFlowRepository.decodeCursor(encoded);

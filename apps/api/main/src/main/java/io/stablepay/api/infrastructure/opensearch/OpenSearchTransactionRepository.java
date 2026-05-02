@@ -150,14 +150,20 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
       var hits = response.hits().hits();
       if (hits.size() <= pageSize) {
         var items = hits.stream().map(Hit::source).map(mapper::toDomain).toList();
-        return new PaginatedResult<>(items, Optional.empty());
+        return PaginatedResult.<Transaction>builder()
+            .items(items)
+            .nextCursor(Optional.empty())
+            .build();
       }
       var keptHits = hits.subList(0, pageSize);
       var items = keptHits.stream().map(Hit::source).map(mapper::toDomain).toList();
       var lastSource = keptHits.get(keptHits.size() - 1).source();
       var nextCursor =
           OpenSearchCursorCodec.encode(lastSource.eventTimeEpochMillis(), lastSource.eventId());
-      return new PaginatedResult<>(items, Optional.of(nextCursor));
+      return PaginatedResult.<Transaction>builder()
+          .items(items)
+          .nextCursor(Optional.of(nextCursor))
+          .build();
     } catch (IOException | OpenSearchException e) {
       throw new OpenSearchAdapterException(e);
     }

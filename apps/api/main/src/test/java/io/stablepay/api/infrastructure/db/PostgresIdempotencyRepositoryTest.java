@@ -25,7 +25,12 @@ class PostgresIdempotencyRepositoryTest {
     given(rs.getInt("response_status")).willReturn(200);
     given(rs.getBytes("response_body")).willReturn(bodyBytes);
     given(rs.getTimestamp("expires_at")).willReturn(Timestamp.from(expiresAt));
-    var expected = new CachedResponse(200, new byte[] {1, 2, 3}, expiresAt);
+    var expected =
+        CachedResponse.builder()
+            .status(200)
+            .body(new byte[] {1, 2, 3})
+            .expiresAt(expiresAt)
+            .build();
 
     // when
     var actual = PostgresIdempotencyRepository.CACHED_RESPONSE_ROW_MAPPER.mapRow(rs, 0);
@@ -41,7 +46,8 @@ class PostgresIdempotencyRepositoryTest {
     given(rs.getInt("response_status")).willReturn(204);
     given(rs.getBytes("response_body")).willReturn(null);
     given(rs.getTimestamp("expires_at")).willReturn(Timestamp.from(expiresAt));
-    var expected = new CachedResponse(204, new byte[0], expiresAt);
+    var expected =
+        CachedResponse.builder().status(204).body(new byte[0]).expiresAt(expiresAt).build();
 
     // when
     var actual = PostgresIdempotencyRepository.CACHED_RESPONSE_ROW_MAPPER.mapRow(rs, 0);

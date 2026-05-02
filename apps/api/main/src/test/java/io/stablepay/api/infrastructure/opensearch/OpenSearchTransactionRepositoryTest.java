@@ -132,7 +132,11 @@ class OpenSearchTransactionRepositoryTest {
     var actual = repository.search(criteria, TransactionFixtures.SOME_TRANSACTION_CUSTOMER_ID);
 
     // then
-    var expected = new PaginatedResult<>(List.of(domain), Optional.<String>empty());
+    var expected =
+        PaginatedResult.<io.stablepay.api.domain.model.Transaction>builder()
+            .items(List.of(domain))
+            .nextCursor(Optional.<String>empty())
+            .build();
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     var sent = requestCaptor.getValue();
     assertThat(sent.size()).isEqualTo(criteria.pageSize() + 1);
@@ -166,7 +170,11 @@ class OpenSearchTransactionRepositoryTest {
     var actual = repository.searchAdmin(criteria);
 
     // then
-    var expected = new PaginatedResult<>(List.of(domain), Optional.<String>empty());
+    var expected =
+        PaginatedResult.<io.stablepay.api.domain.model.Transaction>builder()
+            .items(List.of(domain))
+            .nextCursor(Optional.<String>empty())
+            .build();
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     var sent = requestCaptor.getValue();
     assertThat(sent.query().bool().filter())
@@ -202,7 +210,11 @@ class OpenSearchTransactionRepositoryTest {
     var actual = repository.searchAdmin(criteria);
 
     // then
-    var expected = new PaginatedResult<>(List.of(domain), Optional.of(expectedCursor));
+    var expected =
+        PaginatedResult.<io.stablepay.api.domain.model.Transaction>builder()
+            .items(List.of(domain))
+            .nextCursor(Optional.of(expectedCursor))
+            .build();
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }
 
@@ -231,7 +243,11 @@ class OpenSearchTransactionRepositoryTest {
     // then
     assertThat(actual)
         .usingRecursiveComparison()
-        .isEqualTo(new PaginatedResult<>(List.of(domain), Optional.<String>empty()));
+        .isEqualTo(
+            PaginatedResult.<io.stablepay.api.domain.model.Transaction>builder()
+                .items(List.of(domain))
+                .nextCursor(Optional.<String>empty())
+                .build());
   }
 
   @Test

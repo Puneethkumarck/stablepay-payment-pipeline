@@ -35,10 +35,11 @@ public class PostgresIdempotencyRepository implements IdempotencyRepository {
 
   static final RowMapper<CachedResponse> CACHED_RESPONSE_ROW_MAPPER =
       (rs, rowNum) ->
-          new CachedResponse(
-              rs.getInt("response_status"),
-              Optional.ofNullable(rs.getBytes("response_body")).orElseGet(() -> new byte[0]),
-              rs.getTimestamp("expires_at").toInstant());
+          CachedResponse.builder()
+              .status(rs.getInt("response_status"))
+              .body(Optional.ofNullable(rs.getBytes("response_body")).orElseGet(() -> new byte[0]))
+              .expiresAt(rs.getTimestamp("expires_at").toInstant())
+              .build();
 
   private final NamedParameterJdbcTemplate jdbc;
 

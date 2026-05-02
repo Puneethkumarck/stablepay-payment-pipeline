@@ -27,7 +27,7 @@ public final class Base64PipeCursor {
       }
       var longPart = Long.parseLong(decoded.substring(0, pipe));
       var stringPart = decoded.substring(pipe + 1);
-      return new Base64PipeCursorPart(longPart, stringPart);
+      return Base64PipeCursorPart.builder().longPart(longPart).stringPart(stringPart).build();
     } catch (IllegalArgumentException e) {
       if (e.getMessage() != null && e.getMessage().startsWith(errorCode)) {
         throw e;
