@@ -26,6 +26,8 @@ namastack:
         enabled: true
 
 stablepay:
+  auth:
+    jwks-uri: ${STABLEPAY_AUTH_JWKS_URI:http://apps-auth:9000/.well-known/jwks.json}
   opensearch:
     uri: ${OPENSEARCH_URI:http://opensearch:9200}
     transactions-index: ${OPENSEARCH_TRANSACTIONS_INDEX:transactions}
