@@ -1,7 +1,5 @@
 package io.stablepay.auth.infrastructure.ratelimit;
 
-import static org.mockito.BDDMockito.willAnswer;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.auth.client.ApiError;
 import jakarta.servlet.FilterChain;
@@ -12,40 +10,29 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-@ExtendWith(MockitoExtension.class)
 class LoginRateLimitFilterTest {
 
   private static final Instant FIXED_NOW = Instant.parse("2026-05-02T10:15:30Z");
   private static final String LOGIN_PATH = "/api/v1/auth/login";
   private static final String SOME_IP = "203.0.113.7";
 
-  @Mock private FilterChain chain;
-
   private LoginRateLimitFilter filter;
   private ObjectMapper objectMapper;
   private AtomicInteger chainInvocations;
+  private FilterChain chain;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     objectMapper = new ObjectMapper().findAndRegisterModules();
     filter = new LoginRateLimitFilter(objectMapper, Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
     chainInvocations = new AtomicInteger(0);
-    willAnswer(
-            invocation -> {
-              chainInvocations.incrementAndGet();
-              return null;
-            })
-        .given(chain)
-        .doFilter(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    chain = (req, res) -> chainInvocations.incrementAndGet();
   }
 
   @Test
@@ -108,12 +95,31 @@ class LoginRateLimitFilterTest {
     }
 
     // when — first request from a fresh ip2 must succeed
-    var response = new MockHttpServletResponse();
-    filter.doFilter(loginRequestFrom("198.51.100.2"), response, chain);
+    filter.doFilter(loginRequestFrom("198.51.100.2"), new MockHttpServletResponse(), chain);
 
     // then
-    Assertions.assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
     Assertions.assertThat(chainInvocations.get()).isEqualTo(6);
+  }
+
+  @Test
+  void shouldNormalizeTrailingSlashAndMatrixParamsForLoginPath() throws Exception {
+    // given — three rate-limited variants of the same path, plus two normal hits
+    var trailing = loginRequestFromWithUri(SOME_IP, LOGIN_PATH + "/");
+    var matrix = loginRequestFromWithUri(SOME_IP, LOGIN_PATH + ";jsessionid=abc");
+    var plain = loginRequestFromWithUri(SOME_IP, LOGIN_PATH);
+
+    // when — five attempts across normalized variants exhaust the bucket; the sixth is rejected
+    filter.doFilter(plain, new MockHttpServletResponse(), chain);
+    filter.doFilter(trailing, new MockHttpServletResponse(), chain);
+    filter.doFilter(matrix, new MockHttpServletResponse(), chain);
+    filter.doFilter(plain, new MockHttpServletResponse(), chain);
+    filter.doFilter(trailing, new MockHttpServletResponse(), chain);
+    var sixth = new MockHttpServletResponse();
+    filter.doFilter(matrix, sixth, chain);
+
+    // then
+    Assertions.assertThat(chainInvocations.get()).isEqualTo(5);
+    Assertions.assertThat(sixth.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
   }
 
   private MockHttpServletRequest loginRequest() {
@@ -121,9 +127,13 @@ class LoginRateLimitFilterTest {
   }
 
   private MockHttpServletRequest loginRequestFrom(String ip) {
+    return loginRequestFromWithUri(ip, LOGIN_PATH);
+  }
+
+  private MockHttpServletRequest loginRequestFromWithUri(String ip, String uri) {
     var request = new MockHttpServletRequest();
     request.setMethod("POST");
-    request.setRequestURI(LOGIN_PATH);
+    request.setRequestURI(uri);
     request.setRemoteAddr(ip);
     return request;
   }

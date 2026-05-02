@@ -28,7 +28,12 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
-                        "/api/v1/auth/**", "/.well-known/jwks.json", "/actuator/health/**")
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/logout",
+                        "/.well-known/jwks.json",
+                        "/actuator/health",
+                        "/actuator/health/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
@@ -36,9 +41,6 @@ public class SecurityConfig {
     return http.build();
   }
 
-  // Suppress Spring Boot's auto-registration of LoginRateLimitFilter as a top-level
-  // servlet filter. The filter is wired into the Spring Security chain above; without
-  // this disable, it would also run for every request at the servlet container level.
   @Bean
   public FilterRegistrationBean<LoginRateLimitFilter> loginRateLimitFilterRegistration(
       LoginRateLimitFilter filter) {

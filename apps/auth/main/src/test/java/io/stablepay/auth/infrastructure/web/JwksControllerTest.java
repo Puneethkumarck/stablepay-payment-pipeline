@@ -2,6 +2,7 @@ package io.stablepay.auth.infrastructure.web;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -53,6 +54,7 @@ class JwksControllerTest {
         mockMvc
             .perform(get("/.well-known/jwks.json"))
             .andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control", "max-age=3600, public"))
             .andReturn()
             .getResponse()
             .getContentAsString();
