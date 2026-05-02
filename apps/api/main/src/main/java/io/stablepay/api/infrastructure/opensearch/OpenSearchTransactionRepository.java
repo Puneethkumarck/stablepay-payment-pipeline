@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -19,10 +20,10 @@ import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.search.Hit;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 @Slf4j
 public class OpenSearchTransactionRepository implements TransactionRepository {
 
@@ -36,23 +37,14 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
 
   private final OpenSearchClient client;
   private final OpenSearchDocumentMapper mapper;
-  private final String indexName;
-
-  public OpenSearchTransactionRepository(
-      OpenSearchClient client,
-      OpenSearchDocumentMapper mapper,
-      @Value("${stablepay.opensearch.transactions-index:transactions}") String indexName) {
-    this.client = client;
-    this.mapper = mapper;
-    this.indexName = indexName;
-  }
+  private final OpenSearchProperties properties;
 
   @Override
   public Optional<Transaction> findByReference(String reference, CustomerId customerId) {
     var request =
         SearchRequest.of(
             r ->
-                r.index(indexName)
+                r.index(properties.transactionsIndex())
                     .size(1)
                     .query(
                         q ->
@@ -82,7 +74,7 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
     var request =
         SearchRequest.of(
             r ->
-                r.index(indexName)
+                r.index(properties.transactionsIndex())
                     .size(1)
                     .query(
                         q ->
@@ -108,7 +100,9 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
     var request =
         SearchRequest.of(
             r -> {
-              r.index(indexName).size(batchSize).query(Query.of(q -> q.matchAll(m -> m)));
+              r.index(properties.transactionsIndex())
+                  .size(batchSize)
+                  .query(Query.of(q -> q.matchAll(m -> m)));
               r.sort(s -> s.field(f -> f.field(FIELD_EVENT_TIME).order(SortOrder.Asc)))
                   .sort(s -> s.field(f -> f.field(FIELD_EVENT_ID).order(SortOrder.Asc)));
               sortValue
@@ -135,7 +129,7 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
     var request =
         SearchRequest.of(
             r -> {
-              r.index(indexName)
+              r.index(properties.transactionsIndex())
                   .size(pageSize + 1)
                   .query(q -> q.bool(b -> applyFilters(b, criteria, customerId)))
                   .sort(s -> s.field(f -> f.field(FIELD_EVENT_TIME).order(SortOrder.Asc)))

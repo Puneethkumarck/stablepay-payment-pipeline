@@ -8,6 +8,7 @@ import io.stablepay.api.domain.port.CustomerRepository;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
@@ -17,6 +18,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 @Slf4j
 public class TrinoCustomerRepository implements CustomerRepository {
 
@@ -46,11 +48,8 @@ public class TrinoCustomerRepository implements CustomerRepository {
               .risk(rs.getString("risk_tier"))
               .build();
 
+  @Qualifier("trinoJdbcTemplate")
   private final NamedParameterJdbcTemplate jdbc;
-
-  public TrinoCustomerRepository(@Qualifier("trinoJdbcTemplate") NamedParameterJdbcTemplate jdbc) {
-    this.jdbc = jdbc;
-  }
 
   @Override
   public Optional<CustomerSummary> findById(CustomerId customerId) {

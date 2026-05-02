@@ -41,7 +41,9 @@ class OpenSearchTransactionRepositoryTest {
   void setUp() {
     client = mock(OpenSearchClient.class);
     mapper = mock(OpenSearchDocumentMapper.class);
-    repository = new OpenSearchTransactionRepository(client, mapper, INDEX_NAME);
+    var properties =
+        OpenSearchProperties.builder().uri("http://test").transactionsIndex(INDEX_NAME).build();
+    repository = new OpenSearchTransactionRepository(client, mapper, properties);
     requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
   }
 

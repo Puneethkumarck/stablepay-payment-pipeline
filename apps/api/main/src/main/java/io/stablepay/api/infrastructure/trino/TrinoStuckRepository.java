@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
@@ -21,6 +22,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 @Slf4j
 public class TrinoStuckRepository implements StuckRepository {
 
@@ -55,11 +57,8 @@ public class TrinoStuckRepository implements StuckRepository {
               .stuckMillis(rs.getLong("stuck_millis"))
               .build();
 
+  @Qualifier("trinoJdbcTemplate")
   private final NamedParameterJdbcTemplate jdbc;
-
-  public TrinoStuckRepository(@Qualifier("trinoJdbcTemplate") NamedParameterJdbcTemplate jdbc) {
-    this.jdbc = jdbc;
-  }
 
   @Override
   public PaginatedResult<StuckPayment> searchAdmin(int pageSize, Optional<String> cursor) {

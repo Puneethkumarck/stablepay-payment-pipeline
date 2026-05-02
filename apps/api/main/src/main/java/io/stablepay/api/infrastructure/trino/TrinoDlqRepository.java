@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 @Slf4j
 public class TrinoDlqRepository implements DlqRepository {
 
@@ -62,11 +64,8 @@ public class TrinoDlqRepository implements DlqRepository {
               .originalPayloadJson(Optional.ofNullable(rs.getString("original_payload_json")))
               .build();
 
+  @Qualifier("trinoJdbcTemplate")
   private final NamedParameterJdbcTemplate jdbc;
-
-  public TrinoDlqRepository(@Qualifier("trinoJdbcTemplate") NamedParameterJdbcTemplate jdbc) {
-    this.jdbc = jdbc;
-  }
 
   @Override
   public Optional<DlqEvent> findByIdAdmin(DlqId id) {

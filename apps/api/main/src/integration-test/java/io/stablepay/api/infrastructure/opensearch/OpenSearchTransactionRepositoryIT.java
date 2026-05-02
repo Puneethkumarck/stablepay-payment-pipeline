@@ -46,7 +46,12 @@ class OpenSearchTransactionRepositoryIT {
             .build();
     client = new OpenSearchClient(transport);
     var mapper = Mappers.getMapper(OpenSearchDocumentMapper.class);
-    repository = new OpenSearchTransactionRepository(client, mapper, INDEX_NAME);
+    var properties =
+        OpenSearchProperties.builder()
+            .uri(container.getHttpHostAddress())
+            .transactionsIndex(INDEX_NAME)
+            .build();
+    repository = new OpenSearchTransactionRepository(client, mapper, properties);
     createIndex();
   }
 
