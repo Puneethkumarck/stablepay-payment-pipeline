@@ -5,7 +5,7 @@ import io.stablepay.api.domain.model.Money;
 import io.stablepay.api.infrastructure.web.dto.AmountDto;
 import org.mapstruct.Mapper;
 
-@Mapper(componentModel = "spring")
+@Mapper
 public interface AmountMapper {
 
   default AmountDto toDto(Money money) {

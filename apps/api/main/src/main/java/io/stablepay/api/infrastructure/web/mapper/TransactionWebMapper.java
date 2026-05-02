@@ -4,14 +4,10 @@ import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.model.Transaction;
 import io.stablepay.api.infrastructure.web.dto.PaginatedResponse;
 import io.stablepay.api.infrastructure.web.dto.TransactionDto;
-import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(
-    componentModel = "spring",
-    uses = AmountMapper.class,
-    injectionStrategy = InjectionStrategy.CONSTRUCTOR)
+@Mapper(uses = AmountMapper.class)
 public interface TransactionWebMapper {
 
   @Mapping(target = "id", expression = "java(tx.id().value().toString())")

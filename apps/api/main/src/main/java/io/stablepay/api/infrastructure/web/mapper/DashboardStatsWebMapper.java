@@ -5,7 +5,7 @@ import io.stablepay.api.infrastructure.web.dto.DashboardStatsDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper
 public interface DashboardStatsWebMapper {
 
   @Mapping(target = "currencyCode", expression = "java(stats.currencyCode().name())")

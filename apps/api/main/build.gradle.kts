@@ -77,6 +77,7 @@ dependencies {
 
     implementation(libs.mapstruct)
     annotationProcessor(libs.mapstruct.processor)
+    annotationProcessor(libs.lombok.mapstruct.binding)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
@@ -118,6 +119,16 @@ dependencies {
     businessTestImplementation(libs.nimbus.jose.jwt)
     "businessTestCompileOnly"(libs.lombok)
     "businessTestAnnotationProcessor"(libs.lombok)
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(
+        listOf(
+            "-Amapstruct.defaultComponentModel=spring",
+            "-Amapstruct.defaultInjectionStrategy=constructor",
+            "-Amapstruct.unmappedTargetPolicy=ERROR",
+        ),
+    )
 }
 
 val integrationTestTask = tasks.register<Test>("integrationTest") {

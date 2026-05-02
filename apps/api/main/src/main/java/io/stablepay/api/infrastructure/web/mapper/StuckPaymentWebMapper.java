@@ -4,14 +4,10 @@ import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.model.StuckPayment;
 import io.stablepay.api.infrastructure.web.dto.PaginatedResponse;
 import io.stablepay.api.infrastructure.web.dto.StuckPaymentDto;
-import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(
-    componentModel = "spring",
-    uses = AmountMapper.class,
-    injectionStrategy = InjectionStrategy.CONSTRUCTOR)
+@Mapper(uses = AmountMapper.class)
 public interface StuckPaymentWebMapper {
 
   @Mapping(target = "id", expression = "java(payment.id().value().toString())")

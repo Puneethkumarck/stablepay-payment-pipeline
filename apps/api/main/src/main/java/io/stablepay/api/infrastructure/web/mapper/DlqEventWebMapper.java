@@ -7,7 +7,7 @@ import io.stablepay.api.infrastructure.web.dto.PaginatedResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper
 public interface DlqEventWebMapper {
 
   @Mapping(target = "id", expression = "java(event.id().value().toString())")
