@@ -96,6 +96,7 @@ springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openap
 trino-jdbc = { module = "io.trino:trino-jdbc", version.ref = "trino-jdbc" }
 trino-parser = { module = "io.trino:trino-parser", version.ref = "trino-jdbc" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+reactor-test = { module = "io.projectreactor:reactor-test" }
 
 [plugins]
 avro = { id = "com.github.davidmc24.gradle.plugin.avro", version.ref = "avro-plugin" }
