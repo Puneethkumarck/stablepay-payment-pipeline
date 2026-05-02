@@ -228,6 +228,7 @@ services:
       context: ./superset
     image: stablepay/superset:4.1.2
     container_name: stablepay-superset
+    profiles: ["lakehouse"]
     ports:
       - "8088:8088"
     environment:
@@ -294,8 +295,50 @@ services:
     networks:
       - stablepay_default
 
+  # ─── API Service (Spring Boot) ─────────────────────
+  apps-api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: stablepay-api
+    init: true
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-stablepay}
+      POSTGRES_USER: ${POSTGRES_USER:-stablepay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stablepay_dev}
+      REDIS_HOST: redis
+      OPENSEARCH_URI: http://opensearch:9200
+      TRINO_URL: jdbc:trino://trino:8080/iceberg
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      STABLEPAY_AUTH_JWKS_URI: http://apps-auth:9000/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      apps-auth:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      trino:
+        condition: service_started
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - stablepay_default
+
   # ─── Lakehouse Maintenance Jobs ───────────────────
-  # Gated behind the `lakehouse` profile until Trino is added in Plan 3.4.
+  # Gated behind the `lakehouse` profile.
   # Run with: docker compose --profile lakehouse up -d lakehouse-jobs
   lakehouse-jobs:
     build:

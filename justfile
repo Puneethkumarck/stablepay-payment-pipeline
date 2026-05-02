@@ -110,6 +110,26 @@ superset-init:
 trino-time-travel version:
     docker exec stablepay-trino trino --server http://localhost:8080 --execute "SELECT count(*) FROM iceberg.facts.fact_transactions FOR VERSION AS OF {{version}}"
 
+# ─── API Service ──────────────────────────────────
+
+# Build the API service jar and Docker image
+api-build:
+    ./gradlew :apps:api:main:bootJar
+    docker compose -f infra/docker-compose.yml build apps-api
+
+# Bring up the API service (waits for healthy)
+api-up:
+    docker compose -f infra/docker-compose.yml up -d --wait apps-api
+
+# Follow API service logs
+api-logs:
+    docker compose -f infra/docker-compose.yml logs -f apps-api
+
+# Smoke test: hit actuator health endpoint
+api-smoke:
+    @echo "Checking API health..."
+    curl -fs http://localhost:8080/actuator/health | grep -q '"status":"UP"' && echo "API is healthy" || (echo "API is not healthy" && exit 1)
+
 # ─── Auth Service ─────────────────────────────────
 
 # Build the auth service jar and Docker image
