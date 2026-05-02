@@ -69,6 +69,7 @@ dependencies {
 
     implementation(libs.bucket4j.core)
     implementation(libs.bucket4j.redis)
+    implementation(libs.bucket4j.lettuce)
     implementation(libs.caffeine)
 
     implementation(libs.nimbus.jose.jwt)
@@ -85,6 +86,7 @@ dependencies {
     testFixturesApi(libs.spring.boot.starter.oauth2.resource.server)
     testFixturesApi(libs.testcontainers.postgres)
     testFixturesApi(libs.nv.i18n)
+    testFixturesApi(libs.bucket4j.core)
     testFixturesCompileOnly(libs.lombok)
     testFixturesAnnotationProcessor(libs.lombok)
 

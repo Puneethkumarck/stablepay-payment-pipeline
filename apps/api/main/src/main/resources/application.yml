@@ -28,6 +28,8 @@ namastack:
 stablepay:
   auth:
     jwks-uri: ${STABLEPAY_AUTH_JWKS_URI:http://apps-auth:9000/.well-known/jwks.json}
+  ratelimit:
+    redis-uri: ${STABLEPAY_RATELIMIT_REDIS_URI:redis://${REDIS_HOST:redis}:${REDIS_PORT:6379}}
   opensearch:
     uri: ${OPENSEARCH_URI:http://opensearch:9200}
     transactions-index: ${OPENSEARCH_TRANSACTIONS_INDEX:transactions}
