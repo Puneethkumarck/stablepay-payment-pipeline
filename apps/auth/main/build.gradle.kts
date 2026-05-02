@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
     implementation(libs.bucket4j.core)
+    implementation(libs.caffeine)
 
     implementation(libs.mapstruct)
     annotationProcessor(libs.mapstruct.processor)
@@ -77,6 +78,8 @@ dependencies {
     testAnnotationProcessor(libs.lombok)
 
     integrationTestImplementation(libs.spring.boot.starter.test)
+    integrationTestImplementation(libs.spring.boot.starter.webmvc.test)
+    integrationTestImplementation(libs.spring.security.test)
     integrationTestImplementation(libs.testcontainers.postgres)
     integrationTestImplementation(libs.testcontainers.junit)
     integrationTestImplementation(testFixtures(project(":apps:auth:auth")))

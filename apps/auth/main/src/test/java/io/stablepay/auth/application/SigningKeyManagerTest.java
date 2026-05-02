@@ -90,6 +90,7 @@ class SigningKeyManagerTest {
         new com.nimbusds.jose.jwk.RSAKey.Builder(publicKey)
             .keyID(existing.kid())
             .algorithm(JWSAlgorithm.RS256)
+            .keyUse(com.nimbusds.jose.jwk.KeyUse.SIGNATURE)
             .build()
             .toJSONObject();
 

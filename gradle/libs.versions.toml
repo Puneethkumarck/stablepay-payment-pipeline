@@ -28,6 +28,7 @@ nimbus-jose-jwt = "10.9"
 flyway = "12.5.0"
 springdoc-openapi = "3.0.0"
 trino-jdbc = "475"
+caffeine = "3.2.2"
 
 [libraries]
 avro-core = { module = "org.apache.avro:avro", version.ref = "avro" }
@@ -73,6 +74,7 @@ spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
 
 namastack-outbox-starter-jdbc = { module = "io.namastack:namastack-outbox-starter-jdbc", version.ref = "namastack-outbox" }
 bucket4j-core = { module = "com.bucket4j:bucket4j_jdk17-core", version.ref = "bucket4j" }
@@ -83,6 +85,7 @@ flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc-openapi" }
 trino-jdbc = { module = "io.trino:trino-jdbc", version.ref = "trino-jdbc" }
 trino-parser = { module = "io.trino:trino-parser", version.ref = "trino-jdbc" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [plugins]
 avro = { id = "com.github.davidmc24.gradle.plugin.avro", version.ref = "avro-plugin" }
