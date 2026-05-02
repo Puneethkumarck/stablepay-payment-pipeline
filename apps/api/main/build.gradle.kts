@@ -83,6 +83,7 @@ dependencies {
     testFixturesApi(libs.spring.boot.starter.test)
     testFixturesApi(libs.spring.security.test)
     testFixturesApi(libs.testcontainers.postgres)
+    testFixturesApi(libs.nv.i18n)
     testFixturesCompileOnly(libs.lombok)
     testFixturesAnnotationProcessor(libs.lombok)
 
