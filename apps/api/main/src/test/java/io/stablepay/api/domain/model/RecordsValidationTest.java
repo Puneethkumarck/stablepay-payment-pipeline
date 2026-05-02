@@ -342,6 +342,48 @@ class RecordsValidationTest {
   }
 
   @Test
+  void transactionSearch_zeroPageSize_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                TransactionSearch.builder()
+                    .reference(Optional.empty())
+                    .flowType(Optional.empty())
+                    .internalStatus(Optional.empty())
+                    .customerStatus(Optional.empty())
+                    .from(Optional.empty())
+                    .to(Optional.empty())
+                    .pageSize(0)
+                    .cursor(Optional.empty())
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("pageSize");
+  }
+
+  @Test
+  void transactionSearch_invertedTimeRange_throwsIllegalArgumentException() {
+    // given
+    var from = Instant.parse("2026-05-02T00:00:00Z");
+    var to = Instant.parse("2026-05-01T00:00:00Z");
+
+    // when / then
+    assertThatThrownBy(
+            () ->
+                TransactionSearch.builder()
+                    .reference(Optional.empty())
+                    .flowType(Optional.empty())
+                    .internalStatus(Optional.empty())
+                    .customerStatus(Optional.empty())
+                    .from(Optional.of(from))
+                    .to(Optional.of(to))
+                    .pageSize(10)
+                    .cursor(Optional.empty())
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("from");
+  }
+
+  @Test
   void transactionSearch_nullCursor_throwsNpe() {
     // when / then
     assertThatThrownBy(

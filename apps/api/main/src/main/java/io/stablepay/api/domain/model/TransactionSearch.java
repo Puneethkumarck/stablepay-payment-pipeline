@@ -24,5 +24,11 @@ public record TransactionSearch(
     Objects.requireNonNull(from, "from");
     Objects.requireNonNull(to, "to");
     Objects.requireNonNull(cursor, "cursor");
+    if (pageSize <= 0) {
+      throw new IllegalArgumentException("pageSize must be > 0");
+    }
+    if (from.isPresent() && to.isPresent() && from.get().isAfter(to.get())) {
+      throw new IllegalArgumentException("from must be <= to");
+    }
   }
 }
