@@ -25,5 +25,8 @@ public record CustomerSummary(
     Objects.requireNonNull(totalSent, "totalSent");
     Objects.requireNonNull(joined, "joined");
     Objects.requireNonNull(risk, "risk");
+    if (txnCount < 0) {
+      throw new IllegalArgumentException("txnCount must be >= 0");
+    }
   }
 }

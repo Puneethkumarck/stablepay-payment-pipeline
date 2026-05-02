@@ -28,5 +28,14 @@ public record DlqEvent(
     Objects.requireNonNull(sinkType, "sinkType");
     Objects.requireNonNull(watermarkAt, "watermarkAt");
     Objects.requireNonNull(originalPayloadJson, "originalPayloadJson");
+    if (sourcePartition < 0) {
+      throw new IllegalArgumentException("sourcePartition must be >= 0");
+    }
+    if (sourceOffset < 0) {
+      throw new IllegalArgumentException("sourceOffset must be >= 0");
+    }
+    if (retryCount < 0) {
+      throw new IllegalArgumentException("retryCount must be >= 0");
+    }
   }
 }

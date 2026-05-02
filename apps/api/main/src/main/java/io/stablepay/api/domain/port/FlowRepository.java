@@ -6,10 +6,6 @@ import io.stablepay.api.domain.model.FlowId;
 import io.stablepay.api.domain.model.PaginatedResult;
 import java.util.Optional;
 
-/**
- * Customer-scope rule (CONTEXT.md D-B1): every read method takes CustomerId or has the …Admin
- * suffix.
- */
 public interface FlowRepository {
 
   Optional<Flow> findById(FlowId id, CustomerId customerId);

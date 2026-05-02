@@ -86,4 +86,22 @@ class MoneyTest {
     // then
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }
+
+  @Test
+  void toMicros_precisionLoss_throwsArithmeticException() {
+    // given
+    var money = new Money(new BigDecimal("100.1234567"), CurrencyCode.USD);
+
+    // when / then
+    assertThatThrownBy(money::toMicros).isInstanceOf(ArithmeticException.class);
+  }
+
+  @Test
+  void toMicros_overflow_throwsArithmeticException() {
+    // given
+    var money = new Money(new BigDecimal("1e20"), CurrencyCode.USD);
+
+    // when / then
+    assertThatThrownBy(money::toMicros).isInstanceOf(ArithmeticException.class);
+  }
 }

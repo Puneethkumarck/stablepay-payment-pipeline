@@ -7,10 +7,6 @@ import io.stablepay.api.domain.model.TransactionSearch;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/**
- * Customer-scope rule (CONTEXT.md D-B1): every read method takes CustomerId or has the …Admin
- * suffix.
- */
 public interface TransactionRepository {
 
   Optional<Transaction> findByReference(String reference, CustomerId customerId);
@@ -21,9 +17,5 @@ public interface TransactionRepository {
 
   PaginatedResult<Transaction> searchAdmin(TransactionSearch criteria);
 
-  /**
-   * SSE source — no scope here; filter applied at the SSE handler per CONTEXT.md D-C3. Method name
-   * ends in "Admin" because it's an unscoped tail (admin-style access pattern).
-   */
-  Stream<Transaction> tailSinceSortValueAdmin(Optional<String> sortValue, int batchSize);
+  Stream<Transaction> tailSinceSortValue(Optional<String> sortValue, int batchSize);
 }

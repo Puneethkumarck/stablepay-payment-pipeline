@@ -18,6 +18,15 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 @AnalyzeClasses(packages = "io.stablepay.api")
 class ApiArchitectureTest {
 
+  private static final String CUSTOMER_ID_FQN = "io.stablepay.api.domain.model.CustomerId";
+  private static final String IDEMPOTENCY_REPOSITORY_FQN =
+      "io.stablepay.api.domain.port.IdempotencyRepository";
+  private static final String OUTBOX_REPOSITORY_FQN =
+      "io.stablepay.api.domain.port.OutboxRepository";
+  private static final String TRANSACTION_REPOSITORY_FQN =
+      "io.stablepay.api.domain.port.TransactionRepository";
+  private static final String SSE_UNSCOPED_TAIL_METHOD = "tailSinceSortValue";
+
   @ArchTest
   static final ArchRule layered =
       layeredArchitecture()
@@ -77,23 +86,23 @@ class ApiArchitectureTest {
           .and()
           .areDeclaredInClassesThat()
           .areInterfaces()
-          // Exclude the infra-scoped ports — they're scoped by UserId/idempotencyKey, not
-          // CustomerId.
           .and()
           .areDeclaredInClassesThat()
-          .haveSimpleNameNotEndingWith("IdempotencyRepository")
+          .doNotHaveFullyQualifiedName(IDEMPOTENCY_REPOSITORY_FQN)
           .and()
           .areDeclaredInClassesThat()
-          .haveSimpleNameNotEndingWith("OutboxRepository")
+          .doNotHaveFullyQualifiedName(OUTBOX_REPOSITORY_FQN)
           .should(
               new ArchCondition<JavaMethod>(
                   "take a CustomerId parameter or have a name ending in 'Admin'") {
                 @Override
                 public void check(JavaMethod method, ConditionEvents events) {
+                  if (isUnscopedSseSource(method)) {
+                    return;
+                  }
                   var hasCustomerId =
                       method.getRawParameterTypes().stream()
-                          .anyMatch(
-                              p -> p.getName().equals("io.stablepay.api.domain.model.CustomerId"));
+                          .anyMatch(p -> p.getName().equals(CUSTOMER_ID_FQN));
                   var isAdmin = method.getName().endsWith("Admin");
                   if (!hasCustomerId && !isAdmin) {
                     events.add(
@@ -103,6 +112,11 @@ class ApiArchitectureTest {
                                 + method.getFullName()
                                 + " must take CustomerId or have a name ending in 'Admin'"));
                   }
+                }
+
+                private boolean isUnscopedSseSource(JavaMethod method) {
+                  return method.getOwner().getFullName().equals(TRANSACTION_REPOSITORY_FQN)
+                      && method.getName().equals(SSE_UNSCOPED_TAIL_METHOD);
                 }
               });
 }

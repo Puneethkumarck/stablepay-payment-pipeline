@@ -26,5 +26,8 @@ public record Flow(
     Objects.requireNonNull(createdAt, "createdAt");
     Objects.requireNonNull(updatedAt, "updatedAt");
     Objects.requireNonNull(completedAt, "completedAt");
+    if (legCount < 1) {
+      throw new IllegalArgumentException("legCount must be >= 1");
+    }
   }
 }

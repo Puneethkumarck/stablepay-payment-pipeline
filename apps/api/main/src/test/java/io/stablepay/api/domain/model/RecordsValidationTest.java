@@ -411,4 +411,199 @@ class RecordsValidationTest {
     // then
     assertThat(actualFirstByteOnReread).isEqualTo((byte) 1);
   }
+
+  @Test
+  void cachedResponse_statusBelowMin_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () -> new CachedResponse(99, new byte[] {1}, Instant.parse("2026-05-01T11:00:00Z")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("status");
+  }
+
+  @Test
+  void cachedResponse_statusAboveMax_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () -> new CachedResponse(600, new byte[] {1}, Instant.parse("2026-05-01T11:00:00Z")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("status");
+  }
+
+  // ---------- Range validations ----------
+
+  @Test
+  void dlqEvent_negativeSourcePartition_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                DlqEvent.builder()
+                    .id(DlqEventFixtures.SOME_DLQ_ID)
+                    .errorClass("err")
+                    .sourceTopic("topic")
+                    .sourcePartition(-1)
+                    .sourceOffset(0L)
+                    .errorMessage("err")
+                    .failedAt(DlqEventFixtures.SOME_DLQ_FAILED_AT)
+                    .retryCount(0)
+                    .sinkType(Optional.empty())
+                    .watermarkAt(Optional.empty())
+                    .originalPayloadJson(Optional.empty())
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("sourcePartition");
+  }
+
+  @Test
+  void dlqEvent_negativeSourceOffset_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                DlqEvent.builder()
+                    .id(DlqEventFixtures.SOME_DLQ_ID)
+                    .errorClass("err")
+                    .sourceTopic("topic")
+                    .sourcePartition(0)
+                    .sourceOffset(-1L)
+                    .errorMessage("err")
+                    .failedAt(DlqEventFixtures.SOME_DLQ_FAILED_AT)
+                    .retryCount(0)
+                    .sinkType(Optional.empty())
+                    .watermarkAt(Optional.empty())
+                    .originalPayloadJson(Optional.empty())
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("sourceOffset");
+  }
+
+  @Test
+  void dlqEvent_negativeRetryCount_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                DlqEvent.builder()
+                    .id(DlqEventFixtures.SOME_DLQ_ID)
+                    .errorClass("err")
+                    .sourceTopic("topic")
+                    .sourcePartition(0)
+                    .sourceOffset(0L)
+                    .errorMessage("err")
+                    .failedAt(DlqEventFixtures.SOME_DLQ_FAILED_AT)
+                    .retryCount(-1)
+                    .sinkType(Optional.empty())
+                    .watermarkAt(Optional.empty())
+                    .originalPayloadJson(Optional.empty())
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("retryCount");
+  }
+
+  @Test
+  void flow_zeroLegCount_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                Flow.builder()
+                    .id(FlowFixtures.SOME_FLOW_ID)
+                    .flowType("MULTI_LEG")
+                    .status("IN_PROGRESS")
+                    .customerId(FlowFixtures.SOME_FLOW_CUSTOMER_ID)
+                    .totalAmount(MoneyFixtures.SOME_MONEY)
+                    .legCount(0)
+                    .createdAt(FlowFixtures.SOME_FLOW_CREATED_AT)
+                    .updatedAt(FlowFixtures.SOME_FLOW_UPDATED_AT)
+                    .completedAt(Optional.empty())
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("legCount");
+  }
+
+  @Test
+  void customerSummary_negativeTxnCount_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                CustomerSummary.builder()
+                    .id(CustomerSummaryFixtures.SOME_CUSTOMER_ID)
+                    .name("Acme")
+                    .email("e@x")
+                    .kyc("VERIFIED")
+                    .balance(MoneyFixtures.SOME_MONEY)
+                    .totalSent(MoneyFixtures.SOME_MONEY)
+                    .txnCount(-1)
+                    .joined(CustomerSummaryFixtures.SOME_CUSTOMER_JOINED)
+                    .risk("LOW")
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("txnCount");
+  }
+
+  @Test
+  void stuckPayment_negativeStuckMillis_throwsIllegalArgumentException() {
+    // when / then
+    assertThatThrownBy(
+            () ->
+                StuckPayment.builder()
+                    .id(StuckPaymentFixtures.SOME_STUCK_TRANSACTION_ID)
+                    .reference("ref")
+                    .flowType("FIAT_PAYOUT")
+                    .internalStatus("AWAITING_CONFIRMATION")
+                    .customerId(StuckPaymentFixtures.SOME_STUCK_CUSTOMER_ID)
+                    .amount(MoneyFixtures.SOME_MONEY)
+                    .lastEventAt(StuckPaymentFixtures.SOME_STUCK_LAST_EVENT_AT)
+                    .stuckMillis(-1L)
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("stuckMillis");
+  }
+
+  // ---------- ID null validation ----------
+
+  @Test
+  void transactionId_null_throwsNpe() {
+    // when / then
+    assertThatThrownBy(() -> TransactionId.of(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("value");
+  }
+
+  @Test
+  void flowId_null_throwsNpe() {
+    // when / then
+    assertThatThrownBy(() -> FlowId.of(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("value");
+  }
+
+  @Test
+  void customerId_null_throwsNpe() {
+    // when / then
+    assertThatThrownBy(() -> CustomerId.of(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("value");
+  }
+
+  @Test
+  void accountId_null_throwsNpe() {
+    // when / then
+    assertThatThrownBy(() -> AccountId.of(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("value");
+  }
+
+  @Test
+  void dlqId_null_throwsNpe() {
+    // when / then
+    assertThatThrownBy(() -> DlqId.of(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("value");
+  }
+
+  @Test
+  void userId_null_throwsNpe() {
+    // when / then
+    assertThatThrownBy(() -> UserId.of(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("value");
+  }
 }
