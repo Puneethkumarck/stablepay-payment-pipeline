@@ -1,5 +1,6 @@
 package io.stablepay.auth.infrastructure.security;
 
+import static io.stablepay.auth.infrastructure.security.FixedClockConfig.FIXED_NOW;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,16 +16,11 @@ import io.stablepay.auth.infrastructure.ratelimit.LoginRateLimitFilter;
 import io.stablepay.auth.infrastructure.web.AuthController;
 import io.stablepay.auth.infrastructure.web.GlobalExceptionHandler;
 import io.stablepay.auth.infrastructure.web.JwksController;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -35,11 +31,10 @@ import org.springframework.test.web.servlet.MockMvc;
   SecurityConfig.class,
   LoginRateLimitFilter.class,
   GlobalExceptionHandler.class,
-  SecurityFilterChainIT.FixedClockConfig.class
+  FixedClockConfig.class
 })
 class SecurityFilterChainIT {
 
-  private static final Instant FIXED_NOW = Instant.parse("2026-05-02T10:15:30Z");
   private static final String SOME_IP = "198.51.100.42";
   private static final String SOME_EMAIL = "alice@example.com";
   private static final String SOME_PASSWORD = "wrong-password";
@@ -93,7 +88,11 @@ class SecurityFilterChainIT {
       mockMvc
           .perform(
               post("/api/v1/auth/login")
-                  .with(remoteAddr(SOME_IP))
+                  .with(
+                      req -> {
+                        req.setRemoteAddr(SOME_IP);
+                        return req;
+                      })
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(body))
           .andExpect(status().isUnauthorized());
@@ -103,31 +102,14 @@ class SecurityFilterChainIT {
     mockMvc
         .perform(
             post("/api/v1/auth/login")
-                .with(remoteAddr(SOME_IP))
+                .with(
+                    req -> {
+                      req.setRemoteAddr(SOME_IP);
+                      return req;
+                    })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().string("Retry-After", "60"));
-  }
-
-  private static org.springframework.test.web.servlet.request.RequestPostProcessor remoteAddr(
-      String ip) {
-    return req -> {
-      req.setRemoteAddr(ip);
-      return req;
-    };
-  }
-
-  @TestConfiguration
-  static class FixedClockConfig {
-    @Bean
-    Clock clock() {
-      return Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
-    }
-
-    @Bean
-    ObjectMapper objectMapper() {
-      return new ObjectMapper().findAndRegisterModules();
-    }
   }
 }
