@@ -35,7 +35,10 @@ public class SseTransactionPoller implements TransactionEventSource {
           tx -> {
             var sortKey = Base64PipeCursor.encode(tx.eventTime().toEpochMilli(), tx.eventId());
             var event = mapper.toEvent(tx).toBuilder().sortKey(sortKey).build();
-            sink.tryEmitNext(event);
+            var result = sink.tryEmitNext(event);
+            if (result.isFailure()) {
+              log.warn("SSE event emission failed: {}", result);
+            }
             lastSortValue.set(Optional.of(sortKey));
           });
     } catch (Exception e) {

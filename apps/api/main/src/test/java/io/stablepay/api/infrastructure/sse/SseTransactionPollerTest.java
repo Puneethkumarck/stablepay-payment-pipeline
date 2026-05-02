@@ -90,13 +90,22 @@ class SseTransactionPollerTest {
     @Test
     void shouldNotCrashOnException() {
       // given
+      var tx = SOME_TRANSACTION;
       given(transactionRepository.tailSinceSortValueAdmin(Optional.empty(), 100))
-          .willThrow(new RuntimeException("OpenSearch down"));
+          .willThrow(new RuntimeException("OpenSearch down"))
+          .willReturn(Stream.of(tx));
+      var expectedSortKey = Base64PipeCursor.encode(tx.eventTime().toEpochMilli(), tx.eventId());
+      var expected = buildExpectedEvent(tx, expectedSortKey);
 
-      // when — poll catches the exception internally
+      // when
+      poller.poll();
+      var flux = poller.subscribeAdmin();
       poller.poll();
 
-      // then — poller is still functional after exception
+      // then
+      StepVerifier.create(flux.take(1))
+          .assertNext(event -> assertThat(event).usingRecursiveComparison().isEqualTo(expected))
+          .verifyComplete();
     }
   }
 
