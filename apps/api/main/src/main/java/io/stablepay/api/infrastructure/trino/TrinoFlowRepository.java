@@ -203,10 +203,8 @@ public class TrinoFlowRepository implements FlowRepository {
     return Base64PipeCursor.encode(createdAtEpochMillis, flowId);
   }
 
-  static DecodedCursor decodeCursor(String cursor) {
+  static TrinoFlowCursor decodeCursor(String cursor) {
     var part = Base64PipeCursor.decode(cursor, CURSOR_ERROR_CODE);
-    return new DecodedCursor(Instant.ofEpochMilli(part.longPart()), part.stringPart());
+    return new TrinoFlowCursor(Instant.ofEpochMilli(part.longPart()), part.stringPart());
   }
-
-  record DecodedCursor(Instant createdAt, String id) {}
 }

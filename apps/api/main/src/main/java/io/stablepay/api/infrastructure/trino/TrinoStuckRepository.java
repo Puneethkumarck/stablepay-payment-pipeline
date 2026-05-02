@@ -110,10 +110,8 @@ public class TrinoStuckRepository implements StuckRepository {
     return Base64PipeCursor.encode(stuckMillis, transactionId);
   }
 
-  static DecodedCursor decodeCursor(String cursor) {
+  static TrinoStuckCursor decodeCursor(String cursor) {
     var part = Base64PipeCursor.decode(cursor, CURSOR_ERROR_CODE);
-    return new DecodedCursor(part.longPart(), part.stringPart());
+    return new TrinoStuckCursor(part.longPart(), part.stringPart());
   }
-
-  record DecodedCursor(long stuckMillis, String transactionId) {}
 }

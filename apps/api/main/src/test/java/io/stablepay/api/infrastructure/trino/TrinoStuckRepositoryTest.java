@@ -46,7 +46,7 @@ class TrinoStuckRepositoryTest {
     // given
     var transactionIdString = StuckPaymentFixtures.SOME_STUCK_TRANSACTION_ID.value().toString();
     var encoded = TrinoStuckRepository.encodeCursor(900_000L, transactionIdString);
-    var expected = new TrinoStuckRepository.DecodedCursor(900_000L, transactionIdString);
+    var expected = new TrinoStuckCursor(900_000L, transactionIdString);
 
     // when
     var actual = TrinoStuckRepository.decodeCursor(encoded);

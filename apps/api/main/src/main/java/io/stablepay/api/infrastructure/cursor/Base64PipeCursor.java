@@ -16,7 +16,7 @@ public final class Base64PipeCursor {
         .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
   }
 
-  public static DecodedPart decode(String cursor, String errorCode) {
+  public static Base64PipeCursorPart decode(String cursor, String errorCode) {
     Objects.requireNonNull(cursor, "cursor");
     Objects.requireNonNull(errorCode, "errorCode");
     try {
@@ -27,7 +27,7 @@ public final class Base64PipeCursor {
       }
       var longPart = Long.parseLong(decoded.substring(0, pipe));
       var stringPart = decoded.substring(pipe + 1);
-      return new DecodedPart(longPart, stringPart);
+      return new Base64PipeCursorPart(longPart, stringPart);
     } catch (IllegalArgumentException e) {
       if (e.getMessage() != null && e.getMessage().startsWith(errorCode)) {
         throw e;
@@ -35,6 +35,4 @@ public final class Base64PipeCursor {
       throw new IllegalArgumentException(errorCode + " invalid cursor", e);
     }
   }
-
-  public record DecodedPart(long longPart, String stringPart) {}
 }

@@ -16,6 +16,4 @@ final class OpenSearchCursorCodec {
     var part = Base64PipeCursor.decode(cursor, DECODE_ERROR_CODE);
     return new OpenSearchCursorValue(part.longPart(), part.stringPart());
   }
-
-  record OpenSearchCursorValue(long eventTimeMillis, String eventId) {}
 }

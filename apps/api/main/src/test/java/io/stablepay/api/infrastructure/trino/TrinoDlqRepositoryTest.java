@@ -86,8 +86,7 @@ class TrinoDlqRepositoryTest {
     var failedAtMillis = DlqEventFixtures.SOME_DLQ_FAILED_AT.toEpochMilli();
     var dlqIdString = DlqEventFixtures.SOME_DLQ_ID.value().toString();
     var encoded = TrinoDlqRepository.encodeCursor(failedAtMillis, dlqIdString);
-    var expected =
-        new TrinoDlqRepository.DecodedCursor(DlqEventFixtures.SOME_DLQ_FAILED_AT, dlqIdString);
+    var expected = new TrinoDlqCursor(DlqEventFixtures.SOME_DLQ_FAILED_AT, dlqIdString);
 
     // when
     var actual = TrinoDlqRepository.decodeCursor(encoded);
