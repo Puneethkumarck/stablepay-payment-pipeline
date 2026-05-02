@@ -9,6 +9,8 @@ public interface IdempotencyRepository {
 
   Optional<CachedResponse> findActive(String key, UserId userId, Instant now);
 
+  boolean tryAcquire(String key, UserId userId, Instant expiresAt);
+
   void save(String key, UserId userId, CachedResponse response);
 
   int deleteExpired(Instant now);

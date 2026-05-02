@@ -25,6 +25,20 @@ public class GlobalExceptionHandler {
         .body(new ApiError(ex.getErrorCode(), ex.getMessage(), clock.instant()));
   }
 
+  @ExceptionHandler(IdempotencyKeyRequiredException.class)
+  public ResponseEntity<ApiError> handleIdempotencyKeyRequired(IdempotencyKeyRequiredException ex) {
+    log.warn("Idempotency key missing: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ApiError(ex.getErrorCode(), ex.getMessage(), clock.instant()));
+  }
+
+  @ExceptionHandler(IdempotencyKeyConflictException.class)
+  public ResponseEntity<ApiError> handleIdempotencyKeyConflict(IdempotencyKeyConflictException ex) {
+    log.warn("Idempotency key conflict: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ApiError(ex.getErrorCode(), ex.getMessage(), clock.instant()));
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
     var message =
