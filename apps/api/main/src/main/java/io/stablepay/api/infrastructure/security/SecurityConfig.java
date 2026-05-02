@@ -1,6 +1,5 @@
 package io.stablepay.api.infrastructure.security;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,20 +13,18 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(securedEnabled = true)
-@RequiredArgsConstructor
 public class SecurityConfig {
 
   private static final String[] PUBLIC_ENDPOINTS = {
     "/actuator/health", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**"
   };
 
-  private final JwtToAuthenticatedUserConverter jwtConverter;
-
-  @Value("${stablepay.auth.jwks-uri}")
-  private String jwksUri;
-
   @Bean
-  public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain apiSecurityFilterChain(
+      HttpSecurity http,
+      JwtToAuthenticatedUserConverter jwtConverter,
+      @Value("${stablepay.auth.jwks-uri}") String jwksUri)
+      throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(

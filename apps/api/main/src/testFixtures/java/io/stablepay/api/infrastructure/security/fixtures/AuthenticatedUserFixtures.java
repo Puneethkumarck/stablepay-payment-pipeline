@@ -10,11 +10,20 @@ import java.util.UUID;
 
 public final class AuthenticatedUserFixtures {
 
-  public static final UUID SOME_USER_UUID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+  public static final UUID SOME_CUSTOMER_USER_UUID =
+      UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+  public static final UUID SOME_ADMIN_USER_UUID =
+      UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
+  public static final UUID SOME_AGENT_USER_UUID =
+      UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
   public static final UUID SOME_CUSTOMER_UUID =
       UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-  public static final UserId SOME_USER_ID = UserId.of(SOME_USER_UUID);
+
+  public static final UserId SOME_CUSTOMER_USER_ID = UserId.of(SOME_CUSTOMER_USER_UUID);
+  public static final UserId SOME_ADMIN_USER_ID = UserId.of(SOME_ADMIN_USER_UUID);
+  public static final UserId SOME_AGENT_USER_ID = UserId.of(SOME_AGENT_USER_UUID);
   public static final CustomerId SOME_CUSTOMER_ID = CustomerId.of(SOME_CUSTOMER_UUID);
+
   public static final String SOME_CUSTOMER_EMAIL = "alice@stablepay.io";
   public static final String SOME_ADMIN_EMAIL = "admin@stablepay.io";
   public static final String SOME_AGENT_EMAIL = "agent@stablepay.io";
@@ -23,7 +32,7 @@ public final class AuthenticatedUserFixtures {
 
   public static AuthenticatedUser someCustomerUser() {
     return AuthenticatedUser.builder()
-        .userId(SOME_USER_ID)
+        .userId(SOME_CUSTOMER_USER_ID)
         .customerId(Optional.of(SOME_CUSTOMER_ID))
         .roles(Set.of(Role.CUSTOMER))
         .email(SOME_CUSTOMER_EMAIL)
@@ -32,7 +41,7 @@ public final class AuthenticatedUserFixtures {
 
   public static AuthenticatedUser someAdminUser() {
     return AuthenticatedUser.builder()
-        .userId(SOME_USER_ID)
+        .userId(SOME_ADMIN_USER_ID)
         .customerId(Optional.empty())
         .roles(Set.of(Role.ADMIN))
         .email(SOME_ADMIN_EMAIL)
@@ -41,7 +50,7 @@ public final class AuthenticatedUserFixtures {
 
   public static AuthenticatedUser someAgentUser() {
     return AuthenticatedUser.builder()
-        .userId(SOME_USER_ID)
+        .userId(SOME_AGENT_USER_ID)
         .customerId(Optional.empty())
         .roles(Set.of(Role.AGENT))
         .email(SOME_AGENT_EMAIL)

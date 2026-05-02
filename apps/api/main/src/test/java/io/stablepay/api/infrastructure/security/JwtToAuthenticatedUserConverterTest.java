@@ -1,40 +1,42 @@
 package io.stablepay.api.infrastructure.security;
 
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_EMAIL;
+import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_UUID;
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_EMAIL;
+import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_EMAIL;
+import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_USER_UUID;
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someAgentUser;
 import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
+import static io.stablepay.api.infrastructure.security.fixtures.JwtFixtures.jwtBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 class JwtToAuthenticatedUserConverterTest {
-
-  private static final Instant ISSUED_AT = Instant.parse("2026-05-01T10:00:00Z");
-  private static final Instant EXPIRES_AT = Instant.parse("2026-05-01T10:15:00Z");
 
   private final JwtToAuthenticatedUserConverter converter = new JwtToAuthenticatedUserConverter();
 
   @Test
   void shouldConvertCustomerJwtWithCustomerIdClaim() {
+    // given
     var jwt =
         jwtBuilder()
-            .subject(SOME_USER_UUID.toString())
+            .subject(SOME_CUSTOMER_USER_UUID.toString())
             .claim("email", SOME_CUSTOMER_EMAIL)
             .claim("roles", List.of("CUSTOMER"))
             .claim("customer_id", SOME_CUSTOMER_UUID.toString())
             .build();
 
+    // when
     var result = converter.convert(jwt);
 
+    // then
     var expected = someCustomerUser();
     assertThat(result).isInstanceOf(AuthenticatedUserToken.class);
     assertThat(((AuthenticatedUserToken) result).getPrincipal())
@@ -45,15 +47,18 @@ class JwtToAuthenticatedUserConverterTest {
 
   @Test
   void shouldConvertAdminJwtWithoutCustomerIdClaimWithoutNpe() {
+    // given
     var jwt =
         jwtBuilder()
-            .subject(SOME_USER_UUID.toString())
+            .subject(SOME_ADMIN_USER_UUID.toString())
             .claim("email", SOME_ADMIN_EMAIL)
             .claim("roles", List.of("ADMIN"))
             .build();
 
+    // when
     var result = converter.convert(jwt);
 
+    // then
     var expected = someAdminUser();
     assertThat(((AuthenticatedUserToken) result).getPrincipal())
         .usingRecursiveComparison()
@@ -63,15 +68,18 @@ class JwtToAuthenticatedUserConverterTest {
 
   @Test
   void shouldConvertAgentJwtWithoutCustomerIdClaimWithoutNpe() {
+    // given
     var jwt =
         jwtBuilder()
-            .subject(SOME_USER_UUID.toString())
+            .subject(SOME_AGENT_USER_UUID.toString())
             .claim("email", SOME_AGENT_EMAIL)
             .claim("roles", List.of("AGENT"))
             .build();
 
+    // when
     var result = converter.convert(jwt);
 
+    // then
     var expected = someAgentUser();
     assertThat(((AuthenticatedUserToken) result).getPrincipal())
         .usingRecursiveComparison()
@@ -81,52 +89,119 @@ class JwtToAuthenticatedUserConverterTest {
 
   @Test
   void shouldHandleMissingRolesClaim() {
+    // given
     var jwt =
-        jwtBuilder().subject(SOME_USER_UUID.toString()).claim("email", SOME_ADMIN_EMAIL).build();
+        jwtBuilder()
+            .subject(SOME_ADMIN_USER_UUID.toString())
+            .claim("email", SOME_ADMIN_EMAIL)
+            .build();
 
+    // when
     var result = converter.convert(jwt);
 
+    // then
     assertThat(result.getAuthorities()).isEmpty();
     assertThat(((AuthenticatedUserToken) result).getPrincipal().roles()).isEmpty();
   }
 
   @Test
   void shouldExposeJwtAsCredentials() {
+    // given
     var jwt =
         jwtBuilder()
-            .subject(SOME_USER_UUID.toString())
+            .subject(SOME_CUSTOMER_USER_UUID.toString())
             .claim("email", SOME_CUSTOMER_EMAIL)
             .claim("roles", List.of("CUSTOMER"))
             .claim("customer_id", SOME_CUSTOMER_UUID.toString())
             .build();
 
+    // when
     var result = converter.convert(jwt);
 
+    // then
     assertThat(result.getCredentials()).isSameAs(jwt);
   }
 
   @Test
   void shouldUseEmailAsAuthenticationName() {
+    // given
     var jwt =
         jwtBuilder()
-            .subject(SOME_USER_UUID.toString())
+            .subject(SOME_CUSTOMER_USER_UUID.toString())
             .claim("email", SOME_CUSTOMER_EMAIL)
             .claim("roles", List.of("CUSTOMER"))
             .claim("customer_id", SOME_CUSTOMER_UUID.toString())
             .build();
 
+    // when
     var result = converter.convert(jwt);
 
+    // then
     assertThat(result.getName()).isEqualTo(SOME_CUSTOMER_EMAIL);
   }
 
-  private static Jwt.Builder jwtBuilder() {
-    return Jwt.withTokenValue("token-value")
-        .header("alg", "RS256")
-        .header("kid", "test-key-1")
-        .issuedAt(ISSUED_AT)
-        .expiresAt(EXPIRES_AT)
-        .issuer("https://auth.stablepay.local")
-        .audience(List.of("stablepay-api"));
+  @Test
+  void shouldRejectJwtWithInvalidSubjectUuid() {
+    // given
+    var jwt =
+        jwtBuilder()
+            .subject("not-a-uuid")
+            .claim("email", SOME_CUSTOMER_EMAIL)
+            .claim("roles", List.of("CUSTOMER"))
+            .claim("customer_id", SOME_CUSTOMER_UUID.toString())
+            .build();
+
+    // when/then
+    assertThatThrownBy(() -> converter.convert(jwt))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("UUID");
+  }
+
+  @Test
+  void shouldRejectJwtWithInvalidCustomerIdUuid() {
+    // given
+    var jwt =
+        jwtBuilder()
+            .subject(SOME_CUSTOMER_USER_UUID.toString())
+            .claim("email", SOME_CUSTOMER_EMAIL)
+            .claim("roles", List.of("CUSTOMER"))
+            .claim("customer_id", "not-a-uuid")
+            .build();
+
+    // when/then
+    assertThatThrownBy(() -> converter.convert(jwt))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("UUID");
+  }
+
+  @Test
+  void shouldRejectJwtWithUnknownRole() {
+    // given
+    var jwt =
+        jwtBuilder()
+            .subject(SOME_CUSTOMER_USER_UUID.toString())
+            .claim("email", SOME_CUSTOMER_EMAIL)
+            .claim("roles", List.of("WIZARD"))
+            .build();
+
+    // when/then
+    assertThatThrownBy(() -> converter.convert(jwt))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("WIZARD");
+  }
+
+  @Test
+  void shouldRejectJwtWithMissingEmailClaim() {
+    // given
+    var jwt =
+        jwtBuilder()
+            .subject(SOME_ADMIN_USER_UUID.toString())
+            .claim("roles", List.of("ADMIN"))
+            .build();
+
+    // when/then
+    assertThatThrownBy(() -> converter.convert(jwt))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("email");
   }
 }
