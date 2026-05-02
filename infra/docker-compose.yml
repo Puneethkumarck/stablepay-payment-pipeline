@@ -251,6 +251,21 @@ services:
     networks:
       - stablepay_default
 
+  # ─── Redis (Bucket4j rate limiting backend) ───────
+  redis:
+    image: redis:8.0-alpine
+    container_name: stablepay-redis
+    ports:
+      - "6379:6379"
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stablepay_default
+
   # ─── Auth Service (Spring Boot JWT issuer) ────────
   apps-auth:
     build:
