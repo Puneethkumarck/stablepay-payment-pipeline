@@ -305,12 +305,12 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-stablepay}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-stablepay}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-stablepay_dev}
-      SPRING_DATA_REDIS_HOST: redis
-      OPENSEARCH_URIS: http://opensearch:9200
-      TRINO_JDBC_URL: jdbc:trino://trino:8080/iceberg
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-stablepay}
+      POSTGRES_USER: ${POSTGRES_USER:-stablepay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stablepay_dev}
+      REDIS_HOST: redis
+      OPENSEARCH_URI: http://opensearch:9200
+      TRINO_URL: jdbc:trino://trino:8080/iceberg
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       STABLEPAY_AUTH_JWKS_URI: http://apps-auth:9000/.well-known/jwks.json
     depends_on:
