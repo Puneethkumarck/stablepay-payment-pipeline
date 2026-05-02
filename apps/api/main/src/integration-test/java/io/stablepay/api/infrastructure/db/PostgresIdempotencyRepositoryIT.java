@@ -61,6 +61,7 @@ class PostgresIdempotencyRepositoryIT {
             .body(new byte[] {1, 2, 3, 4, 5})
             .expiresAt(expiresAt)
             .build();
+    repository.tryAcquire(key, userId, expiresAt);
     repository.save(key, userId, cached);
 
     // when
@@ -83,6 +84,7 @@ class PostgresIdempotencyRepositoryIT {
     var pastExpiry = Instant.now().minusSeconds(60);
     var cached =
         CachedResponse.builder().status(200).body(new byte[] {9}).expiresAt(pastExpiry).build();
+    repository.tryAcquire(key, userId, pastExpiry);
     repository.save(key, userId, cached);
     var expected = Optional.<CachedResponse>empty();
 
@@ -102,15 +104,9 @@ class PostgresIdempotencyRepositoryIT {
     var firstBody = new byte[] {1, 1, 1};
     var first =
         CachedResponse.builder().status(200).body(firstBody).expiresAt(firstExpiresAt).build();
+    repository.tryAcquire(key, userId, firstExpiresAt);
     repository.save(key, userId, first);
-    var secondBody = new byte[] {9, 9, 9};
-    var second =
-        CachedResponse.builder()
-            .status(500)
-            .body(secondBody)
-            .expiresAt(firstExpiresAt.plusSeconds(60))
-            .build();
-    repository.save(key, userId, second);
+    var secondAcquired = repository.tryAcquire(key, userId, firstExpiresAt.plusSeconds(60));
     var expected =
         CachedResponse.builder()
             .status(200)
@@ -122,6 +118,7 @@ class PostgresIdempotencyRepositoryIT {
     var actual = repository.findActive(key, userId, Instant.now());
 
     // then
+    assertThat(secondAcquired).isFalse();
     assertThat(actual)
         .isPresent()
         .get()
@@ -138,10 +135,12 @@ class PostgresIdempotencyRepositoryIT {
     var freshKey = "key-cleanup-fresh-" + UUID.randomUUID();
     var pastExpiry = Instant.now().minusSeconds(120);
     var futureExpiry = Instant.now().plusSeconds(3600);
+    repository.tryAcquire(expiredKey, userId, pastExpiry);
     repository.save(
         expiredKey,
         userId,
         CachedResponse.builder().status(200).body(new byte[] {1}).expiresAt(pastExpiry).build());
+    repository.tryAcquire(freshKey, userId, futureExpiry);
     repository.save(
         freshKey,
         userId,

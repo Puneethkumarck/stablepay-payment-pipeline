@@ -97,6 +97,7 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit)
     testImplementation(libs.trino.parser)
+    testImplementation(libs.reactor.test)
     testCompileOnly(libs.lombok)
     testAnnotationProcessor(libs.lombok)
 

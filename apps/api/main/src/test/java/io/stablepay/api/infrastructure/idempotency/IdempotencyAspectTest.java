@@ -237,5 +237,4 @@ class IdempotencyAspectTest {
       then(pjp).shouldHaveNoInteractions();
     }
   }
-
 }
