@@ -29,7 +29,14 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleIdempotencyKeyRequired(IdempotencyKeyRequiredException ex) {
     log.warn("Idempotency key missing: {}", ex.getMessage());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ApiError(ErrorCodes.IDEMPOTENCY_KEY_REQUIRED, ex.getMessage(), clock.instant()));
+        .body(new ApiError(ex.getErrorCode(), ex.getMessage(), clock.instant()));
+  }
+
+  @ExceptionHandler(IdempotencyKeyConflictException.class)
+  public ResponseEntity<ApiError> handleIdempotencyKeyConflict(IdempotencyKeyConflictException ex) {
+    log.warn("Idempotency key conflict: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ApiError(ex.getErrorCode(), ex.getMessage(), clock.instant()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

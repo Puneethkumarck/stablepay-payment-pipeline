@@ -2,6 +2,7 @@ package io.stablepay.api.infrastructure.idempotency;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.api.application.security.AuthenticatedUser;
+import io.stablepay.api.application.web.error.IdempotencyKeyConflictException;
 import io.stablepay.api.application.web.error.IdempotencyKeyRequiredException;
 import io.stablepay.api.domain.model.CachedResponse;
 import io.stablepay.api.domain.port.IdempotencyRepository;
@@ -14,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,6 +30,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class IdempotencyAspect {
 
   static final String HEADER_IDEMPOTENCY_KEY = "X-Idempotency-Key";
@@ -48,6 +52,16 @@ public class IdempotencyAspect {
     if (cached.isPresent()) {
       log.info("Idempotency cache hit for key={}", idempotencyKey);
       return replayResponse(cached.get());
+    }
+
+    var expiresAt = now.plus(DEFAULT_TTL);
+    if (!idempotencyRepository.tryAcquire(idempotencyKey, user.userId(), expiresAt)) {
+      var replay = idempotencyRepository.findActive(idempotencyKey, user.userId(), clock.instant());
+      if (replay.isPresent()) {
+        log.info("Idempotency cache hit on retry for key={}", idempotencyKey);
+        return replayResponse(replay.get());
+      }
+      throw new IdempotencyKeyConflictException(idempotencyKey);
     }
 
     var result = pjp.proceed();
@@ -87,7 +101,7 @@ public class IdempotencyAspect {
         idempotencyRepository.save(key, user.userId(), response);
       }
     } catch (Exception e) {
-      log.warn("Failed to cache idempotent response for key={}: {}", key, e.getMessage());
+      log.error("Failed to cache idempotent response for key={}: {}", key, e.getMessage());
     }
   }
 

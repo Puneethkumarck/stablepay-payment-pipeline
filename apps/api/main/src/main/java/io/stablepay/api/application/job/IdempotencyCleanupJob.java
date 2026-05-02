@@ -1,4 +1,4 @@
-package io.stablepay.api.infrastructure.idempotency;
+package io.stablepay.api.application.job;
 
 import io.stablepay.api.domain.port.IdempotencyRepository;
 import java.time.Clock;

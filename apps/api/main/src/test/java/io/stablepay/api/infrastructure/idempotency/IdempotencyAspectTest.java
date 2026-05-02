@@ -3,15 +3,19 @@ package io.stablepay.api.infrastructure.idempotency;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_ID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
 import static io.stablepay.api.infrastructure.idempotency.fixtures.IdempotencyFixtures.SOME_CACHED_RESPONSE;
+import static io.stablepay.api.infrastructure.idempotency.fixtures.IdempotencyFixtures.SOME_EXPIRES_AT;
 import static io.stablepay.api.infrastructure.idempotency.fixtures.IdempotencyFixtures.SOME_IDEMPOTENCY_KEY;
 import static io.stablepay.api.infrastructure.idempotency.fixtures.IdempotencyFixtures.SOME_NOW;
+import static io.stablepay.api.test.TestUtils.eqIgnoring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.stablepay.api.application.web.error.IdempotencyKeyConflictException;
 import io.stablepay.api.application.web.error.IdempotencyKeyRequiredException;
+import io.stablepay.api.domain.model.CachedResponse;
 import io.stablepay.api.domain.port.IdempotencyRepository;
 import io.stablepay.api.infrastructure.security.AuthenticatedUserToken;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,12 +26,14 @@ import java.util.Optional;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +45,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 class IdempotencyAspectTest {
 
   private static final Clock FIXED_CLOCK = Clock.fixed(SOME_NOW, ZoneOffset.UTC);
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @Mock private IdempotencyRepository idempotencyRepository;
   @Mock private ProceedingJoinPoint pjp;
@@ -48,7 +55,7 @@ class IdempotencyAspectTest {
 
   @BeforeEach
   void setUp() {
-    aspect = new IdempotencyAspect(idempotencyRepository, new ObjectMapper(), FIXED_CLOCK);
+    aspect = new IdempotencyAspect(idempotencyRepository, OBJECT_MAPPER, FIXED_CLOCK);
     RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     var user = someAdminUser();
     var jwt =
@@ -67,93 +74,167 @@ class IdempotencyAspectTest {
     SecurityContextHolder.clearContext();
   }
 
-  @Test
-  void shouldThrowIdempotencyKeyRequiredWhenHeaderMissing() {
-    // given
-    given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY)).willReturn(null);
+  @Nested
+  class WhenHeaderMissing {
 
-    // when / then
-    assertThatThrownBy(() -> aspect.around(pjp))
-        .isInstanceOf(IdempotencyKeyRequiredException.class);
+    @Test
+    void shouldThrowWhenHeaderNull() {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY)).willReturn(null);
+
+      // when / then
+      assertThatThrownBy(() -> aspect.around(pjp))
+          .isInstanceOf(IdempotencyKeyRequiredException.class)
+          .hasMessage("X-Idempotency-Key header is required");
+    }
+
+    @Test
+    void shouldThrowWhenHeaderBlank() {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY)).willReturn("   ");
+
+      // when / then
+      assertThatThrownBy(() -> aspect.around(pjp))
+          .isInstanceOf(IdempotencyKeyRequiredException.class);
+    }
   }
 
-  @Test
-  void shouldThrowIdempotencyKeyRequiredWhenHeaderBlank() {
-    // given
-    given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY)).willReturn("   ");
+  @Nested
+  class WhenCacheHit {
 
-    // when / then
-    assertThatThrownBy(() -> aspect.around(pjp))
-        .isInstanceOf(IdempotencyKeyRequiredException.class);
+    @Test
+    void shouldReplayCachedResponse() throws Throwable {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
+          .willReturn(SOME_IDEMPOTENCY_KEY);
+      given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
+          .willReturn(Optional.of(SOME_CACHED_RESPONSE));
+
+      // when
+      var result = aspect.around(pjp);
+
+      // then
+      var expectedHeaders = new HttpHeaders();
+      expectedHeaders.set(IdempotencyAspect.HEADER_IDEMPOTENCY_REPLAYED, "true");
+      expectedHeaders.setContentType(MediaType.APPLICATION_JSON);
+      var expected =
+          new ResponseEntity<>(SOME_CACHED_RESPONSE.body(), expectedHeaders, HttpStatus.OK);
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+      then(pjp).shouldHaveNoInteractions();
+    }
   }
 
-  @Test
-  void shouldReplayCachedResponseOnCacheHit() throws Throwable {
-    // given
-    given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
-        .willReturn(SOME_IDEMPOTENCY_KEY);
-    given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
-        .willReturn(Optional.of(SOME_CACHED_RESPONSE));
+  @Nested
+  class WhenCacheMiss {
 
-    // when
-    var result = aspect.around(pjp);
+    @Test
+    void shouldProceedAndCacheOn2xxResponse() throws Throwable {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
+          .willReturn(SOME_IDEMPOTENCY_KEY);
+      given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
+          .willReturn(Optional.empty());
+      given(
+              idempotencyRepository.tryAcquire(
+                  SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_EXPIRES_AT))
+          .willReturn(true);
+      var responseBody = new TestDto("ok");
+      given(pjp.proceed()).willReturn(responseBody);
 
-    // then
-    assertThat(result).isInstanceOf(ResponseEntity.class);
-    var response = (ResponseEntity<?>) result;
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getHeaders().getFirst(IdempotencyAspect.HEADER_IDEMPOTENCY_REPLAYED))
-        .isEqualTo("true");
-    assertThat(response.getBody()).isEqualTo(SOME_CACHED_RESPONSE.body());
-    then(pjp).shouldHaveNoInteractions();
+      // when
+      var result = aspect.around(pjp);
+
+      // then
+      assertThat(result).isEqualTo(responseBody);
+      var expectedCachedResponse =
+          CachedResponse.builder()
+              .status(200)
+              .body(OBJECT_MAPPER.writeValueAsBytes(responseBody))
+              .expiresAt(SOME_EXPIRES_AT)
+              .build();
+      then(idempotencyRepository)
+          .should()
+          .save(
+              eqIgnoring(SOME_IDEMPOTENCY_KEY),
+              eqIgnoring(SOME_ADMIN_USER_ID),
+              eqIgnoring(expectedCachedResponse));
+    }
+
+    @Test
+    void shouldProceedWithoutCachingOnNon2xxResponse() throws Throwable {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
+          .willReturn(SOME_IDEMPOTENCY_KEY);
+      given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
+          .willReturn(Optional.empty());
+      given(
+              idempotencyRepository.tryAcquire(
+                  SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_EXPIRES_AT))
+          .willReturn(true);
+      var errorResponse = ResponseEntity.status(HttpStatus.NOT_FOUND).body("not found");
+      given(pjp.proceed()).willReturn(errorResponse);
+
+      // when
+      var result = aspect.around(pjp);
+
+      // then
+      assertThat(result).isEqualTo(errorResponse);
+      then(idempotencyRepository)
+          .should()
+          .findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW);
+      then(idempotencyRepository)
+          .should()
+          .tryAcquire(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_EXPIRES_AT);
+      then(idempotencyRepository).shouldHaveNoMoreInteractions();
+    }
   }
 
-  @Test
-  void shouldProceedAndCacheOn2xxResponseWhenCacheMiss() throws Throwable {
-    // given
-    given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
-        .willReturn(SOME_IDEMPOTENCY_KEY);
-    given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
-        .willReturn(Optional.empty());
-    var responseBody = new TestDto("ok");
-    given(pjp.proceed()).willReturn(responseBody);
+  @Nested
+  class WhenConcurrentRequest {
 
-    // when
-    var result = aspect.around(pjp);
+    @Test
+    void shouldReplayWhenAcquireFailsAndResponseAvailable() throws Throwable {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
+          .willReturn(SOME_IDEMPOTENCY_KEY);
+      given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
+          .willReturn(Optional.empty())
+          .willReturn(Optional.of(SOME_CACHED_RESPONSE));
+      given(
+              idempotencyRepository.tryAcquire(
+                  SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_EXPIRES_AT))
+          .willReturn(false);
 
-    // then
-    assertThat(result).isEqualTo(responseBody);
-    var captor = ArgumentCaptor.forClass(io.stablepay.api.domain.model.CachedResponse.class);
-    then(idempotencyRepository)
-        .should()
-        .save(
-            org.mockito.ArgumentMatchers.eq(SOME_IDEMPOTENCY_KEY),
-            org.mockito.ArgumentMatchers.eq(SOME_ADMIN_USER_ID),
-            captor.capture());
-    assertThat(captor.getValue().status()).isEqualTo(200);
-    assertThat(captor.getValue().expiresAt())
-        .isEqualTo(SOME_NOW.plus(IdempotencyAspect.DEFAULT_TTL));
-  }
+      // when
+      var result = aspect.around(pjp);
 
-  @Test
-  void shouldProceedWithoutCachingOnNon2xxResponse() throws Throwable {
-    // given
-    given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
-        .willReturn(SOME_IDEMPOTENCY_KEY);
-    given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
-        .willReturn(Optional.empty());
-    var errorResponse = ResponseEntity.status(HttpStatus.NOT_FOUND).body("not found");
-    given(pjp.proceed()).willReturn(errorResponse);
+      // then
+      var expectedHeaders = new HttpHeaders();
+      expectedHeaders.set(IdempotencyAspect.HEADER_IDEMPOTENCY_REPLAYED, "true");
+      expectedHeaders.setContentType(MediaType.APPLICATION_JSON);
+      var expected =
+          new ResponseEntity<>(SOME_CACHED_RESPONSE.body(), expectedHeaders, HttpStatus.OK);
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+      then(pjp).shouldHaveNoInteractions();
+    }
 
-    // when
-    var result = aspect.around(pjp);
+    @Test
+    void shouldThrowConflictWhenAcquireFailsAndResponseNotAvailable() {
+      // given
+      given(request.getHeader(IdempotencyAspect.HEADER_IDEMPOTENCY_KEY))
+          .willReturn(SOME_IDEMPOTENCY_KEY);
+      given(idempotencyRepository.findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW))
+          .willReturn(Optional.empty());
+      given(
+              idempotencyRepository.tryAcquire(
+                  SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_EXPIRES_AT))
+          .willReturn(false);
 
-    // then
-    assertThat(result).isEqualTo(errorResponse);
-    then(idempotencyRepository)
-        .should()
-        .findActive(SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_NOW);
-    then(idempotencyRepository).shouldHaveNoMoreInteractions();
+      // when / then
+      assertThatThrownBy(() -> aspect.around(pjp))
+          .isInstanceOf(IdempotencyKeyConflictException.class);
+      then(pjp).shouldHaveNoInteractions();
+    }
   }
 
   record TestDto(String value) {}

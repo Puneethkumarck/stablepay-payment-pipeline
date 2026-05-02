@@ -23,13 +23,19 @@ public class PostgresIdempotencyRepository implements IdempotencyRepository {
   static final String SQL_FIND_ACTIVE =
       "SELECT response_status, response_body, expires_at"
           + " FROM idempotency_keys"
-          + " WHERE idempotency_key = :key AND user_id = :userId AND expires_at > :now";
+          + " WHERE idempotency_key = :key AND user_id = :userId"
+          + " AND expires_at > :now AND response_body IS NOT NULL";
 
-  static final String SQL_SAVE =
+  static final String SQL_TRY_ACQUIRE =
       "INSERT INTO idempotency_keys (idempotency_key, user_id, response_status, response_body,"
           + " expires_at)"
-          + " VALUES (:key, :userId, :status, :body, :expiresAt)"
+          + " VALUES (:key, :userId, 0, NULL, :expiresAt)"
           + " ON CONFLICT (idempotency_key, user_id) DO NOTHING";
+
+  static final String SQL_SAVE =
+      "UPDATE idempotency_keys"
+          + " SET response_status = :status, response_body = :body, expires_at = :expiresAt"
+          + " WHERE idempotency_key = :key AND user_id = :userId";
 
   static final String SQL_DELETE_EXPIRED = "DELETE FROM idempotency_keys WHERE expires_at <= :now";
 
@@ -55,6 +61,24 @@ public class PostgresIdempotencyRepository implements IdempotencyRepository {
             .addValue("now", Timestamp.from(now));
     try {
       return jdbc.query(SQL_FIND_ACTIVE, params, CACHED_RESPONSE_ROW_MAPPER).stream().findFirst();
+    } catch (DataAccessException e) {
+      throw PostgresAdapterException.idempotency(e);
+    }
+  }
+
+  @Override
+  public boolean tryAcquire(String key, UserId userId, Instant expiresAt) {
+    Objects.requireNonNull(key, "key");
+    Objects.requireNonNull(userId, "userId");
+    Objects.requireNonNull(expiresAt, "expiresAt");
+    var params =
+        new MapSqlParameterSource()
+            .addValue("key", key)
+            .addValue("userId", userId.value())
+            .addValue("expiresAt", Timestamp.from(expiresAt));
+    try {
+      var rowsAffected = jdbc.update(SQL_TRY_ACQUIRE, params);
+      return rowsAffected == 1;
     } catch (DataAccessException e) {
       throw PostgresAdapterException.idempotency(e);
     }
