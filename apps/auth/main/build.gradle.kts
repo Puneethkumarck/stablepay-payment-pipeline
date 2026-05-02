@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     `java-test-fixtures`
+    jacoco
 }
 
 val integrationTest: SourceSet by sourceSets.creating {
@@ -32,10 +33,14 @@ configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRunt
 val businessTestImplementation: Configuration by configurations.getting {
     extendsFrom(
         configurations.testImplementation.get(),
+        configurations.implementation.get(),
         configurations["testFixturesApi"],
     )
 }
-configurations["businessTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
+configurations["businessTestRuntimeOnly"].extendsFrom(
+    configurations.testRuntimeOnly.get(),
+    configurations.runtimeOnly.get(),
+)
 
 dependencies {
     implementation(project(":apps:auth:auth"))
@@ -88,8 +93,14 @@ dependencies {
     "integrationTestAnnotationProcessor"(libs.lombok)
 
     businessTestImplementation(libs.spring.boot.starter.test)
+    businessTestImplementation(libs.spring.boot.resttestclient)
+    businessTestImplementation(libs.spring.boot.http.client)
+    businessTestImplementation(libs.spring.boot.restclient)
+    businessTestImplementation(libs.spring.boot.testcontainers)
     businessTestImplementation(libs.testcontainers.postgres)
     businessTestImplementation(libs.testcontainers.junit)
+    businessTestImplementation(libs.nimbus.jose.jwt)
+    businessTestImplementation(testFixtures(project(":apps:auth:auth")))
     "businessTestCompileOnly"(libs.lombok)
     "businessTestAnnotationProcessor"(libs.lombok)
 }
@@ -110,8 +121,31 @@ val businessTestTask = tasks.register<Test>("businessTest") {
     shouldRunAfter("integrationTest")
 }
 
+tasks.withType<JacocoReport>().configureEach {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.test)
+    violationRules {
+        rule {
+            element = "CLASS"
+            includes = listOf("io.stablepay.auth.application.AuthService")
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.90".toBigDecimal()
+            }
+        }
+    }
+}
+
 tasks.named("check") {
-    dependsOn(integrationTestTask, businessTestTask)
+    dependsOn(integrationTestTask, businessTestTask, "jacocoTestCoverageVerification", "jacocoTestReport")
 }
 
 tasks.named<BootJar>("bootJar") {

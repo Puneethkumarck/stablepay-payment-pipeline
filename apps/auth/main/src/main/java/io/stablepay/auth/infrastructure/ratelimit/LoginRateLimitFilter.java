@@ -25,12 +25,12 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
-  private static final String LOGIN_PATH = "/api/v1/auth/login";
-  private static final String RATE_LIMIT_ERROR_CODE = "STBLPAY-1004";
-  private static final int BUCKET_CAPACITY = 5;
-  private static final Duration REFILL_PERIOD = Duration.ofMinutes(1);
-  private static final long RETRY_AFTER_SECONDS = REFILL_PERIOD.toSeconds();
-  private static final String RATE_LIMIT_MESSAGE =
+  public static final String LOGIN_PATH = "/api/v1/auth/login";
+  public static final String RATE_LIMIT_ERROR_CODE = "STBLPAY-1004";
+  public static final int BUCKET_CAPACITY = 5;
+  public static final Duration REFILL_PERIOD = Duration.ofMinutes(1);
+  public static final long RETRY_AFTER_SECONDS = REFILL_PERIOD.toSeconds();
+  public static final String RATE_LIMIT_MESSAGE =
       "Too many login attempts. Try again in " + RETRY_AFTER_SECONDS + " seconds.";
   private static final Duration BUCKET_IDLE_TTL = Duration.ofMinutes(2);
   private static final long BUCKET_MAX_ENTRIES = 100_000L;

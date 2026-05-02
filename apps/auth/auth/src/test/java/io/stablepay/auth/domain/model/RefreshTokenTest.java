@@ -7,6 +7,7 @@ import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_REFRESH_TOK
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_TOKEN_HASH;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_USER_ID;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.activeRefreshToken;
+import static io.stablepay.auth.domain.model.AuthDomainFixtures.refreshTokenBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ class RefreshTokenTest {
   @Test
   void shouldBuildActiveTokenWithEmptyRevokedAt() {
     // when
-    var actual = activeRefreshToken();
+    var actual = refreshTokenBuilder().id(SOME_REFRESH_TOKEN_ID).build();
 
     // then
     var expected =
@@ -84,7 +85,7 @@ class RefreshTokenTest {
   @Test
   void shouldReturnNewInstanceWithRevokedAtSetWhenRevoked() {
     // when
-    var actual = activeRefreshToken().revoke(SOME_LATER_INSTANT);
+    var actual = refreshTokenBuilder().id(SOME_REFRESH_TOKEN_ID).build().revoke(SOME_LATER_INSTANT);
 
     // then
     var expected =
