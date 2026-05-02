@@ -1,5 +1,7 @@
 package io.stablepay.api.infrastructure.security;
 
+import io.stablepay.api.application.security.AuthenticatedUser;
+import io.stablepay.api.application.security.Role;
 import io.stablepay.api.domain.model.CustomerId;
 import io.stablepay.api.domain.model.UserId;
 import java.util.List;

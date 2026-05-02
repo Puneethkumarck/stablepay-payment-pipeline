@@ -1,4 +1,4 @@
-package io.stablepay.api.infrastructure.security;
+package io.stablepay.api.application.security;
 
 public enum Role {
   CUSTOMER,

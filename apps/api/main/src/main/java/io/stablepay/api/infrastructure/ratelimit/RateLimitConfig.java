@@ -9,7 +9,7 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
-import io.stablepay.api.infrastructure.security.Role;
+import io.stablepay.api.application.security.Role;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.EnumMap;

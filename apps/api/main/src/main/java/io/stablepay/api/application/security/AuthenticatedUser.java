@@ -1,4 +1,4 @@
-package io.stablepay.api.infrastructure.security;
+package io.stablepay.api.application.security;
 
 import io.stablepay.api.domain.model.CustomerId;
 import io.stablepay.api.domain.model.UserId;

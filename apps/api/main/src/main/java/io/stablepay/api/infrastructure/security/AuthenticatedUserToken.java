@@ -1,5 +1,6 @@
 package io.stablepay.api.infrastructure.security;
 
+import io.stablepay.api.application.security.AuthenticatedUser;
 import java.util.Collection;
 import java.util.Objects;
 import org.springframework.security.authentication.AbstractAuthenticationToken;

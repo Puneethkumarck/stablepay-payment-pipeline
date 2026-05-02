@@ -1,7 +1,7 @@
 package io.stablepay.api.infrastructure.ratelimit;
 
 import io.github.bucket4j.Bucket;
-import io.stablepay.api.infrastructure.security.Role;
+import io.stablepay.api.application.security.Role;
 
 @FunctionalInterface
 public interface RateLimitBucketResolver {

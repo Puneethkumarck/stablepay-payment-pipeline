@@ -1,9 +1,9 @@
-package io.stablepay.api.infrastructure.security.fixtures;
+package io.stablepay.api.application.security.fixtures;
 
+import io.stablepay.api.application.security.AuthenticatedUser;
+import io.stablepay.api.application.security.Role;
 import io.stablepay.api.domain.model.CustomerId;
 import io.stablepay.api.domain.model.UserId;
-import io.stablepay.api.infrastructure.security.AuthenticatedUser;
-import io.stablepay.api.infrastructure.security.Role;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;

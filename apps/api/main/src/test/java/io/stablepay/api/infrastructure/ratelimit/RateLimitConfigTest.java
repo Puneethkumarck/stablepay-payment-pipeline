@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
-import io.stablepay.api.infrastructure.security.Role;
+import io.stablepay.api.application.security.Role;
 import org.junit.jupiter.api.Test;
 
 class RateLimitConfigTest {

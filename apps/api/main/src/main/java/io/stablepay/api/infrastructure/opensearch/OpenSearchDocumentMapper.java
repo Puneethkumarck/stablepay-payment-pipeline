@@ -15,7 +15,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 @Mapper(
-    componentModel = "spring",
     imports = {
       Money.class,
       CurrencyCode.class,
