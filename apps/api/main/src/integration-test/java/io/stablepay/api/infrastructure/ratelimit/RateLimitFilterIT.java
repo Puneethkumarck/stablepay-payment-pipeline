@@ -134,10 +134,11 @@ class RateLimitFilterIT {
 
   private static RateLimitFilter newFilter() {
     var resolver =
-        (RateLimitBucketResolver) (key, role) -> {
-          var configuration = roleConfigurations.get(role);
-          return proxyManager.builder().build(key, () -> configuration);
-        };
+        (RateLimitBucketResolver)
+            (key, role) -> {
+              var configuration = roleConfigurations.get(role);
+              return proxyManager.builder().build(key, () -> configuration);
+            };
     return new RateLimitFilter(resolver, objectMapper, Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
   }
 

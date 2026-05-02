@@ -2,15 +2,18 @@ package io.stablepay.api.infrastructure.trino;
 
 import io.stablepay.api.domain.model.DlqEvent;
 import io.stablepay.api.domain.model.DlqId;
+import io.stablepay.api.domain.model.DlqSummary;
 import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.port.DlqRepository;
 import io.stablepay.api.infrastructure.cursor.Base64PipeCursor;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,6 +29,9 @@ import org.springframework.stereotype.Repository;
 public class TrinoDlqRepository implements DlqRepository {
 
   static final String CURSOR_ERROR_CODE = "STBLPAY-2102";
+
+  static final String SQL_SUMMARY_ADMIN =
+      "SELECT error_class, COUNT(*) AS cnt FROM iceberg.dlq.dlq_events GROUP BY error_class";
 
   static final String SQL_FIND_BY_ID_ADMIN =
       "SELECT dlq_id, error_class, source_topic, source_partition, source_offset, error_message,"
@@ -73,6 +79,26 @@ public class TrinoDlqRepository implements DlqRepository {
     var params = new MapSqlParameterSource().addValue("dlqId", id.value().toString());
     try {
       return jdbc.query(SQL_FIND_BY_ID_ADMIN, params, DLQ_ROW_MAPPER).stream().findFirst();
+    } catch (DataAccessException e) {
+      throw new TrinoAdapterException(e);
+    }
+  }
+
+  @Override
+  public DlqSummary summaryAdmin() {
+    try {
+      var rows =
+          jdbc.query(
+              SQL_SUMMARY_ADMIN,
+              new MapSqlParameterSource(),
+              (rs, rowNum) -> Map.entry(rs.getString("error_class"), rs.getLong("cnt")));
+      var countsByErrorClass =
+          rows.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      var totalCount = countsByErrorClass.values().stream().mapToLong(Long::longValue).sum();
+      return DlqSummary.builder()
+          .countsByErrorClass(countsByErrorClass)
+          .totalCount(totalCount)
+          .build();
     } catch (DataAccessException e) {
       throw new TrinoAdapterException(e);
     }
