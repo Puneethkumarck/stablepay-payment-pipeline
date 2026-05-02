@@ -133,8 +133,8 @@ class RateLimitFilterIT {
   }
 
   private static RateLimitFilter newFilter() {
-    RateLimitBucketResolver resolver =
-        (key, role) -> {
+    var resolver =
+        (RateLimitBucketResolver) (key, role) -> {
           var configuration = roleConfigurations.get(role);
           return proxyManager.builder().build(key, () -> configuration);
         };
