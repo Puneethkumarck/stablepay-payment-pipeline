@@ -22,6 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.AfterEach;
@@ -138,7 +139,7 @@ class IdempotencyAspectTest {
               idempotencyRepository.tryAcquire(
                   SOME_IDEMPOTENCY_KEY, SOME_ADMIN_USER_ID, SOME_EXPIRES_AT))
           .willReturn(true);
-      var responseBody = new TestDto("ok");
+      var responseBody = Map.of("value", "ok");
       given(pjp.proceed()).willReturn(responseBody);
 
       // when
@@ -237,5 +238,4 @@ class IdempotencyAspectTest {
     }
   }
 
-  record TestDto(String value) {}
 }
