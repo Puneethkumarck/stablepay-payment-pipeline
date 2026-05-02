@@ -1,11 +1,12 @@
 package io.stablepay.auth.infrastructure.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @TestConfiguration
 class TestConfig {
@@ -19,6 +20,6 @@ class TestConfig {
 
   @Bean
   ObjectMapper objectMapper() {
-    return new ObjectMapper().findAndRegisterModules();
+    return JsonMapper.builder().findAndAddModules().build();
   }
 }

@@ -5,8 +5,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.auth.application.SigningKeyManager;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class JwksControllerTest {
@@ -30,7 +31,7 @@ class JwksControllerTest {
   @BeforeEach
   void setUp() {
     mockMvc = MockMvcBuilders.standaloneSetup(new JwksController(signingKeyManager)).build();
-    objectMapper = new ObjectMapper();
+    objectMapper = JsonMapper.builder().build();
   }
 
   @Test

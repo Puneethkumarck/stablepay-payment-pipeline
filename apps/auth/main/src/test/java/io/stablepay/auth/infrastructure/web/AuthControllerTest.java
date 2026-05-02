@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.auth.application.AuthService;
 import io.stablepay.auth.application.AuthService.LoginOutcome;
 import io.stablepay.auth.client.ApiError;
@@ -26,6 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
@@ -48,7 +49,7 @@ class AuthControllerTest {
     var controller = new AuthController(authService, clock);
     var advice = new GlobalExceptionHandler(clock);
     mockMvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(advice).build();
-    objectMapper = new ObjectMapper().findAndRegisterModules();
+    objectMapper = JsonMapper.builder().findAndAddModules().build();
   }
 
   @Test
