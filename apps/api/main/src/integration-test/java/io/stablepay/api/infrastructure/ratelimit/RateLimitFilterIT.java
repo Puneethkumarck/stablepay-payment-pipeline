@@ -1,8 +1,8 @@
 package io.stablepay.api.infrastructure.ratelimit;
 
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
 import static io.stablepay.api.infrastructure.ratelimit.fixtures.RateLimitFixtures.productionConfigurationsForAllRoles;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
 import static io.stablepay.api.infrastructure.security.fixtures.JwtFixtures.jwtBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,9 +14,9 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
+import io.stablepay.api.application.security.Role;
 import io.stablepay.api.client.ApiError;
 import io.stablepay.api.infrastructure.security.AuthenticatedUserToken;
-import io.stablepay.api.infrastructure.security.Role;
 import jakarta.servlet.FilterChain;
 import java.time.Clock;
 import java.time.Instant;

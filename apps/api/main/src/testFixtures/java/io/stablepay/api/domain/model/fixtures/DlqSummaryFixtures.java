@@ -15,4 +15,8 @@ public final class DlqSummaryFixtures {
       DlqSummary.builder().countsByErrorClass(SOME_COUNTS_BY_ERROR_CLASS).totalCount(10L).build();
 
   private DlqSummaryFixtures() {}
+
+  public static DlqSummary.DlqSummaryBuilder someDlqSummary() {
+    return SOME_DLQ_SUMMARY.toBuilder();
+  }
 }

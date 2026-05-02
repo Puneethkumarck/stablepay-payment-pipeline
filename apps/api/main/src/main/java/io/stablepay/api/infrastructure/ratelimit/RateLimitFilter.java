@@ -1,10 +1,10 @@
 package io.stablepay.api.infrastructure.ratelimit;
 
 import io.github.bucket4j.ConsumptionProbe;
+import io.stablepay.api.application.security.AuthenticatedUser;
+import io.stablepay.api.application.security.Role;
 import io.stablepay.api.client.ApiError;
-import io.stablepay.api.infrastructure.security.AuthenticatedUser;
 import io.stablepay.api.infrastructure.security.AuthenticatedUserToken;
-import io.stablepay.api.infrastructure.security.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

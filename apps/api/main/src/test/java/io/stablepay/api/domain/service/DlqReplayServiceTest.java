@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.model.DlqId;
 import io.stablepay.api.domain.model.UserId;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +32,8 @@ class DlqReplayServiceTest {
   @Mock private DlqRepository dlqRepository;
 
   @Mock private OutboxRepository outboxRepository;
+
+  @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private DlqReplayService service;
 

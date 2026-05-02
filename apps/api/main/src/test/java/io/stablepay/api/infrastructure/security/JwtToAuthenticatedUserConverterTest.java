@@ -1,15 +1,15 @@
 package io.stablepay.api.infrastructure.security;
 
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_EMAIL;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_EMAIL;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_EMAIL;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someAgentUser;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_EMAIL;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_EMAIL;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_EMAIL;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someAgentUser;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
 import static io.stablepay.api.infrastructure.security.fixtures.JwtFixtures.jwtBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -2,9 +2,9 @@ package io.stablepay.api.infrastructure.ratelimit.fixtures;
 
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
+import io.stablepay.api.application.security.Role;
 import io.stablepay.api.infrastructure.ratelimit.RateLimitBucketResolver;
 import io.stablepay.api.infrastructure.ratelimit.RateLimitConfig;
-import io.stablepay.api.infrastructure.security.Role;
 import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;

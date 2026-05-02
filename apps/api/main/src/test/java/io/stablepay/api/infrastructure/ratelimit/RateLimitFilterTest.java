@@ -1,19 +1,19 @@
 package io.stablepay.api.infrastructure.ratelimit;
 
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someAgentUser;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
 import static io.stablepay.api.infrastructure.ratelimit.fixtures.RateLimitFixtures.SOME_TINY_CAPACITY;
 import static io.stablepay.api.infrastructure.ratelimit.fixtures.RateLimitFixtures.inMemoryResolverWith;
 import static io.stablepay.api.infrastructure.ratelimit.fixtures.RateLimitFixtures.tinyConfigurationsForAllRoles;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someAgentUser;
-import static io.stablepay.api.infrastructure.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
 import static io.stablepay.api.infrastructure.security.fixtures.JwtFixtures.jwtBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.stablepay.api.application.security.AuthenticatedUser;
 import io.stablepay.api.client.ApiError;
-import io.stablepay.api.infrastructure.security.AuthenticatedUser;
 import io.stablepay.api.infrastructure.security.AuthenticatedUserToken;
 import jakarta.servlet.FilterChain;
 import java.time.Clock;
