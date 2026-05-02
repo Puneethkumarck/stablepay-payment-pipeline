@@ -1,6 +1,5 @@
 package io.stablepay.auth.infrastructure.ratelimit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.auth.client.ApiError;
 import jakarta.servlet.FilterChain;
 import java.time.Clock;
@@ -15,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class LoginRateLimitFilterTest {
 
@@ -29,7 +30,7 @@ class LoginRateLimitFilterTest {
 
   @BeforeEach
   void setUp() {
-    objectMapper = new ObjectMapper().findAndRegisterModules();
+    objectMapper = JsonMapper.builder().findAndAddModules().build();
     filter = new LoginRateLimitFilter(objectMapper, Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
     chainInvocations = new AtomicInteger(0);
     chain = (req, res) -> chainInvocations.incrementAndGet();
