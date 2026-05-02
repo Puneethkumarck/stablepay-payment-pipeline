@@ -1,0 +1,13 @@
+**/.gradle
+**/.idea
+**/src
+**/auth/build
+**/client/build
+**/main/build/classes
+**/main/build/distributions
+**/main/build/generated
+**/main/build/reports
+**/main/build/resources
+**/main/build/test-results
+**/main/build/tmp
+*.md

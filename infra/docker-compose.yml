@@ -251,6 +251,34 @@ services:
     networks:
       - stablepay_default
 
+  # ─── Auth Service (Spring Boot JWT issuer) ────────
+  apps-auth:
+    build:
+      context: ../apps/auth
+      dockerfile: Dockerfile
+    container_name: stablepay-auth
+    init: true
+    ports:
+      - "9100:9000"
+    environment:
+      AUTH_DB_URL: jdbc:postgresql://postgres:5432/stablepay_auth
+      AUTH_DB_USERNAME: ${POSTGRES_USER:-stablepay}
+      AUTH_DB_PASSWORD: ${POSTGRES_PASSWORD:-stablepay_dev}
+      AUTH_PORT: "9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9000/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - stablepay_default
+
   # ─── Lakehouse Maintenance Jobs ───────────────────
   # Gated behind the `lakehouse` profile until Trino is added in Plan 3.4.
   # Run with: docker compose --profile lakehouse up -d lakehouse-jobs
