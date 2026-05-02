@@ -1,4 +1,4 @@
-package io.stablepay.auth.test;
+package io.stablepay.api.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
