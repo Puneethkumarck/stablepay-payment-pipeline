@@ -14,15 +14,6 @@ import java.util.UUID;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-/**
- * Maps {@link OpenSearchTransactionDocument} (wire format) into the {@link Transaction} domain
- * record. The reverse direction is intentionally omitted in Phase 4.2.3 — the API never writes to
- * OpenSearch; Flink sinks own that path.
- *
- * <p>{@code counterparty} and {@code typedFields} default to empty/empty-map: the deployed index
- * template has no single field to source them from, and the future event-extraction layer will
- * populate them once richer payloads are indexed.
- */
 @Mapper(
     componentModel = "spring",
     imports = {

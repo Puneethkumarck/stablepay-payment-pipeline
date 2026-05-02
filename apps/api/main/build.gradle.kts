@@ -92,6 +92,7 @@ dependencies {
     testImplementation(libs.assertj.core)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit)
+    testImplementation(libs.trino.parser)
     testCompileOnly(libs.lombok)
     testAnnotationProcessor(libs.lombok)
 

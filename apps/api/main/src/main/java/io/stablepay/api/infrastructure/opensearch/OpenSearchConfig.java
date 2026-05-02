@@ -10,11 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Wires the singleton {@link OpenSearchClient} used by the OpenSearch adapter. The URI is the only
- * configuration knob the API exposes; index name lives next to the repository so a misconfigured
- * cluster pointer does not silently swap indices.
- */
+// TODO(SPP-NN): switch to authenticated HTTPS transport (basic auth + TLS truststore) before any
+// non-localhost deployment. Bare HTTP is acceptable only for the local docker-compose target.
 @Configuration
 @Slf4j
 public class OpenSearchConfig {

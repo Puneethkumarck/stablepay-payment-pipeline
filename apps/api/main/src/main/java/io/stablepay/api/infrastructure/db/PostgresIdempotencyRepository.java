@@ -15,14 +15,6 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/**
- * Postgres-backed adapter for {@link IdempotencyRepository}. Reads/writes the {@code
- * idempotency_keys} table maintained by Flyway migration {@code V1__SPP-88_idempotency_keys.sql}.
- *
- * <p>Cache scope is {@code (idempotency_key, user_id)} so the same key cannot collide across
- * customers. Re-saves of an already-cached entry are absorbed by {@code ON CONFLICT DO NOTHING};
- * the original cached response is therefore the source of truth for the entire TTL window.
- */
 @Repository
 @RequiredArgsConstructor
 @Slf4j

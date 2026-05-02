@@ -2,18 +2,11 @@ package io.stablepay.api.infrastructure.opensearch;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.neovisionaries.i18n.CurrencyCode;
-import io.stablepay.api.domain.model.AccountId;
 import io.stablepay.api.domain.model.CustomerId;
-import io.stablepay.api.domain.model.FlowId;
-import io.stablepay.api.domain.model.Money;
-import io.stablepay.api.domain.model.Transaction;
-import io.stablepay.api.domain.model.TransactionId;
+import io.stablepay.api.domain.model.TransactionSearch;
 import io.stablepay.api.domain.model.fixtures.TransactionFixtures;
 import io.stablepay.api.infrastructure.opensearch.fixtures.OpenSearchTransactionDocumentFixtures;
 import java.net.URI;
-import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.hc.core5.http.HttpHost;
@@ -30,10 +23,6 @@ import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-/**
- * Round-trips a known document through a real single-node OpenSearch container. Wires the adapter
- * manually (no Spring context) per the standards' integration-test pyramid level.
- */
 @Testcontainers
 @Tag("integration")
 class OpenSearchTransactionRepositoryIT {
@@ -75,31 +64,8 @@ class OpenSearchTransactionRepositoryIT {
   void shouldRoundTripDocumentThroughFindByReference() throws Exception {
     // given
     var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    client.index(
-        i ->
-            i.index(INDEX_NAME).id(document.eventId()).document(document).refresh(Refresh.WaitFor));
-    var expected =
-        Optional.of(
-            Transaction.builder()
-                .id(TransactionId.of(UUID.fromString(document.eventId())))
-                .reference(document.transactionReference())
-                .flowType(document.flowType())
-                .internalStatus(document.internalStatus())
-                .customerStatus(document.customerStatus())
-                .amount(
-                    Money.fromMicros(
-                        document.amountMicros(), CurrencyCode.getByCode(document.currencyCode())))
-                .customerId(CustomerId.of(UUID.fromString(document.customerId())))
-                .accountId(AccountId.of(UUID.fromString(document.accountId())))
-                .counterparty(Optional.<String>empty())
-                .flowId(FlowId.of(UUID.fromString(document.flowId())))
-                .eventId(document.eventId())
-                .correlationId(document.correlationId())
-                .traceId(document.traceId())
-                .eventTime(Instant.ofEpochMilli(document.eventTimeEpochMillis()))
-                .ingestTime(Instant.ofEpochMilli(document.ingestTimeEpochMillis()))
-                .typedFields(Map.<String, Object>of())
-                .build());
+    indexAndRefresh(document);
+    var expected = Optional.of(OpenSearchTransactionDocumentFixtures.toMappedDomain(document));
 
     // when
     var actual =
@@ -108,6 +74,78 @@ class OpenSearchTransactionRepositoryIT {
 
     // then
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+  }
+
+  @Test
+  void shouldReturnEmptyWhenAnotherCustomerOwnsTheTransaction() throws Exception {
+    // given — index a document owned by SOME_TRANSACTION_CUSTOMER_ID
+    var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
+    indexAndRefresh(document);
+    var foreignCustomer = CustomerId.of(UUID.randomUUID());
+    var expected = Optional.empty();
+
+    // when — query as a different customer
+    var actual = repository.findByReference(document.transactionReference(), foreignCustomer);
+
+    // then
+    assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+  }
+
+  @Test
+  void shouldReturnSearchHitForOwningCustomer() throws Exception {
+    // given
+    var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
+    indexAndRefresh(document);
+    var criteria =
+        TransactionSearch.builder()
+            .reference(Optional.of(document.transactionReference()))
+            .flowType(Optional.empty())
+            .internalStatus(Optional.empty())
+            .customerStatus(Optional.empty())
+            .from(Optional.empty())
+            .to(Optional.empty())
+            .pageSize(10)
+            .cursor(Optional.empty())
+            .build();
+
+    // when
+    var actual = repository.search(criteria, TransactionFixtures.SOME_TRANSACTION_CUSTOMER_ID);
+
+    // then
+    assertThat(actual.items()).hasSize(1);
+    assertThat(actual.nextCursor()).isEmpty();
+  }
+
+  @Test
+  void shouldOmitSearchHitsForOtherCustomers() throws Exception {
+    // given
+    var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
+    indexAndRefresh(document);
+    var foreignCustomer = CustomerId.of(UUID.randomUUID());
+    var criteria =
+        TransactionSearch.builder()
+            .reference(Optional.empty())
+            .flowType(Optional.empty())
+            .internalStatus(Optional.empty())
+            .customerStatus(Optional.empty())
+            .from(Optional.empty())
+            .to(Optional.empty())
+            .pageSize(10)
+            .cursor(Optional.empty())
+            .build();
+
+    // when
+    var actual = repository.search(criteria, foreignCustomer);
+
+    // then
+    assertThat(actual.items()).isEmpty();
+    assertThat(actual.nextCursor()).isEmpty();
+  }
+
+  private static void indexAndRefresh(OpenSearchTransactionDocument document) throws Exception {
+    client.index(
+        i ->
+            i.index(INDEX_NAME).id(document.eventId()).document(document).refresh(Refresh.WaitFor));
   }
 
   private static void createIndex() throws Exception {

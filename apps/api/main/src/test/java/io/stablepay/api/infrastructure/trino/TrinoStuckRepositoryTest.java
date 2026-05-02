@@ -18,7 +18,7 @@ class TrinoStuckRepositoryTest {
   @Mock ResultSet rs;
 
   @Test
-  void stuckRowMapper_buildsStuckPayment_whenAllColumnsPresent() throws Exception {
+  void shouldBuildStuckPaymentWhenAllColumnsPresent() throws Exception {
     // given
     given(rs.getString("transaction_id"))
         .willReturn(StuckPaymentFixtures.SOME_STUCK_TRANSACTION_ID.value().toString());
@@ -42,7 +42,7 @@ class TrinoStuckRepositoryTest {
   }
 
   @Test
-  void encodeCursor_thenDecodeCursor_roundTrips() {
+  void shouldRoundTripCursorEncodeAndDecode() {
     // given
     var transactionIdString = StuckPaymentFixtures.SOME_STUCK_TRANSACTION_ID.value().toString();
     var encoded = TrinoStuckRepository.encodeCursor(900_000L, transactionIdString);

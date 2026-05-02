@@ -23,9 +23,6 @@ class ApiArchitectureTest {
       "io.stablepay.api.domain.port.IdempotencyRepository";
   private static final String OUTBOX_REPOSITORY_FQN =
       "io.stablepay.api.domain.port.OutboxRepository";
-  private static final String TRANSACTION_REPOSITORY_FQN =
-      "io.stablepay.api.domain.port.TransactionRepository";
-  private static final String SSE_UNSCOPED_TAIL_METHOD = "tailSinceSortValue";
 
   @ArchTest
   static final ArchRule layered =
@@ -97,9 +94,6 @@ class ApiArchitectureTest {
                   "take a CustomerId parameter or have a name ending in 'Admin'") {
                 @Override
                 public void check(JavaMethod method, ConditionEvents events) {
-                  if (isUnscopedSseSource(method)) {
-                    return;
-                  }
                   var hasCustomerId =
                       method.getRawParameterTypes().stream()
                           .anyMatch(p -> p.getName().equals(CUSTOMER_ID_FQN));
@@ -112,11 +106,6 @@ class ApiArchitectureTest {
                                 + method.getFullName()
                                 + " must take CustomerId or have a name ending in 'Admin'"));
                   }
-                }
-
-                private boolean isUnscopedSseSource(JavaMethod method) {
-                  return method.getOwner().getFullName().equals(TRANSACTION_REPOSITORY_FQN)
-                      && method.getName().equals(SSE_UNSCOPED_TAIL_METHOD);
                 }
               });
 }

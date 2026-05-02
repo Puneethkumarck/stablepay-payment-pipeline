@@ -16,14 +16,6 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/**
- * Trino-backed read adapter for {@link CustomerSummary}. Reads from the {@code
- * iceberg.analytics.v_customers} curated view.
- *
- * <p>Both {@code findById} and {@code findByIdAdmin} are self-lookups against {@code customer_id}.
- * Customer-scope enforcement is upstream in the auth layer — the repository trusts the {@code
- * CustomerId} it receives.
- */
 @Repository
 @Slf4j
 public class TrinoCustomerRepository implements CustomerRepository {

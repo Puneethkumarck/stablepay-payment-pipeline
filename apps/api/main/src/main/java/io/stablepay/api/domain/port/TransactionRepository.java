@@ -17,5 +17,5 @@ public interface TransactionRepository {
 
   PaginatedResult<Transaction> searchAdmin(TransactionSearch criteria);
 
-  Stream<Transaction> tailSinceSortValue(Optional<String> sortValue, int batchSize);
+  Stream<Transaction> tailSinceSortValueAdmin(Optional<String> sortValue, int batchSize);
 }

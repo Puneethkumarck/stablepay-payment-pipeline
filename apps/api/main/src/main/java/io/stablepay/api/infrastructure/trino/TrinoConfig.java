@@ -10,11 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-/**
- * Wires the Trino JDBC {@link DataSource} and a dedicated {@link NamedParameterJdbcTemplate} bound
- * to it. The Trino DataSource is intentionally separate from the primary Postgres DataSource so
- * read-only analytics traffic never touches the OLTP connection pool.
- */
 @Configuration
 @Slf4j
 public class TrinoConfig {

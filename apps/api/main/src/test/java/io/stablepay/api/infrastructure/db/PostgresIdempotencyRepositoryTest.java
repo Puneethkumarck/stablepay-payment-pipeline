@@ -18,7 +18,7 @@ class PostgresIdempotencyRepositoryTest {
   @Mock ResultSet rs;
 
   @Test
-  void cachedResponseRowMapper_buildsCachedResponse_whenAllColumnsPresent() throws Exception {
+  void shouldBuildCachedResponseWhenAllColumnsPresent() throws Exception {
     // given
     var expiresAt = Instant.parse("2026-05-01T11:00:00Z");
     var bodyBytes = new byte[] {1, 2, 3};
@@ -35,7 +35,7 @@ class PostgresIdempotencyRepositoryTest {
   }
 
   @Test
-  void cachedResponseRowMapper_buildsCachedResponseWithEmptyBody_whenBodyIsNull() throws Exception {
+  void shouldBuildCachedResponseWithEmptyBodyWhenBodyIsNull() throws Exception {
     // given
     var expiresAt = Instant.parse("2026-05-01T11:00:00Z");
     given(rs.getInt("response_status")).willReturn(204);

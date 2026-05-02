@@ -18,10 +18,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Round-trips an idempotency record through a real Postgres container. Wires the adapter manually
- * (no Spring context) per the standards' integration-test pyramid level.
- */
 @Testcontainers
 class PostgresIdempotencyRepositoryIT {
 
@@ -52,7 +48,7 @@ class PostgresIdempotencyRepositoryIT {
   }
 
   @Test
-  void save_thenFindActive_returnsCachedResponse() {
+  void shouldReturnCachedResponseAfterSave() {
     // given
     var userId = UserId.of(UUID.randomUUID());
     var key = "key-save-then-find-" + UUID.randomUUID();
@@ -75,7 +71,7 @@ class PostgresIdempotencyRepositoryIT {
   }
 
   @Test
-  void findActive_returnsEmpty_whenExpiresAtInPast() {
+  void shouldReturnEmptyWhenExpiresAtInPast() {
     // given
     var userId = UserId.of(UUID.randomUUID());
     var key = "key-expired-" + UUID.randomUUID();
@@ -92,7 +88,7 @@ class PostgresIdempotencyRepositoryIT {
   }
 
   @Test
-  void save_secondInsertSameKey_isAbsorbedByOnConflictDoNothing() {
+  void shouldAbsorbSecondInsertOnSameKey() {
     // given
     var userId = UserId.of(UUID.randomUUID());
     var key = "key-conflict-" + UUID.randomUUID();
@@ -118,7 +114,7 @@ class PostgresIdempotencyRepositoryIT {
   }
 
   @Test
-  void deleteExpired_deletesOnlyPastRows_andReturnsCount() {
+  void shouldDeleteOnlyExpiredRowsAndReturnCount() {
     // given
     var userId = UserId.of(UUID.randomUUID());
     var expiredKey = "key-cleanup-expired-" + UUID.randomUUID();

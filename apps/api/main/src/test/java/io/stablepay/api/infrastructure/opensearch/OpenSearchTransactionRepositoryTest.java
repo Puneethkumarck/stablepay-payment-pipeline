@@ -3,31 +3,25 @@ package io.stablepay.api.infrastructure.opensearch;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-import com.neovisionaries.i18n.CurrencyCode;
-import io.stablepay.api.domain.model.AccountId;
-import io.stablepay.api.domain.model.CustomerId;
-import io.stablepay.api.domain.model.FlowId;
-import io.stablepay.api.domain.model.Money;
 import io.stablepay.api.domain.model.PaginatedResult;
-import io.stablepay.api.domain.model.Transaction;
-import io.stablepay.api.domain.model.TransactionId;
 import io.stablepay.api.domain.model.TransactionSearch;
 import io.stablepay.api.domain.model.fixtures.TransactionFixtures;
 import io.stablepay.api.infrastructure.opensearch.fixtures.OpenSearchTransactionDocumentFixtures;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.FieldValue;
+import org.opensearch.client.opensearch._types.SortOrder;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.search.Hit;
@@ -41,21 +35,22 @@ class OpenSearchTransactionRepositoryTest {
   private OpenSearchClient client;
   private OpenSearchDocumentMapper mapper;
   private OpenSearchTransactionRepository repository;
+  private ArgumentCaptor<SearchRequest> requestCaptor;
 
   @BeforeEach
   void setUp() {
     client = mock(OpenSearchClient.class);
     mapper = mock(OpenSearchDocumentMapper.class);
     repository = new OpenSearchTransactionRepository(client, mapper, INDEX_NAME);
+    requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
   }
 
   @Test
   void shouldReturnTransactionWhenFindByReferenceMatchesCustomerScope() throws IOException {
     // given
     var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    var domain = mappedDomain(document);
-    var response = searchResponseWith(List.of(document));
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
     given(mapper.toDomain(document)).willReturn(domain);
 
     // when
@@ -66,13 +61,34 @@ class OpenSearchTransactionRepositoryTest {
     // then
     var expected = Optional.of(domain);
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    var sentRequest = requestCaptor.getValue();
+    assertThat(sentRequest.index()).containsExactly(INDEX_NAME);
+    assertThat(sentRequest.size()).isEqualTo(1);
+    assertThat(sentRequest.query().isBool()).isTrue();
+    var bool = sentRequest.query().bool();
+    assertThat(bool.must())
+        .singleElement()
+        .satisfies(
+            q -> {
+              assertThat(q.isTerm()).isTrue();
+              assertThat(q.term().field()).isEqualTo("transaction_reference");
+              assertThat(q.term().value().stringValue()).isEqualTo(document.transactionReference());
+            });
+    assertThat(bool.filter())
+        .singleElement()
+        .satisfies(
+            q -> {
+              assertThat(q.isTerm()).isTrue();
+              assertThat(q.term().field()).isEqualTo("customer_id");
+              assertThat(q.term().value().stringValue())
+                  .isEqualTo(TransactionFixtures.SOME_TRANSACTION_CUSTOMER_ID.value().toString());
+            });
   }
 
   @Test
   void shouldReturnEmptyWhenFindByReferenceFindsNoHits() throws IOException {
     // given
-    var response = searchResponseWith(List.of());
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
+    stubSearch(List.of());
 
     // when
     var actual =
@@ -83,29 +99,30 @@ class OpenSearchTransactionRepositoryTest {
   }
 
   @Test
-  void shouldReturnTransactionWhenFindByReferenceAdminMatchesAnyCustomer() throws IOException {
+  void shouldOmitCustomerFilterOnFindByReferenceAdmin() throws IOException {
     // given
     var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    var domain = mappedDomain(document);
-    var response = searchResponseWith(List.of(document));
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
     given(mapper.toDomain(document)).willReturn(domain);
 
     // when
     var actual = repository.findByReferenceAdmin(document.transactionReference());
 
     // then
-    var expected = Optional.of(domain);
-    assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    assertThat(actual).usingRecursiveComparison().isEqualTo(Optional.of(domain));
+    var sent = requestCaptor.getValue();
+    assertThat(sent.query().isTerm()).isTrue();
+    assertThat(sent.query().term().field()).isEqualTo("transaction_reference");
+    assertThat(sent.query().isBool()).isFalse();
   }
 
   @Test
-  void shouldReturnPaginatedSearchResultScopedToCustomer() throws IOException {
+  void shouldReturnPaginatedSearchResultScopedToCustomerWithOverfetch() throws IOException {
     // given
     var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    var domain = mappedDomain(document);
-    var response = searchResponseWith(List.of(document));
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
     given(mapper.toDomain(document)).willReturn(domain);
     var criteria = pageOfTen();
 
@@ -115,15 +132,31 @@ class OpenSearchTransactionRepositoryTest {
     // then
     var expected = new PaginatedResult<>(List.of(domain), Optional.<String>empty());
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    var sent = requestCaptor.getValue();
+    assertThat(sent.size()).isEqualTo(criteria.pageSize() + 1);
+    assertThat(sent.sort()).hasSize(2);
+    assertThat(sent.sort().get(0).field().field()).isEqualTo("event_time");
+    assertThat(sent.sort().get(0).field().order()).isEqualTo(SortOrder.Asc);
+    assertThat(sent.sort().get(1).field().field()).isEqualTo("event_id");
+    assertThat(sent.query().isBool()).isTrue();
+    assertThat(sent.query().bool().filter())
+        .anyMatch(
+            q ->
+                q.isTerm()
+                    && q.term().field().equals("customer_id")
+                    && q.term()
+                        .value()
+                        .stringValue()
+                        .equals(
+                            TransactionFixtures.SOME_TRANSACTION_CUSTOMER_ID.value().toString()));
   }
 
   @Test
   void shouldReturnPaginatedSearchResultForAdminWithoutCustomerScope() throws IOException {
     // given
     var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    var domain = mappedDomain(document);
-    var response = searchResponseWith(List.of(document));
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
     given(mapper.toDomain(document)).willReturn(domain);
     var criteria = pageOfTen();
 
@@ -133,16 +166,22 @@ class OpenSearchTransactionRepositoryTest {
     // then
     var expected = new PaginatedResult<>(List.of(domain), Optional.<String>empty());
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    var sent = requestCaptor.getValue();
+    assertThat(sent.query().bool().filter())
+        .noneMatch(q -> q.isTerm() && q.term().field().equals("customer_id"));
   }
 
   @Test
-  void shouldEncodeNextCursorWhenPageIsFull() throws IOException {
+  void shouldEncodeNextCursorWhenOverfetchYieldsMoreThanPageSize() throws IOException {
     // given
-    var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    var domain = mappedDomain(document);
-    var response = searchResponseWith(List.of(document));
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
-    given(mapper.toDomain(document)).willReturn(domain);
+    var documentA = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
+    var documentB =
+        OpenSearchTransactionDocumentFixtures.someOpenSearchDocument()
+            .eventId(documentA.eventId())
+            .build();
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(documentA);
+    stubSearch(List.of(documentA, documentB));
+    given(mapper.toDomain(documentA)).willReturn(domain);
     var criteria =
         TransactionSearch.builder()
             .reference(Optional.empty())
@@ -155,7 +194,7 @@ class OpenSearchTransactionRepositoryTest {
             .cursor(Optional.empty())
             .build();
     var expectedCursor =
-        OpenSearchCursorCodec.encode(document.eventTimeEpochMillis(), document.eventId());
+        OpenSearchCursorCodec.encode(documentA.eventTimeEpochMillis(), documentA.eventId());
 
     // when
     var actual = repository.searchAdmin(criteria);
@@ -166,26 +205,78 @@ class OpenSearchTransactionRepositoryTest {
   }
 
   @Test
+  void shouldOmitNextCursorWhenOverfetchHitsAreAtOrBelowPageSize() throws IOException {
+    // given
+    var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
+    given(mapper.toDomain(document)).willReturn(domain);
+    var criteria =
+        TransactionSearch.builder()
+            .reference(Optional.empty())
+            .flowType(Optional.empty())
+            .internalStatus(Optional.empty())
+            .customerStatus(Optional.empty())
+            .from(Optional.empty())
+            .to(Optional.empty())
+            .pageSize(1)
+            .cursor(Optional.empty())
+            .build();
+
+    // when
+    var actual = repository.searchAdmin(criteria);
+
+    // then
+    assertThat(actual)
+        .usingRecursiveComparison()
+        .isEqualTo(new PaginatedResult<>(List.of(domain), Optional.<String>empty()));
+  }
+
+  @Test
   void shouldStreamTailBatchInSortOrder() throws IOException {
     // given
     var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
-    var domain = mappedDomain(document);
-    var response = searchResponseWith(List.of(document));
-    given(client.search(any(SearchRequest.class), any(Class.class))).willReturn(response);
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
     given(mapper.toDomain(document)).willReturn(domain);
 
     // when
-    var actual = repository.tailSinceSortValue(Optional.empty(), 100).toList();
+    var actual = repository.tailSinceSortValueAdmin(Optional.empty(), 100).toList();
 
     // then
-    var expected = List.of(domain);
-    assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    assertThat(actual).usingRecursiveComparison().isEqualTo(List.of(domain));
+    var sent = requestCaptor.getValue();
+    assertThat(sent.size()).isEqualTo(100);
+    assertThat(sent.sort()).hasSize(2);
+    assertThat(sent.sort().get(0).field().field()).isEqualTo("event_time");
+    assertThat(sent.sort().get(1).field().field()).isEqualTo("event_id");
+    assertThat(sent.searchAfter()).isEmpty();
+  }
+
+  @Test
+  void shouldUseSearchAfterWhenTailHasCursor() throws IOException {
+    // given
+    var document = OpenSearchTransactionDocumentFixtures.SOME_OS_TRANSACTION_DOCUMENT;
+    var domain = OpenSearchTransactionDocumentFixtures.toMappedDomain(document);
+    stubSearch(List.of(document));
+    given(mapper.toDomain(document)).willReturn(domain);
+    var cursor = OpenSearchCursorCodec.encode(document.eventTimeEpochMillis(), document.eventId());
+
+    // when
+    var actual = repository.tailSinceSortValueAdmin(Optional.of(cursor), 50).toList();
+
+    // then
+    assertThat(actual).usingRecursiveComparison().isEqualTo(List.of(domain));
+    var sent = requestCaptor.getValue();
+    assertThat(sent.searchAfter()).hasSize(2);
+    assertThat(sent.searchAfter().get(0).longValue()).isEqualTo(document.eventTimeEpochMillis());
+    assertThat(sent.searchAfter().get(1).stringValue()).isEqualTo(document.eventId());
   }
 
   @Test
   void shouldWrapIOExceptionAsAdapterException() throws IOException {
     // given
-    given(client.search(any(SearchRequest.class), any(Class.class)))
+    given(client.search(any(SearchRequest.class), eq(OpenSearchTransactionDocument.class)))
         .willThrow(new IOException("boom"));
 
     // when / then
@@ -210,27 +301,10 @@ class OpenSearchTransactionRepositoryTest {
         .build();
   }
 
-  private static Transaction mappedDomain(OpenSearchTransactionDocument document) {
-    return Transaction.builder()
-        .id(TransactionId.of(UUID.fromString(document.eventId())))
-        .reference(document.transactionReference())
-        .flowType(document.flowType())
-        .internalStatus(document.internalStatus())
-        .customerStatus(document.customerStatus())
-        .amount(
-            Money.fromMicros(
-                document.amountMicros(), CurrencyCode.getByCode(document.currencyCode())))
-        .customerId(CustomerId.of(UUID.fromString(document.customerId())))
-        .accountId(AccountId.of(UUID.fromString(document.accountId())))
-        .counterparty(Optional.<String>empty())
-        .flowId(FlowId.of(UUID.fromString(document.flowId())))
-        .eventId(document.eventId())
-        .correlationId(document.correlationId())
-        .traceId(document.traceId())
-        .eventTime(Instant.ofEpochMilli(document.eventTimeEpochMillis()))
-        .ingestTime(Instant.ofEpochMilli(document.ingestTimeEpochMillis()))
-        .typedFields(Map.<String, Object>of())
-        .build();
+  private void stubSearch(List<OpenSearchTransactionDocument> docs) throws IOException {
+    var response = searchResponseWith(docs);
+    given(client.search(requestCaptor.capture(), eq(OpenSearchTransactionDocument.class)))
+        .willReturn(response);
   }
 
   @SuppressWarnings("unchecked")
@@ -250,10 +324,8 @@ class OpenSearchTransactionRepositoryTest {
                                 .source(doc)
                                 .sort(
                                     List.of(
-                                        org.opensearch.client.opensearch._types.FieldValue.of(
-                                            doc.eventTimeEpochMillis()),
-                                        org.opensearch.client.opensearch._types.FieldValue.of(
-                                            doc.eventId())))))
+                                        FieldValue.of(doc.eventTimeEpochMillis()),
+                                        FieldValue.of(doc.eventId())))))
             .toList();
     given(response.hits()).willReturn(hitsMeta);
     given(hitsMeta.hits()).willReturn(hitList);

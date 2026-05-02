@@ -19,7 +19,7 @@ class TrinoDlqRepositoryTest {
   @Mock ResultSet rs;
 
   @Test
-  void dlqRowMapper_buildsDlqEvent_whenAllColumnsPresent() throws Exception {
+  void shouldBuildDlqEventWhenAllColumnsPresent() throws Exception {
     // given
     given(rs.getString("dlq_id")).willReturn(DlqEventFixtures.SOME_DLQ_ID.value().toString());
     given(rs.getString("error_class")).willReturn("DeserializationException");
@@ -44,7 +44,7 @@ class TrinoDlqRepositoryTest {
   }
 
   @Test
-  void dlqRowMapper_buildsDlqEventWithEmptyOptionals_whenNullableColumnsAreNull() throws Exception {
+  void shouldBuildDlqEventWithEmptyOptionalsWhenNullableColumnsAreNull() throws Exception {
     // given
     given(rs.getString("dlq_id")).willReturn(DlqEventFixtures.SOME_DLQ_ID.value().toString());
     given(rs.getString("error_class")).willReturn("DeserializationException");
@@ -81,7 +81,7 @@ class TrinoDlqRepositoryTest {
   }
 
   @Test
-  void encodeCursor_thenDecodeCursor_roundTrips() {
+  void shouldRoundTripCursorEncodeAndDecode() {
     // given
     var failedAtMillis = DlqEventFixtures.SOME_DLQ_FAILED_AT.toEpochMilli();
     var dlqIdString = DlqEventFixtures.SOME_DLQ_ID.value().toString();

@@ -18,7 +18,7 @@ class TrinoCustomerRepositoryTest {
   @Mock ResultSet rs;
 
   @Test
-  void customerRowMapper_buildsCustomerSummary_whenAllColumnsPresent() throws Exception {
+  void shouldBuildCustomerSummaryWhenAllColumnsPresent() throws Exception {
     // given
     given(rs.getString("customer_id"))
         .willReturn(CustomerSummaryFixtures.SOME_CUSTOMER_ID.value().toString());

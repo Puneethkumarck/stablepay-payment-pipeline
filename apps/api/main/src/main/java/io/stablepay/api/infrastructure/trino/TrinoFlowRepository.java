@@ -7,9 +7,9 @@ import io.stablepay.api.domain.model.FlowId;
 import io.stablepay.api.domain.model.Money;
 import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.port.FlowRepository;
-import java.nio.charset.StandardCharsets;
+import io.stablepay.api.infrastructure.cursor.Base64PipeCursor;
 import java.sql.Timestamp;
-import java.util.Base64;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -22,17 +22,11 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/**
- * Trino-backed read adapter for {@link Flow}. Reads from the {@code iceberg.analytics.v_flows}
- * curated view; writes happen elsewhere (Flink/iceberg sink).
- *
- * <p>Pagination uses an opaque url-safe base64 cursor over {@code
- * <created_at_epoch_millis>|<flow_id>} so the keyset predicate {@code (created_at, flow_id) <
- * (cursor)} is stable across page boundaries.
- */
 @Repository
 @Slf4j
 public class TrinoFlowRepository implements FlowRepository {
+
+  static final String CURSOR_ERROR_CODE = "STBLPAY-2102";
 
   static final String SQL_FIND_BY_ID_FOR_CUSTOMER =
       "SELECT flow_id, flow_type, status, customer_id, total_amount_micros, total_currency_code,"
@@ -58,7 +52,8 @@ public class TrinoFlowRepository implements FlowRepository {
           + " leg_count, created_at, updated_at, completed_at"
           + " FROM iceberg.analytics.v_flows"
           + " WHERE customer_id = :customerId"
-          + " AND (created_at, flow_id) < (:cursorCreatedAt, :cursorFlowId)"
+          + " AND (created_at, flow_id) < (CAST(:cursorCreatedAt AS TIMESTAMP(6) WITH TIME ZONE),"
+          + " :cursorFlowId)"
           + " ORDER BY created_at DESC, flow_id DESC LIMIT :limit";
 
   static final String SQL_SEARCH_ADMIN_FIRST_PAGE =
@@ -71,7 +66,8 @@ public class TrinoFlowRepository implements FlowRepository {
       "SELECT flow_id, flow_type, status, customer_id, total_amount_micros, total_currency_code,"
           + " leg_count, created_at, updated_at, completed_at"
           + " FROM iceberg.analytics.v_flows"
-          + " WHERE (created_at, flow_id) < (:cursorCreatedAt, :cursorFlowId)"
+          + " WHERE (created_at, flow_id) < (CAST(:cursorCreatedAt AS TIMESTAMP(6) WITH TIME ZONE),"
+          + " :cursorFlowId)"
           + " ORDER BY created_at DESC, flow_id DESC LIMIT :limit";
 
   static final RowMapper<Flow> FLOW_ROW_MAPPER =
@@ -205,30 +201,13 @@ public class TrinoFlowRepository implements FlowRepository {
   }
 
   static String encodeCursor(long createdAtEpochMillis, String flowId) {
-    var raw = createdAtEpochMillis + "|" + flowId;
-    return Base64.getUrlEncoder()
-        .withoutPadding()
-        .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    return Base64PipeCursor.encode(createdAtEpochMillis, flowId);
   }
 
   static DecodedCursor decodeCursor(String cursor) {
-    Objects.requireNonNull(cursor, "cursor");
-    try {
-      var decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
-      var pipe = decoded.indexOf('|');
-      if (pipe <= 0 || pipe == decoded.length() - 1) {
-        throw new IllegalArgumentException("STBLPAY-2102 malformed cursor payload");
-      }
-      var createdAtMillis = Long.parseLong(decoded.substring(0, pipe));
-      var flowId = decoded.substring(pipe + 1);
-      return new DecodedCursor(java.time.Instant.ofEpochMilli(createdAtMillis), flowId);
-    } catch (IllegalArgumentException e) {
-      if (e.getMessage() != null && e.getMessage().startsWith("STBLPAY-2102")) {
-        throw e;
-      }
-      throw new IllegalArgumentException("STBLPAY-2102 invalid cursor", e);
-    }
+    var part = Base64PipeCursor.decode(cursor, CURSOR_ERROR_CODE);
+    return new DecodedCursor(Instant.ofEpochMilli(part.longPart()), part.stringPart());
   }
 
-  record DecodedCursor(java.time.Instant createdAt, String id) {}
+  record DecodedCursor(Instant createdAt, String id) {}
 }

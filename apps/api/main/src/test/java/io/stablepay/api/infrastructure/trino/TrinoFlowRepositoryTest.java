@@ -20,7 +20,7 @@ class TrinoFlowRepositoryTest {
   @Mock ResultSet rs;
 
   @Test
-  void flowRowMapper_buildsFlow_whenAllColumnsPresent() throws Exception {
+  void shouldBuildFlowWhenAllColumnsPresent() throws Exception {
     // given
     given(rs.getString("flow_id")).willReturn(FlowFixtures.SOME_FLOW_ID.value().toString());
     given(rs.getString("flow_type")).willReturn("MULTI_LEG");
@@ -46,7 +46,7 @@ class TrinoFlowRepositoryTest {
   }
 
   @Test
-  void flowRowMapper_buildsFlowWithCompletedAt_whenCompletedAtPresent() throws Exception {
+  void shouldBuildFlowWithCompletedAtWhenCompletedAtPresent() throws Exception {
     // given
     var completedAt = FlowFixtures.SOME_FLOW_UPDATED_AT;
     given(rs.getString("flow_id")).willReturn(FlowFixtures.SOME_FLOW_ID.value().toString());
@@ -84,7 +84,7 @@ class TrinoFlowRepositoryTest {
   }
 
   @Test
-  void encodeCursor_thenDecodeCursor_roundTrips() {
+  void shouldRoundTripCursorEncodeAndDecode() {
     // given
     var createdAtMillis = FlowFixtures.SOME_FLOW_CREATED_AT.toEpochMilli();
     var flowIdString = FlowFixtures.SOME_FLOW_ID.value().toString();

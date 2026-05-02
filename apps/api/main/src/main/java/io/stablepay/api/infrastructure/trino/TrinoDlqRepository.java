@@ -4,9 +4,9 @@ import io.stablepay.api.domain.model.DlqEvent;
 import io.stablepay.api.domain.model.DlqId;
 import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.port.DlqRepository;
-import java.nio.charset.StandardCharsets;
+import io.stablepay.api.infrastructure.cursor.Base64PipeCursor;
 import java.sql.Timestamp;
-import java.util.Base64;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,17 +19,11 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/**
- * Trino-backed read adapter for {@link DlqEvent}. Reads from the {@code iceberg.dlq.dlq_events}
- * Iceberg table populated by the Flink DLQ sink.
- *
- * <p>Pagination uses an opaque url-safe base64 cursor over {@code
- * <failed_at_epoch_millis>|<dlq_id>} so the keyset predicate {@code (failed_at, dlq_id) < (cursor)}
- * is stable across page boundaries.
- */
 @Repository
 @Slf4j
 public class TrinoDlqRepository implements DlqRepository {
+
+  static final String CURSOR_ERROR_CODE = "STBLPAY-2102";
 
   static final String SQL_FIND_BY_ID_ADMIN =
       "SELECT dlq_id, error_class, source_topic, source_partition, source_offset, error_message,"
@@ -47,7 +41,8 @@ public class TrinoDlqRepository implements DlqRepository {
       "SELECT dlq_id, error_class, source_topic, source_partition, source_offset, error_message,"
           + " failed_at, retry_count, sink_type, watermark_at, original_payload_json"
           + " FROM iceberg.dlq.dlq_events"
-          + " WHERE (failed_at, dlq_id) < (:cursorFailedAt, :cursorDlqId)"
+          + " WHERE (failed_at, dlq_id) < (CAST(:cursorFailedAt AS TIMESTAMP(6) WITH TIME ZONE),"
+          + " :cursorDlqId)"
           + " ORDER BY failed_at DESC, dlq_id DESC LIMIT :limit";
 
   static final RowMapper<DlqEvent> DLQ_ROW_MAPPER =
@@ -128,30 +123,13 @@ public class TrinoDlqRepository implements DlqRepository {
   }
 
   static String encodeCursor(long failedAtEpochMillis, String dlqId) {
-    var raw = failedAtEpochMillis + "|" + dlqId;
-    return Base64.getUrlEncoder()
-        .withoutPadding()
-        .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    return Base64PipeCursor.encode(failedAtEpochMillis, dlqId);
   }
 
   static DecodedCursor decodeCursor(String cursor) {
-    Objects.requireNonNull(cursor, "cursor");
-    try {
-      var decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
-      var pipe = decoded.indexOf('|');
-      if (pipe <= 0 || pipe == decoded.length() - 1) {
-        throw new IllegalArgumentException("STBLPAY-2102 malformed cursor payload");
-      }
-      var failedAtMillis = Long.parseLong(decoded.substring(0, pipe));
-      var dlqId = decoded.substring(pipe + 1);
-      return new DecodedCursor(java.time.Instant.ofEpochMilli(failedAtMillis), dlqId);
-    } catch (IllegalArgumentException e) {
-      if (e.getMessage() != null && e.getMessage().startsWith("STBLPAY-2102")) {
-        throw e;
-      }
-      throw new IllegalArgumentException("STBLPAY-2102 invalid cursor", e);
-    }
+    var part = Base64PipeCursor.decode(cursor, CURSOR_ERROR_CODE);
+    return new DecodedCursor(Instant.ofEpochMilli(part.longPart()), part.stringPart());
   }
 
-  record DecodedCursor(java.time.Instant failedAt, String dlqId) {}
+  record DecodedCursor(Instant failedAt, String dlqId) {}
 }

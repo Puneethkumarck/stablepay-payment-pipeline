@@ -18,16 +18,10 @@ import org.opensearch.client.opensearch._types.SortOrder;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch.core.SearchRequest;
-import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.search.Hit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
-/**
- * OpenSearch-backed implementation of {@link TransactionRepository}. Customer-scoped methods always
- * pin {@code customer_id} as a server-side filter (Hard Constraint #7); the {@code Admin} variants
- * intentionally skip that filter for operator tooling.
- */
 @Repository
 @Slf4j
 public class OpenSearchTransactionRepository implements TransactionRepository {
@@ -110,7 +104,7 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
   }
 
   @Override
-  public Stream<Transaction> tailSinceSortValue(Optional<String> sortValue, int batchSize) {
+  public Stream<Transaction> tailSinceSortValueAdmin(Optional<String> sortValue, int batchSize) {
     var request =
         SearchRequest.of(
             r -> {
@@ -137,11 +131,12 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
 
   private PaginatedResult<Transaction> executePaginated(
       TransactionSearch criteria, Optional<CustomerId> customerId) {
+    var pageSize = criteria.pageSize();
     var request =
         SearchRequest.of(
             r -> {
               r.index(indexName)
-                  .size(criteria.pageSize())
+                  .size(pageSize + 1)
                   .query(q -> q.bool(b -> applyFilters(b, criteria, customerId)))
                   .sort(s -> s.field(f -> f.field(FIELD_EVENT_TIME).order(SortOrder.Asc)))
                   .sort(s -> s.field(f -> f.field(FIELD_EVENT_ID).order(SortOrder.Asc)));
@@ -159,9 +154,16 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
     try {
       var response = client.search(request, OpenSearchTransactionDocument.class);
       var hits = response.hits().hits();
-      var items = hits.stream().map(Hit::source).map(mapper::toDomain).toList();
-      var nextCursor = computeNextCursor(hits, criteria.pageSize());
-      return new PaginatedResult<>(items, nextCursor);
+      if (hits.size() <= pageSize) {
+        var items = hits.stream().map(Hit::source).map(mapper::toDomain).toList();
+        return new PaginatedResult<>(items, Optional.empty());
+      }
+      var keptHits = hits.subList(0, pageSize);
+      var items = keptHits.stream().map(Hit::source).map(mapper::toDomain).toList();
+      var lastSource = keptHits.get(keptHits.size() - 1).source();
+      var nextCursor =
+          OpenSearchCursorCodec.encode(lastSource.eventTimeEpochMillis(), lastSource.eventId());
+      return new PaginatedResult<>(items, Optional.of(nextCursor));
     } catch (IOException | OpenSearchException e) {
       throw new OpenSearchAdapterException(e);
     }
@@ -224,22 +226,5 @@ public class OpenSearchTransactionRepository implements TransactionRepository {
     } catch (IOException | OpenSearchException e) {
       throw new OpenSearchAdapterException(e);
     }
-  }
-
-  private Optional<String> computeNextCursor(
-      List<Hit<OpenSearchTransactionDocument>> hits, int pageSize) {
-    if (hits.size() < pageSize) {
-      return Optional.empty();
-    }
-    var last = hits.get(hits.size() - 1).source();
-    return Optional.of(OpenSearchCursorCodec.encode(last.eventTimeEpochMillis(), last.eventId()));
-  }
-
-  /**
-   * Test-friendly accessor for {@link SearchResponse} hits. Kept package-private so unit tests can
-   * assert behaviour without re-deriving generic boilerplate.
-   */
-  static <T> List<Hit<T>> hits(SearchResponse<T> response) {
-    return response.hits().hits();
   }
 }

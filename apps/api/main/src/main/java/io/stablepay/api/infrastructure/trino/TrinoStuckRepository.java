@@ -7,8 +7,7 @@ import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.model.StuckPayment;
 import io.stablepay.api.domain.model.TransactionId;
 import io.stablepay.api.domain.port.StuckRepository;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import io.stablepay.api.infrastructure.cursor.Base64PipeCursor;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,20 +20,11 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/**
- * Trino-backed read adapter for {@link StuckPayment}. Reads from the {@code
- * iceberg.agg.agg_stuck_withdrawals} aggregate maintained by the Flink correlator job.
- *
- * <p>Expected columns: {@code transaction_id, transaction_reference, flow_type, internal_status,
- * customer_id, amount_micros, currency_code, last_event_at, stuck_millis}.
- *
- * <p>Pagination uses an opaque url-safe base64 cursor over {@code <stuck_millis>|<transaction_id>}
- * so the keyset predicate {@code (stuck_millis, transaction_id) < (cursor)} is stable across page
- * boundaries.
- */
 @Repository
 @Slf4j
 public class TrinoStuckRepository implements StuckRepository {
+
+  static final String CURSOR_ERROR_CODE = "STBLPAY-2102";
 
   static final String SQL_SEARCH_ADMIN_FIRST_PAGE =
       "SELECT transaction_id, transaction_reference, flow_type, internal_status, customer_id,"
@@ -118,29 +108,12 @@ public class TrinoStuckRepository implements StuckRepository {
   }
 
   static String encodeCursor(long stuckMillis, String transactionId) {
-    var raw = stuckMillis + "|" + transactionId;
-    return Base64.getUrlEncoder()
-        .withoutPadding()
-        .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    return Base64PipeCursor.encode(stuckMillis, transactionId);
   }
 
   static DecodedCursor decodeCursor(String cursor) {
-    Objects.requireNonNull(cursor, "cursor");
-    try {
-      var decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
-      var pipe = decoded.indexOf('|');
-      if (pipe <= 0 || pipe == decoded.length() - 1) {
-        throw new IllegalArgumentException("STBLPAY-2102 malformed cursor payload");
-      }
-      var stuckMillis = Long.parseLong(decoded.substring(0, pipe));
-      var transactionId = decoded.substring(pipe + 1);
-      return new DecodedCursor(stuckMillis, transactionId);
-    } catch (IllegalArgumentException e) {
-      if (e.getMessage() != null && e.getMessage().startsWith("STBLPAY-2102")) {
-        throw e;
-      }
-      throw new IllegalArgumentException("STBLPAY-2102 invalid cursor", e);
-    }
+    var part = Base64PipeCursor.decode(cursor, CURSOR_ERROR_CODE);
+    return new DecodedCursor(part.longPart(), part.stringPart());
   }
 
   record DecodedCursor(long stuckMillis, String transactionId) {}
