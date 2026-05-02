@@ -3,10 +3,6 @@ package io.stablepay.api.domain.statemachine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.stablepay.api.domain.statemachine.StateMachine.TransitionResult;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -19,16 +15,27 @@ class StateMachineTest {
     CANCELLED
   }
 
+  private record TestEntity(TestStatus status) implements StateProvider<TestStatus> {
+    @Override
+    public TestStatus getCurrentState() {
+      return status;
+    }
+  }
+
+  private static StateMachine<TestStatus, TestEntity> defaultMachine() {
+    return StateMachine.<TestStatus, TestEntity>builder()
+        .withTransition(TestStatus.PENDING, TestStatus.ACTIVE, TransitionAction.noAction())
+        .withTransitionsFrom(
+            TestStatus.ACTIVE,
+            Set.of(TestStatus.COMPLETED, TestStatus.CANCELLED),
+            TransitionAction.noAction())
+        .build();
+  }
+
   @Test
   void canTransition_validEdge_returnsTrue() {
     // given
-    var machine =
-        new StateMachine<TestStatus>(
-            Map.of(
-                TestStatus.PENDING,
-                Set.of(TestStatus.ACTIVE),
-                TestStatus.ACTIVE,
-                Set.of(TestStatus.COMPLETED, TestStatus.CANCELLED)));
+    var machine = defaultMachine();
 
     // when
     var actual = machine.canTransition(TestStatus.PENDING, TestStatus.ACTIVE);
@@ -40,13 +47,7 @@ class StateMachineTest {
   @Test
   void canTransition_invalidEdge_returnsFalse() {
     // given
-    var machine =
-        new StateMachine<TestStatus>(
-            Map.of(
-                TestStatus.PENDING,
-                Set.of(TestStatus.ACTIVE),
-                TestStatus.ACTIVE,
-                Set.of(TestStatus.COMPLETED, TestStatus.CANCELLED)));
+    var machine = defaultMachine();
 
     // when
     var actual = machine.canTransition(TestStatus.PENDING, TestStatus.COMPLETED);
@@ -56,78 +57,99 @@ class StateMachineTest {
   }
 
   @Test
-  void validate_validEdge_returnsValid_recursiveComparison() {
+  void getValidPredecessors_returnsAllFromStatesThatTransitionToTarget() {
     // given
     var machine =
-        new StateMachine<TestStatus>(Map.of(TestStatus.PENDING, Set.of(TestStatus.ACTIVE)));
-    var expected = new TransitionResult.Valid<>(TestStatus.ACTIVE);
+        StateMachine.<TestStatus, TestEntity>builder()
+            .withTransition(TestStatus.PENDING, TestStatus.ACTIVE, TransitionAction.noAction())
+            .withTransition(TestStatus.CANCELLED, TestStatus.ACTIVE, TransitionAction.noAction())
+            .build();
+    var expected = Set.of(TestStatus.PENDING, TestStatus.CANCELLED);
 
     // when
-    var actual = machine.validate(TestStatus.PENDING, TestStatus.ACTIVE);
+    var actual = machine.getValidPredecessors(TestStatus.ACTIVE);
 
     // then
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }
 
   @Test
-  void validate_invalidEdge_returnsInvalid_recursiveComparison() {
+  void transition_validEdge_returnsEventFromAction() {
     // given
+    var emittedEvent = new StateChangedEvent<>(TestStatus.PENDING, TestStatus.ACTIVE);
     var machine =
-        new StateMachine<TestStatus>(Map.of(TestStatus.PENDING, Set.of(TestStatus.ACTIVE)));
-    var expected = new TransitionResult.Invalid<>(TestStatus.PENDING, TestStatus.COMPLETED);
+        StateMachine.<TestStatus, TestEntity>builder()
+            .withTransition(TestStatus.PENDING, TestStatus.ACTIVE, entity -> emittedEvent)
+            .build();
+    var entity = new TestEntity(TestStatus.PENDING);
 
     // when
-    var actual = machine.validate(TestStatus.PENDING, TestStatus.COMPLETED);
+    var actual = machine.transition(entity, TestStatus.ACTIVE);
 
     // then
-    assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    assertThat(actual).usingRecursiveComparison().isEqualTo(emittedEvent);
   }
 
   @Test
-  void validate_unknownFromState_returnsInvalid() {
+  void transition_noActionEdge_returnsNullEvent() {
     // given
-    var machine =
-        new StateMachine<TestStatus>(Map.of(TestStatus.PENDING, Set.of(TestStatus.ACTIVE)));
-    var expected = new TransitionResult.Invalid<>(TestStatus.CANCELLED, TestStatus.ACTIVE);
+    var machine = defaultMachine();
+    var entity = new TestEntity(TestStatus.PENDING);
 
     // when
-    var actual = machine.validate(TestStatus.CANCELLED, TestStatus.ACTIVE);
+    var actual = machine.transition(entity, TestStatus.ACTIVE);
 
     // then
-    assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    assertThat(actual).isNull();
   }
 
   @Test
-  void constructor_nullTransitions_throwsNpe() {
+  void transition_invalidEdge_throwsDefaultStateMachineException() {
+    // given
+    var machine = defaultMachine();
+    var entity = new TestEntity(TestStatus.PENDING);
+
     // when / then
-    assertThatThrownBy(() -> new StateMachine<TestStatus>(null))
+    assertThatThrownBy(() -> machine.transition(entity, TestStatus.COMPLETED))
+        .isInstanceOf(StateMachineException.class)
+        .hasMessage("Invalid transition from PENDING to COMPLETED");
+  }
+
+  @Test
+  void transition_invalidEdge_usesCustomExceptionProvider() {
+    // given
+    var machine =
+        StateMachine.<TestStatus, TestEntity>builder()
+            .withTransition(TestStatus.PENDING, TestStatus.ACTIVE, TransitionAction.noAction())
+            .withExceptionProvider(IllegalStateException::new)
+            .build();
+    var entity = new TestEntity(TestStatus.PENDING);
+
+    // when / then
+    assertThatThrownBy(() -> machine.transition(entity, TestStatus.COMPLETED))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Invalid transition from PENDING to COMPLETED");
+  }
+
+  @Test
+  void builder_nullTransitionFrom_throwsNpe() {
+    // given
+    var builder = StateMachine.<TestStatus, TestEntity>builder();
+
+    // when / then
+    assertThatThrownBy(
+            () -> builder.withTransition(null, TestStatus.ACTIVE, TransitionAction.noAction()))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
-  void constructor_defensiveCopy_innerSetMutated_machineUnaffected() {
+  void builder_defensiveCopy_doesNotShareInternalMaps() {
     // given
-    var inner = new HashSet<TestStatus>();
-    inner.add(TestStatus.ACTIVE);
-    var transitions = new HashMap<TestStatus, Set<TestStatus>>();
-    transitions.put(TestStatus.PENDING, inner);
-    var machine = new StateMachine<TestStatus>(transitions);
-    inner.clear();
-    inner.add(TestStatus.COMPLETED);
-
-    // when
-    var actual = machine.canTransition(TestStatus.PENDING, TestStatus.ACTIVE);
-
-    // then
-    assertThat(actual).isTrue();
-  }
-
-  @Test
-  void transitionResult_isSealed_validIsTransitionResult() {
-    // given
-    var valid = new TransitionResult.Valid<>(TestStatus.ACTIVE);
+    var machine = defaultMachine();
+    var snapshot = machine.getValidPredecessors(TestStatus.ACTIVE);
+    var expected = Set.of(TestStatus.PENDING);
 
     // when / then
-    assertThat(valid).isInstanceOf(TransitionResult.class);
+    assertThat(snapshot).usingRecursiveComparison().isEqualTo(expected);
   }
 }

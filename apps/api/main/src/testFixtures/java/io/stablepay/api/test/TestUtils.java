@@ -30,7 +30,7 @@ public final class TestUtils {
           .ignoringFields(fieldsToIgnore)
           .isEqualTo(expected);
       return true;
-    } catch (Throwable t) {
+    } catch (AssertionError t) {
       return false;
     }
   }
