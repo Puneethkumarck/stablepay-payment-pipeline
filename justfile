@@ -110,6 +110,21 @@ superset-init:
 trino-time-travel version:
     docker exec stablepay-trino trino --server http://localhost:8080 --execute "SELECT count(*) FROM iceberg.facts.fact_transactions FOR VERSION AS OF {{version}}"
 
+# ─── Auth Service ─────────────────────────────────
+
+# Build the auth service jar and Docker image
+auth-build:
+    ./gradlew :apps:auth:main:bootJar
+    docker compose -f infra/docker-compose.yml build apps-auth
+
+# Bring up the auth service (waits for healthy)
+auth-up:
+    docker compose -f infra/docker-compose.yml up -d --wait apps-auth
+
+# Follow auth service logs
+auth-logs:
+    docker compose -f infra/docker-compose.yml logs -f apps-auth
+
 # ─── DLQ Tools ────────────────────────────────────
 
 # List DLQ entries
