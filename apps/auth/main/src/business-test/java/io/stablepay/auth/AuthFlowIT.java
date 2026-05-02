@@ -1,36 +1,31 @@
 package io.stablepay.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.SignedJWT;
 import io.stablepay.auth.application.AuthService;
-import java.time.Instant;
+import io.stablepay.auth.client.ApiError;
+import java.time.Clock;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest(
     classes = StablepayAuthApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 class AuthFlowIT extends AbstractAuthBusinessTest {
 
-  private static final String ALICE_USER_ID = "11111111-1111-1111-1111-111111111111";
-  private static final String ALICE_CUSTOMER_ID = "11111111-1111-1111-1111-111111111111";
+  private static final String ALICE_ID = "11111111-1111-1111-1111-111111111111";
   private static final String ADMIN_USER_ID = "33333333-3333-3333-3333-333333333333";
   private static final String ALICE_EMAIL = "alice@stablepay.io";
   private static final String ADMIN_EMAIL = "admin@stablepay.io";
@@ -38,20 +33,19 @@ class AuthFlowIT extends AbstractAuthBusinessTest {
   private static final String ISSUER = "https://auth.stablepay.local";
   private static final String AUDIENCE = "stablepay-api";
 
-  @LocalServerPort private int port;
-  @Autowired private ObjectMapper objectMapper;
-  private final TestRestTemplate restTemplate = new TestRestTemplate();
+  @Autowired private Clock clock;
 
   @Test
   void aliceCompletesFullLoginRefreshAndLogoutLifecycle() throws Exception {
     // given — issuer is up, alice is seeded, JWKS is published
 
-    // when — step 1: alice logs in
+    // when — alice logs in
     var loginResponse = postLogin(ALICE_EMAIL, SEEDED_PASSWORD);
 
     // then — 200 OK + tokens with the documented TTL
-    assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    var loginTokens = parseTokens(loginResponse.getBody());
+    assertThat(loginResponse.getStatusCode()).isEqualTo(OK);
+    var loginTokens = loginResponse.getBody();
+    assertThat(loginTokens).isNotNull();
     var tokenShape =
         new TokenShape(
             !loginTokens.accessToken().isBlank(),
@@ -61,32 +55,33 @@ class AuthFlowIT extends AbstractAuthBusinessTest {
         .usingRecursiveComparison()
         .isEqualTo(new TokenShape(true, true, AuthService.ACCESS_TTL.toSeconds()));
 
-    // when — step 2 + 4: decode the access token and verify its claims
+    // and — the access token's claims match what alice was issued
     var decodedAccessToken = SignedJWT.parse(loginTokens.accessToken());
     var actualClaims = JwtClaimsView.from(decodedAccessToken);
     var expectedClaims =
         new JwtClaimsView(
-            ALICE_USER_ID,
+            ALICE_ID,
             ALICE_EMAIL,
             List.of("ADMIN", "CUSTOMER"),
             ISSUER,
             List.of(AUDIENCE),
-            Optional.of(ALICE_CUSTOMER_ID));
+            Optional.of(ALICE_ID));
     assertThat(actualClaims).usingRecursiveComparison().isEqualTo(expectedClaims);
 
-    // when — step 3 + 4: fetch the JWKS and verify the access-token signature
-    var jwksResponse = restTemplate.getForEntity(url("/.well-known/jwks.json"), String.class);
-    assertThat(jwksResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    // and — the JWKS publishes a key whose kid matches and verifies the signature
+    var jwksResponse = restTemplate.getForEntity("/.well-known/jwks.json", String.class);
+    assertThat(jwksResponse.getStatusCode()).isEqualTo(OK);
     var jwkSet = JWKSet.parse(jwksResponse.getBody());
     var signingJwk = (RSAKey) jwkSet.getKeyByKeyId(decodedAccessToken.getHeader().getKeyID());
     assertThat(signingJwk).isNotNull();
     var verifier = new RSASSAVerifier(signingJwk.toRSAPublicKey());
     assertThat(decodedAccessToken.verify(verifier)).isTrue();
 
-    // when — step 5: refresh rotates the tokens
+    // and — refresh rotates both tokens
     var refreshResponse = postRefresh(loginTokens.refreshToken());
-    assertThat(refreshResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    var rotatedTokens = parseTokens(refreshResponse.getBody());
+    assertThat(refreshResponse.getStatusCode()).isEqualTo(OK);
+    var rotatedTokens = refreshResponse.getBody();
+    assertThat(rotatedTokens).isNotNull();
     var rotation =
         new RotationShape(
             !rotatedTokens.accessToken().equals(loginTokens.accessToken()),
@@ -94,16 +89,16 @@ class AuthFlowIT extends AbstractAuthBusinessTest {
     assertThat(rotation).usingRecursiveComparison().isEqualTo(new RotationShape(true, true));
 
     // and — invariant: the OLD refresh token is rejected on a subsequent /refresh call
-    var replayedOldRefresh = postRefresh(loginTokens.refreshToken());
-    assertThat(replayedOldRefresh.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    var replayedOldRefresh = postRefreshExpectingError(loginTokens.refreshToken());
+    assertThat(replayedOldRefresh.getStatusCode()).isEqualTo(UNAUTHORIZED);
 
-    // when — step 6: logout the rotated refresh token
+    // and — logout the rotated refresh token
     var logoutResponse = postLogout(rotatedTokens.refreshToken());
-    assertThat(logoutResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(logoutResponse.getStatusCode()).isEqualTo(NO_CONTENT);
 
     // and — invariant: logout is idempotent (second call also returns 204)
     var logoutIdempotentResponse = postLogout(rotatedTokens.refreshToken());
-    assertThat(logoutIdempotentResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(logoutIdempotentResponse.getStatusCode()).isEqualTo(NO_CONTENT);
 
     // and — invariant: the previously-issued access token remains cryptographically valid
     // for the remainder of its 15-minute TTL (auth service has no access-token revocation
@@ -112,7 +107,11 @@ class AuthFlowIT extends AbstractAuthBusinessTest {
     var postLogoutValidity =
         new AccessTokenValidity(
             postLogoutAccessToken.verify(verifier),
-            postLogoutAccessToken.getJWTClaimsSet().getExpirationTime().toInstant().isAfter(now()));
+            postLogoutAccessToken
+                .getJWTClaimsSet()
+                .getExpirationTime()
+                .toInstant()
+                .isAfter(clock.instant()));
     assertThat(postLogoutValidity)
         .usingRecursiveComparison()
         .isEqualTo(new AccessTokenValidity(true, true));
@@ -126,8 +125,9 @@ class AuthFlowIT extends AbstractAuthBusinessTest {
     var loginResponse = postLogin(ADMIN_EMAIL, SEEDED_PASSWORD);
 
     // then
-    assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    var tokens = parseTokens(loginResponse.getBody());
+    assertThat(loginResponse.getStatusCode()).isEqualTo(OK);
+    var tokens = loginResponse.getBody();
+    assertThat(tokens).isNotNull();
     var actualClaims = JwtClaimsView.from(SignedJWT.parse(tokens.accessToken()));
     var expectedClaims =
         new JwtClaimsView(
@@ -141,73 +141,28 @@ class AuthFlowIT extends AbstractAuthBusinessTest {
   }
 
   @Test
-  void loginWithWrongPasswordReturnsUnauthorized() throws Exception {
-    // given
-
+  void loginWithWrongPasswordReturnsUnauthorized() {
     // when
-    var response = postLogin(ALICE_EMAIL, "wrong-password");
+    var response = postLoginExpectingError(ALICE_EMAIL, "wrong-password");
 
     // then
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    var actualError = parseError(response.getBody());
-    var expectedError = new ApiErrorView("STBLPAY-1001", "Invalid credentials");
-    assertThat(actualError).usingRecursiveComparison().isEqualTo(expectedError);
+    assertThat(response.getStatusCode()).isEqualTo(UNAUTHORIZED);
+    var expected = new ApiError("STBLPAY-1001", "Invalid credentials", null);
+    assertThat(response.getBody())
+        .usingRecursiveComparison()
+        .ignoringFields("timestamp")
+        .isEqualTo(expected);
   }
 
-  private ResponseEntity<String> postLogin(String email, String password) {
-    var body = Map.of("email", email, "password", password);
-    return restTemplate.exchange(
-        url("/api/v1/auth/login"), HttpMethod.POST, jsonEntity(body), String.class);
-  }
-
-  private ResponseEntity<String> postRefresh(String refreshToken) {
-    var body = Map.of("refresh_token", refreshToken);
-    return restTemplate.exchange(
-        url("/api/v1/auth/refresh"), HttpMethod.POST, jsonEntity(body), String.class);
-  }
-
-  private ResponseEntity<Void> postLogout(String refreshToken) {
-    var body = Map.of("refresh_token", refreshToken);
-    return restTemplate.exchange(
-        url("/api/v1/auth/logout"), HttpMethod.POST, jsonEntity(body), Void.class);
-  }
-
-  private HttpEntity<Map<String, ?>> jsonEntity(Map<String, ?> body) {
-    var headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    return new HttpEntity<>(body, headers);
-  }
-
-  private TokenView parseTokens(String body) {
-    var node = objectMapper.readTree(body);
-    return new TokenView(
-        node.get("access_token").asString(),
-        node.get("refresh_token").asString(),
-        node.get("expires_in").asLong());
-  }
-
-  private ApiErrorView parseError(String body) {
-    var node = objectMapper.readTree(body);
-    return new ApiErrorView(node.get("error_code").asString(), node.get("message").asString());
-  }
-
-  private String url(String path) {
-    return "http://localhost:" + port + path;
-  }
-
-  private static Instant now() {
-    return Instant.now();
-  }
-
-  private record TokenView(String accessToken, String refreshToken, long expiresIn) {}
-
+  // Test-only assertion shapes: the production API returns random tokens, so we cannot
+  // recursive-compare against fixed values. These records package boolean invariants
+  // ("token issued", "tokens rotated", "still valid") into a single object so each
+  // assertion follows the golden recursive-comparison rule.
   private record TokenShape(boolean hasAccessToken, boolean hasRefreshToken, long expiresIn) {}
 
   private record RotationShape(boolean accessTokenRotated, boolean refreshTokenRotated) {}
 
   private record AccessTokenValidity(boolean signatureValid, boolean notExpired) {}
-
-  private record ApiErrorView(String errorCode, String message) {}
 
   private record JwtClaimsView(
       String subject,

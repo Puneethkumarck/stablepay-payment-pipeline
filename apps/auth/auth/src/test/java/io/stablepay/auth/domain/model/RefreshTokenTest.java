@@ -3,9 +3,11 @@ package io.stablepay.auth.domain.model;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_EXPIRES_AT;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_INSTANT;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_LATER_INSTANT;
+import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_REFRESH_TOKEN_ID;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_TOKEN_HASH;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.SOME_USER_ID;
 import static io.stablepay.auth.domain.model.AuthDomainFixtures.activeRefreshToken;
+import static io.stablepay.auth.domain.model.AuthDomainFixtures.refreshTokenBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -17,12 +19,12 @@ class RefreshTokenTest {
   @Test
   void shouldBuildActiveTokenWithEmptyRevokedAt() {
     // when
-    var actual = activeRefreshToken();
+    var actual = refreshTokenBuilder().id(SOME_REFRESH_TOKEN_ID).build();
 
     // then
     var expected =
         new RefreshToken(
-            actual.id(),
+            SOME_REFRESH_TOKEN_ID,
             SOME_USER_ID,
             SOME_TOKEN_HASH,
             SOME_INSTANT,
@@ -83,12 +85,12 @@ class RefreshTokenTest {
   @Test
   void shouldReturnNewInstanceWithRevokedAtSetWhenRevoked() {
     // when
-    var actual = activeRefreshToken().revoke(SOME_LATER_INSTANT);
+    var actual = refreshTokenBuilder().id(SOME_REFRESH_TOKEN_ID).build().revoke(SOME_LATER_INSTANT);
 
     // then
     var expected =
         new RefreshToken(
-            actual.id(),
+            SOME_REFRESH_TOKEN_ID,
             SOME_USER_ID,
             SOME_TOKEN_HASH,
             SOME_INSTANT,
