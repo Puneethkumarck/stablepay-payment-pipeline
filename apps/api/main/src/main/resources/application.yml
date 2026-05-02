@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: stablepay-api
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://postgres:5432/stablepay}
+    username: ${POSTGRES_USER:stablepay}
+    password: ${POSTGRES_PASSWORD:stablepay}
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+  jpa:
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+namastack:
+  outbox:
+    jdbc:
+      schema-initialization:
+        enabled: true
+
+stablepay:
+  opensearch:
+    uri: ${OPENSEARCH_URI:http://opensearch:9200}
+    transactions-index: ${OPENSEARCH_TRANSACTIONS_INDEX:transactions}
+  trino:
+    url: ${TRINO_URL:jdbc:trino://trino:8080/iceberg}
+    user: ${TRINO_USER:stablepay}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
