@@ -6,14 +6,11 @@ import java.math.BigDecimal;
 
 public final class MoneyFixtures {
 
-  public static final Money SOME_MONEY =
-      Money.builder().value(new BigDecimal("100.00")).currency(CurrencyCode.USD).build();
+  public static final Money SOME_MONEY = Money.fromMicros(100_000_000L, CurrencyCode.USD);
 
-  public static final Money SOME_EUR_MONEY =
-      Money.builder().value(new BigDecimal("100.00")).currency(CurrencyCode.EUR).build();
+  public static final Money SOME_EUR_MONEY = Money.fromMicros(100_000_000L, CurrencyCode.EUR);
 
-  public static final Money SOME_ZERO_MONEY =
-      Money.builder().value(new BigDecimal("0.00")).currency(CurrencyCode.USD).build();
+  public static final Money SOME_ZERO_MONEY = Money.fromMicros(0L, CurrencyCode.USD);
 
   private MoneyFixtures() {}
 
