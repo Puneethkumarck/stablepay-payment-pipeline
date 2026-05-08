@@ -14,6 +14,7 @@ public class AllowedTableRegistry {
           Pattern.compile("^iceberg\\.agg\\.agg_[a-z_]+$"));
 
   public boolean isAllowed(String fullyQualifiedName) {
-    return ALLOWED.stream().anyMatch(p -> p.matcher(fullyQualifiedName).matches());
+    var normalized = fullyQualifiedName.toLowerCase(java.util.Locale.ROOT);
+    return ALLOWED.stream().anyMatch(p -> p.matcher(normalized).matches());
   }
 }

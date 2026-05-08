@@ -3,9 +3,14 @@ package io.stablepay.api.domain.agent;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.DELETE_SQL;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.DLQ_TABLE_SQL;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.INSERT_SQL;
+import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.JOIN_MIXED_SQL;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.MISSING_LIMIT_SQL;
+import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.NON_RECURSIVE_CTE_SQL;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.OVERSIZED_LIMIT_SQL;
+import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.SUBQUERY_DISALLOWED_SQL;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.UNKNOWN_TABLE_SQL;
+import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.UPDATE_SQL;
+import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.UPPERCASE_TABLE_SQL;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.VALID_AGG_QUERY;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.VALID_FACT_QUERY;
 import static io.stablepay.api.domain.agent.fixtures.SqlValidationFixtures.VALID_VIEW_QUERY;
@@ -54,6 +59,26 @@ class TrinoSqlAllowlistValidatorTest {
       var expected =
           new SqlValidationResult.Valid(
               "SELECT transaction_id, amount FROM iceberg.facts.fact_transactions LIMIT 100", 100);
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+    }
+
+    @Test
+    void shouldAcceptNonRecursiveCte() {
+      // when
+      var result = validator.validate(NON_RECURSIVE_CTE_SQL);
+
+      // then
+      var expected = new SqlValidationResult.Valid(NON_RECURSIVE_CTE_SQL + " LIMIT 1000", 1000);
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+    }
+
+    @Test
+    void shouldAcceptUppercaseTableNames() {
+      // when
+      var result = validator.validate(UPPERCASE_TABLE_SQL);
+
+      // then
+      var expected = new SqlValidationResult.Valid(UPPERCASE_TABLE_SQL + " LIMIT 1000", 1000);
       assertThat(result).usingRecursiveComparison().isEqualTo(expected);
     }
   }
@@ -112,6 +137,40 @@ class TrinoSqlAllowlistValidatorTest {
       var expected =
           new SqlValidationResult.Invalid(
               "Table iceberg.dlq.dlq_events not in allowlist", "STBLPAY-5004");
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+    }
+
+    @Test
+    void shouldRejectUpdateStatement() {
+      // when
+      var result = validator.validate(UPDATE_SQL);
+
+      // then
+      var expected = new SqlValidationResult.Invalid("Only SELECT queries allowed", "STBLPAY-5002");
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+    }
+
+    @Test
+    void shouldRejectDisallowedTableInSubquery() {
+      // when
+      var result = validator.validate(SUBQUERY_DISALLOWED_SQL);
+
+      // then
+      var expected =
+          new SqlValidationResult.Invalid(
+              "Table postgres.public.users not in allowlist", "STBLPAY-5004");
+      assertThat(result).usingRecursiveComparison().isEqualTo(expected);
+    }
+
+    @Test
+    void shouldRejectDisallowedTableInJoin() {
+      // when
+      var result = validator.validate(JOIN_MIXED_SQL);
+
+      // then
+      var expected =
+          new SqlValidationResult.Invalid(
+              "Table postgres.public.users not in allowlist", "STBLPAY-5004");
       assertThat(result).usingRecursiveComparison().isEqualTo(expected);
     }
   }

@@ -7,11 +7,12 @@ import io.trino.sql.tree.Limit;
 import io.trino.sql.tree.LongLiteral;
 import io.trino.sql.tree.Query;
 import io.trino.sql.tree.QuerySpecification;
-import io.trino.sql.tree.Statement;
 import io.trino.sql.tree.Table;
-import io.trino.sql.tree.With;
 import java.util.ArrayList;
 import java.util.OptionalLong;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,8 @@ public class TrinoSqlAllowlistValidator {
   static final int DEFAULT_LIMIT = 1_000;
   static final int MAX_LIMIT = 10_000;
 
+  private static final Pattern LIMIT_PATTERN = Pattern.compile("(?i)\\bLIMIT\\s+\\d+");
+
   private final AllowedTableRegistry allowedTableRegistry;
   private final SqlParser sqlParser = new SqlParser();
 
@@ -30,48 +33,52 @@ public class TrinoSqlAllowlistValidator {
       return new SqlValidationResult.Invalid("SQL is empty", "STBLPAY-5001");
     }
 
-    Statement statement;
     try {
-      statement = sqlParser.createStatement(sql.strip());
+      var statement = sqlParser.createStatement(sql.strip());
+
+      if (!(statement instanceof Query query)) {
+        return new SqlValidationResult.Invalid("Only SELECT queries allowed", "STBLPAY-5002");
+      }
+
+      if (query.getWith().isPresent() && query.getWith().get().isRecursive()) {
+        return new SqlValidationResult.Invalid("WITH RECURSIVE not allowed", "STBLPAY-5003");
+      }
+
+      var cteNames = collectCteNames(query);
+
+      var tableNames = new ArrayList<String>();
+      new DefaultTraversalVisitor<Void>() {
+        @Override
+        protected Void visitTable(Table node, Void context) {
+          tableNames.add(node.getName().toString());
+          return null;
+        }
+      }.process(statement, null);
+
+      for (var tableName : tableNames) {
+        if (!cteNames.contains(tableName.toLowerCase(java.util.Locale.ROOT))
+            && !allowedTableRegistry.isAllowed(tableName)) {
+          return new SqlValidationResult.Invalid(
+              "Table %s not in allowlist".formatted(tableName), "STBLPAY-5004");
+        }
+      }
+
+      var appliedLimit = resolveLimit(query);
+      var sanitizedSql = rebuildWithLimit(sql.strip(), query, appliedLimit);
+
+      return new SqlValidationResult.Valid(sanitizedSql, appliedLimit);
     } catch (ParsingException e) {
       return new SqlValidationResult.Invalid("SQL parse error", "STBLPAY-5001");
     }
-
-    if (!(statement instanceof Query query)) {
-      return new SqlValidationResult.Invalid("Only SELECT queries allowed", "STBLPAY-5002");
-    }
-
-    if (query.getWith().isPresent()) {
-      var with = query.getWith().get();
-      if (isRecursive(with)) {
-        return new SqlValidationResult.Invalid("WITH RECURSIVE not allowed", "STBLPAY-5003");
-      }
-    }
-
-    var tableNames = new ArrayList<String>();
-    new DefaultTraversalVisitor<Void>() {
-      @Override
-      protected Void visitTable(Table node, Void context) {
-        tableNames.add(node.getName().toString());
-        return null;
-      }
-    }.process(statement, null);
-
-    for (var tableName : tableNames) {
-      if (!allowedTableRegistry.isAllowed(tableName)) {
-        return new SqlValidationResult.Invalid(
-            "Table %s not in allowlist".formatted(tableName), "STBLPAY-5004");
-      }
-    }
-
-    var appliedLimit = resolveLimit(query);
-    var sanitizedSql = rebuildWithLimit(sql.strip(), query, appliedLimit);
-
-    return new SqlValidationResult.Valid(sanitizedSql, appliedLimit);
   }
 
-  private boolean isRecursive(With with) {
-    return with.isRecursive();
+  private Set<String> collectCteNames(Query query) {
+    if (query.getWith().isEmpty()) {
+      return Set.of();
+    }
+    return query.getWith().get().getQueries().stream()
+        .map(cte -> cte.getName().getValue().toLowerCase(java.util.Locale.ROOT))
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   private int resolveLimit(Query query) {
@@ -100,7 +107,7 @@ public class TrinoSqlAllowlistValidator {
 
   private String rebuildWithLimit(String originalSql, Query query, int appliedLimit) {
     if (hasLimit(query)) {
-      return replaceLimit(originalSql, appliedLimit);
+      return replaceLastLimit(originalSql, appliedLimit);
     }
     return originalSql + " LIMIT " + appliedLimit;
   }
@@ -112,7 +119,17 @@ public class TrinoSqlAllowlistValidator {
     return query.getQueryBody() instanceof QuerySpecification spec && spec.getLimit().isPresent();
   }
 
-  private String replaceLimit(String sql, int appliedLimit) {
-    return sql.replaceAll("(?i)\\bLIMIT\\s+\\d+", "LIMIT " + appliedLimit);
+  private String replaceLastLimit(String sql, int appliedLimit) {
+    var matcher = LIMIT_PATTERN.matcher(sql);
+    var lastStart = -1;
+    var lastEnd = -1;
+    while (matcher.find()) {
+      lastStart = matcher.start();
+      lastEnd = matcher.end();
+    }
+    if (lastStart == -1) {
+      return sql;
+    }
+    return sql.substring(0, lastStart) + "LIMIT " + appliedLimit + sql.substring(lastEnd);
   }
 }

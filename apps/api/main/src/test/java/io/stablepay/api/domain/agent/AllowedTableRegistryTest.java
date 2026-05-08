@@ -17,7 +17,9 @@ class AllowedTableRegistryTest {
         "iceberg.facts.fact_transactions",
         "iceberg.facts.fact_payments",
         "iceberg.agg.agg_daily_volume",
-        "iceberg.agg.agg_monthly_totals"
+        "iceberg.agg.agg_monthly_totals",
+        "ICEBERG.ANALYTICS.V_PAYMENT_SUMMARY",
+        "Iceberg.Facts.Fact_Transactions"
       })
   void shouldAllowValidTables(String table) {
     // when

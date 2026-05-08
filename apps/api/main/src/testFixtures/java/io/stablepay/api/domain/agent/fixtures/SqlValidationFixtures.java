@@ -29,5 +29,23 @@ public final class SqlValidationFixtures {
 
   public static final String DLQ_TABLE_SQL = "SELECT * FROM iceberg.dlq.dlq_events";
 
+  public static final String UPDATE_SQL =
+      "UPDATE iceberg.analytics.v_payment_summary SET currency = 'EUR'";
+
+  public static final String SUBQUERY_DISALLOWED_SQL =
+      "SELECT * FROM (SELECT * FROM postgres.public.users) t";
+
+  public static final String JOIN_MIXED_SQL =
+      "SELECT v.currency FROM iceberg.analytics.v_payment_summary v"
+          + " JOIN postgres.public.users u ON v.id = u.id";
+
+  public static final String NON_RECURSIVE_CTE_SQL =
+      "WITH summary AS (SELECT currency, count(*) AS cnt"
+          + " FROM iceberg.analytics.v_payment_summary GROUP BY currency)"
+          + " SELECT * FROM summary";
+
+  public static final String UPPERCASE_TABLE_SQL =
+      "SELECT * FROM ICEBERG.ANALYTICS.V_PAYMENT_SUMMARY";
+
   private SqlValidationFixtures() {}
 }
