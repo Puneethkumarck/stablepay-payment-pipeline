@@ -1,20 +1,16 @@
 package io.stablepay.api.domain.agent;
 
-import java.util.Map;
 import java.util.Objects;
 import lombok.Builder;
-import org.opensearch.client.opensearch._types.aggregations.Aggregation;
-import org.opensearch.client.opensearch._types.query_dsl.Query;
 
 public sealed interface DslValidationResult
     permits DslValidationResult.Valid, DslValidationResult.Invalid {
 
   @Builder(toBuilder = true)
-  record Valid(Query translatedQuery, Map<String, Aggregation> translatedAggs, int size)
+  record Valid(AgentSearchRequest validatedRequest, int resolvedSize)
       implements DslValidationResult {
     public Valid {
-      Objects.requireNonNull(translatedQuery);
-      Objects.requireNonNull(translatedAggs);
+      Objects.requireNonNull(validatedRequest);
     }
   }
 

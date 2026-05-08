@@ -19,5 +19,7 @@ public record AgentSearchRequest(
     Objects.requireNonNull(aggs);
     Objects.requireNonNull(size);
     Objects.requireNonNull(sort);
+    aggs = aggs.map(List::copyOf);
+    sort = sort.map(List::copyOf);
   }
 }

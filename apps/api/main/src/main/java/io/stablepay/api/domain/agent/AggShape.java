@@ -14,6 +14,9 @@ public sealed interface AggShape
     public TermsAggShape {
       Objects.requireNonNull(name);
       Objects.requireNonNull(field);
+      if (size <= 0) {
+        throw new IllegalArgumentException("TermsAggShape size must be positive");
+      }
     }
   }
 

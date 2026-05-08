@@ -46,6 +46,9 @@ public sealed interface QueryShape
       Objects.requireNonNull(must);
       Objects.requireNonNull(filter);
       Objects.requireNonNull(mustNot);
+      must = List.copyOf(must);
+      filter = List.copyOf(filter);
+      mustNot = List.copyOf(mustNot);
     }
   }
 
@@ -61,6 +64,7 @@ public sealed interface QueryShape
     public TermsShape {
       Objects.requireNonNull(field);
       Objects.requireNonNull(values);
+      values = List.copyOf(values);
     }
   }
 }
