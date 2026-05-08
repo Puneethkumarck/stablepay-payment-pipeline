@@ -141,6 +141,12 @@ just dlq-replay <id>     # replay a single DLQ entry
 - `docs/TESTING_STANDARDS.md` — four-source-set pyramid + golden recursive-comparison rule + ArchUnit
 - `docs/JAVA_STANDARDS_README.md` — placeholder mapping for this project
 
+**Frontend standards (apps/web/):**
+- `docs/FE_CODING_STANDARDS.md` — App Router architecture, TypeScript rules, component patterns, Tailwind + shadcn styling, data fetching, state management, auth, security
+- `docs/FE_TESTING_STANDARDS.md` — three-layer test pyramid (Vitest + MSW + Playwright), fixture factories, coverage gates
+- `docs/FE_PROJECT_STRUCTURE.md` — directory layout, route structure, file placement decision tree, config inventory
+- `docs/FE_STANDARDS_README.md` — locked values and scope clarifications for the frontend
+
 **Project documentation (built during phases):**
 - `docs/ARCHITECTURE.md` — annotated architecture diagram + data flow (Phase 8)
 - `docs/EVENT-MODEL.md` — full state machines + topic listing + event examples (Phase 8)
