@@ -1,8 +1,17 @@
 package io.stablepay.api.domain.agent;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Objects;
 import lombok.Builder;
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+  @JsonSubTypes.Type(value = AggShape.TermsAggShape.class, name = "terms"),
+  @JsonSubTypes.Type(value = AggShape.DateHistogramAggShape.class, name = "date_histogram"),
+  @JsonSubTypes.Type(value = AggShape.SumAggShape.class, name = "sum"),
+  @JsonSubTypes.Type(value = AggShape.AvgAggShape.class, name = "avg")
+})
 public sealed interface AggShape
     permits AggShape.TermsAggShape,
         AggShape.DateHistogramAggShape,

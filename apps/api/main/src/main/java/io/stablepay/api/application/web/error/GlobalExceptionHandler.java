@@ -58,6 +58,12 @@ public class GlobalExceptionHandler {
         .body(new ApiError(ErrorCodes.VALIDATION_FAILED, ex.getMessage(), clock.instant()));
   }
 
+  @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+  public void handleAccessDenied(org.springframework.security.access.AccessDeniedException ex)
+      throws org.springframework.security.access.AccessDeniedException {
+    throw ex;
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleGeneric(Exception ex) {
     log.error("Unhandled exception", ex);

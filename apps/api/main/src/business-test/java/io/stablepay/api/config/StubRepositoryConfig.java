@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -51,6 +53,47 @@ public class StubRepositoryConfig {
   private final CopyOnWriteArrayList<TransactionEvent> eventBuffer = new CopyOnWriteArrayList<>();
   private final Sinks.Many<TransactionEvent> eventSink =
       Sinks.many().multicast().onBackpressureBuffer(256);
+
+  private final AtomicReference<BiFunction<String, Integer, SqlExecutionResult>> sqlExecutorRef =
+      new AtomicReference<>(
+          (sql, limit) ->
+              new SqlExecutionResult.Success(List.of(), List.of(), 0, "stub-query-id", 0L));
+
+  private final AtomicReference<
+          BiFunction<
+              io.stablepay.api.domain.agent.AgentSearchRequest, Integer, SearchExecutionResult>>
+      searchExecutorRef =
+          new AtomicReference<>(
+              (request, size) -> new SearchExecutionResult.Success(List.of(), 0L, size, 0L));
+
+  private final AtomicReference<
+          java.util.function.Function<String, List<io.stablepay.api.domain.agent.TimelineEntry>>>
+      timelineLookupRef = new AtomicReference<>(reference -> List.of());
+
+  public void setSqlExecutor(BiFunction<String, Integer, SqlExecutionResult> executor) {
+    sqlExecutorRef.set(executor);
+  }
+
+  public void setSearchExecutor(
+      BiFunction<io.stablepay.api.domain.agent.AgentSearchRequest, Integer, SearchExecutionResult>
+          executor) {
+    searchExecutorRef.set(executor);
+  }
+
+  public void setTimelineLookup(
+      java.util.function.Function<String, List<io.stablepay.api.domain.agent.TimelineEntry>>
+          lookup) {
+    timelineLookupRef.set(lookup);
+  }
+
+  public void resetAgentStubs() {
+    sqlExecutorRef.set(
+        (sql, limit) ->
+            new SqlExecutionResult.Success(List.of(), List.of(), 0, "stub-query-id", 0L));
+    searchExecutorRef.set(
+        (request, size) -> new SearchExecutionResult.Success(List.of(), 0L, size, 0L));
+    timelineLookupRef.set(reference -> List.of());
+  }
 
   public void emitEvent(TransactionEvent event) {
     eventBuffer.add(event);
@@ -233,20 +276,19 @@ public class StubRepositoryConfig {
   @Bean
   @Primary
   public TimelineRepository stubTimelineRepository() {
-    return reference -> List.of();
+    return reference -> timelineLookupRef.get().apply(reference);
   }
 
   @Bean
   @Primary
   public AgentSqlExecutor stubAgentSqlExecutor() {
-    return (sql, limit) ->
-        new SqlExecutionResult.Success(List.of(), List.of(), 0, "stub-query-id", 0L);
+    return (sql, limit) -> sqlExecutorRef.get().apply(sql, limit);
   }
 
   @Bean
   @Primary
   public AgentSearchExecutor stubAgentSearchExecutor() {
-    return (request, size) -> new SearchExecutionResult.Success(List.of(), 0L, size, 0L);
+    return (request, size) -> searchExecutorRef.get().apply(request, size);
   }
 
   @Bean

@@ -2,6 +2,8 @@ package io.stablepay.api.config;
 
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_EMAIL;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_ADMIN_USER_UUID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_EMAIL;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_EMAIL;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_UUID;
@@ -106,6 +108,10 @@ public abstract class BusinessTestBase {
     return mintJwt(SOME_ADMIN_USER_UUID, SOME_ADMIN_EMAIL, List.of("ADMIN"), null);
   }
 
+  protected static String agentJwt() {
+    return mintJwt(SOME_AGENT_USER_UUID, SOME_AGENT_EMAIL, List.of("AGENT"), null);
+  }
+
   protected RestClient authenticatedClient(String jwt) {
     return RestClient.builder()
         .baseUrl("http://localhost:" + port)
@@ -114,7 +120,8 @@ public abstract class BusinessTestBase {
         .build();
   }
 
-  private static String mintJwt(UUID userId, String email, List<String> roles, String customerId) {
+  protected static String mintJwt(
+      UUID userId, String email, List<String> roles, String customerId) {
     try {
       var claimsBuilder =
           new JWTClaimsSet.Builder()
