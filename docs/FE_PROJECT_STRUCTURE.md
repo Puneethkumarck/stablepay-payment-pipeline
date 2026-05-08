@@ -67,7 +67,8 @@ src/app/
 
 **Route group conventions:**
 - `(authed)` wraps all authenticated routes. `src/middleware.ts` redirects unauthenticated users to `/login`.
-- Each route segment can have: `page.tsx` (route UI), `layout.tsx` (shared layout), `loading.tsx` (Suspense fallback), `error.tsx` (error boundary), `not-found.tsx` (404).
+- Each route segment can have: `page.tsx` (route UI), `layout.tsx` (shared layout), `loading.tsx` (Suspense fallback), `error.tsx` (error boundary), `not-found.tsx` (404), `forbidden.tsx` (403), `unauthorized.tsx` (401).
+- `forbidden.tsx` renders when `forbidden()` is called from `next/navigation` — use for authorization failures. `unauthorized.tsx` renders when `unauthorized()` is called — use for unauthenticated access.
 - Route pages use `export default function` (Next.js convention).
 
 ---
@@ -213,7 +214,7 @@ src/types/
 ```
 Need a new file?
     │
-    ├── Is it a route page/layout/loading/error/not-found?
+    ├── Is it a route page/layout/loading/error/not-found/forbidden/unauthorized?
     │   └── src/app/<route-segment>/page.tsx (etc.)
     │
     ├── Is it a shadcn primitive?

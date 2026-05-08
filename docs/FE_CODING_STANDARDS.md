@@ -10,6 +10,7 @@ Instructions for coding agents developing the Next.js 16 web application in `app
   - [3.1 Server Components (Default)](#31-server-components-default)
   - [3.2 Client Components](#32-client-components)
   - [3.3 Component File Structure](#33-component-file-structure)
+  - [3.4 React 19 Patterns](#34-react-19-patterns)
 - [4. Styling](#4-styling)
   - [4.1 Tailwind 4](#41-tailwind-4)
   - [4.2 shadcn/ui Components](#42-shadcnui-components)
@@ -59,7 +60,8 @@ apps/web/src/
 - `src/server/` MUST NOT be imported from client components. ESLint `no-restricted-imports` enforces this.
 - `src/components/ui/` is managed by the shadcn CLI. Do not hand-edit files in this directory. Override behavior by wrapping components in `src/components/`.
 - `src/lib/api-client/_generated/` is auto-generated from the OpenAPI spec. Do not hand-edit.
-- Route segments follow Next.js conventions: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`.
+- Route segments follow Next.js conventions: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `forbidden.tsx`, `unauthorized.tsx`.
+- Prefer `next.config.ts` (TypeScript) over `next.config.mjs` for new projects. The current project uses `.mjs` — migrate when convenient.
 
 ---
 
@@ -116,6 +118,52 @@ export function SearchBar() {
 - Push `'use client'` boundaries as low as possible. Wrap the interactive part, not the whole page.
 - Never put `'use client'` on a layout or a page component if only a child needs interactivity.
 - Prefer composition: RSC parent with a client child, not a client parent wrapping RSC children.
+
+### 3.4 React 19 Patterns
+
+React 19 introduces several APIs that replace older patterns:
+
+**`ref` as a prop (no `forwardRef`):** React 19 passes `ref` as a regular prop. Never use `forwardRef` — it is deprecated.
+
+```tsx
+// correct — ref as a prop
+function Input({ ref, className, ...props }: ComponentProps<'input'>) {
+  return <input ref={ref} className={cn('...', className)} {...props} />;
+}
+
+// wrong — forwardRef is deprecated in React 19
+const Input = forwardRef<HTMLInputElement, InputProps>((props, ref) => { ... });
+```
+
+**`use()` hook for unwrapping promises and context:** Use `use()` to read a promise passed from a Server Component to a Client Component, or to read context conditionally.
+
+```tsx
+'use client';
+
+import { use } from 'react';
+
+function TransactionList({ dataPromise }: { dataPromise: Promise<Transaction[]> }) {
+  const data = use(dataPromise);
+  return (/* ... */);
+}
+```
+
+**`useOptimistic` for optimistic UI updates:** Use `useOptimistic` for instant feedback on mutations before the server confirms.
+
+```tsx
+'use client';
+
+import { useOptimistic } from 'react';
+
+function DlqList({ entries }: { entries: DlqEntry[] }) {
+  const [optimisticEntries, addOptimistic] = useOptimistic(
+    entries,
+    (state, replayedId: string) =>
+      state.map((e) => (e.id === replayedId ? { ...e, status: 'REPLAYING' } : e)),
+  );
+  // ...
+}
+```
 
 ### 3.3 Component File Structure
 
@@ -223,6 +271,17 @@ export default async function TransactionsPage() {
 }
 ```
 
+**`use cache` directive:** Next.js 16 supports the `'use cache'` directive for caching function or component output at the server level. Use it for expensive computations or slow API calls that can tolerate staleness:
+
+```tsx
+async function getDashboardStats() {
+  'use cache';
+  return await api.getDashboardStats();
+}
+```
+
+Use `cacheLife()` and `cacheTag()` from `next/cache` to control TTL and on-demand revalidation. Only apply `'use cache'` to data that is safe to serve stale — never for user-specific or real-time data.
+
 ### 5.2 Client-Side Fetching
 
 For polling, mutations, and client-driven queries, use `@tanstack/react-query`:
@@ -294,6 +353,8 @@ Auth.js v5 (`next-auth@5.0.0-beta.31`) handles authentication.
 **Rules:**
 - Every route group has an `error.tsx` boundary that catches render errors and shows a recoverable UI.
 - Every route group has a `not-found.tsx` for 404 states.
+- Use `forbidden.tsx` for 403 responses — triggered by calling `forbidden()` from `next/navigation` in Server Components or middleware. Renders a "not authorized" UI without leaking resource existence.
+- Use `unauthorized.tsx` for 401 responses — triggered by calling `unauthorized()` from `next/navigation`. Renders a login prompt or session-expired UI.
 - API errors from React Query surface via the `error` state and render an inline error card — never a toast for load failures. Toasts are for transient feedback (successful mutations, rate-limit warnings).
 - `sonner` is the toast library. Use semantic variants: `toast.success()`, `toast.error()`, `toast.warning()`.
 - Never swallow errors silently. Log to console in development; in production, errors flow to the error boundary.
@@ -307,6 +368,29 @@ Auth.js v5 (`next-auth@5.0.0-beta.31`) handles authentication.
 - Use controlled components for simple forms (1-3 fields). Use a form library for complex forms.
 - Disable submit buttons during mutation (`isPending` from `useMutation`).
 - Show inline field errors below inputs, not as toasts.
+
+**Server Action forms with `useActionState`:** For mutations backed by Server Actions, use `useActionState` (React 19) instead of `useMutation`. It handles pending state and return values automatically:
+
+```tsx
+'use client';
+
+import { useActionState } from 'react';
+import { replayDlqEntry } from '~/server/actions/replay-dlq';
+
+function ReplayButton({ entryId }: { entryId: string }) {
+  const [state, formAction, isPending] = useActionState(replayDlqEntry, null);
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="id" value={entryId} />
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Replaying…' : 'Replay'}
+      </button>
+    </form>
+  );
+}
+```
+
+Prefer `useActionState` for Server Action forms and `useMutation` for client-side API calls via React Query. Do not mix both for the same mutation.
 
 ---
 
@@ -365,7 +449,8 @@ Two tools run in the `lint` script, each covering different concerns:
 ## 13. Security
 
 **Rules:**
-- CSP headers are configured in `next.config.mjs`. Do not add `unsafe-eval` to the CSP.
+- CSP headers are configured in `next.config.mjs`. Do not add `unsafe-eval` or `unsafe-inline` to the CSP.
+- **Nonce-based CSP (recommended):** Use middleware to generate a per-request nonce and inject it into `script-src` and `style-src` directives. Next.js 16 supports reading the nonce via `headers()` in Server Components. This is stronger than hash-based or `unsafe-inline` CSP. Migrate to nonce-based CSP when implementing middleware.
 - Never render user-supplied HTML with `dangerouslySetInnerHTML`.
 - Never store tokens in `localStorage`. Auth.js v5 uses HTTP-only cookies.
 - API calls go through the Next.js rewrite (`/api/*` → backend). Never expose the internal API URL to the browser.
