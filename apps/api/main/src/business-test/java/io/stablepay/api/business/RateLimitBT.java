@@ -1,6 +1,7 @@
 package io.stablepay.api.business;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import io.stablepay.api.config.BusinessTestBase;
 import io.stablepay.api.config.StubRepositoryConfig;
@@ -30,7 +31,7 @@ class RateLimitBT extends BusinessTestBase {
 
     // then
     var exception =
-        org.junit.jupiter.api.Assertions.assertThrows(
+        catchThrowableOfType(
             HttpClientErrorException.class,
             () ->
                 client

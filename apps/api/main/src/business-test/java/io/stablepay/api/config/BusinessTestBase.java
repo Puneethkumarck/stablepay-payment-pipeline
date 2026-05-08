@@ -21,9 +21,14 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -130,17 +135,16 @@ public abstract class BusinessTestBase {
     }
   }
 
-  @org.springframework.boot.test.context.TestConfiguration
-  @org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity(
-      securedEnabled = true)
-  @org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+  @TestConfiguration
+  @EnableMethodSecurity(securedEnabled = true)
+  @EnableWebSecurity
   static class JwtConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
       "/actuator/health", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**"
     };
 
-    @org.springframework.context.annotation.Bean
+    @Bean
     public JwtDecoder jwtDecoder() {
       try {
         return NimbusJwtDecoder.withPublicKey(RSA_KEY.toRSAPublicKey()).build();
@@ -149,8 +153,8 @@ public abstract class BusinessTestBase {
       }
     }
 
-    @org.springframework.context.annotation.Bean
-    @org.springframework.context.annotation.Primary
+    @Bean
+    @Primary
     public SecurityFilterChain testSecurityFilterChain(
         HttpSecurity http,
         JwtToAuthenticatedUserConverter jwtConverter,

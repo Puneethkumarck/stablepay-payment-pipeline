@@ -223,6 +223,7 @@ public class StubRepositoryConfig {
   }
 
   @Bean
+  @Primary
   public ObjectMapper objectMapper() {
     return new ObjectMapper().findAndRegisterModules();
   }

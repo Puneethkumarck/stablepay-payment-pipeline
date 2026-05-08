@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.stablepay.api.application.web.dto.DlqReplayResponse;
 import io.stablepay.api.config.BusinessTestBase;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -30,9 +31,16 @@ class IdempotencyReplaySemanticsBT extends BusinessTestBase {
 
     // then
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().dlqId()).isEqualTo(SOME_DLQ_ID.value().toString());
-    assertThat(response.getBody().status()).isEqualTo("ACCEPTED");
+    var expected =
+        DlqReplayResponse.builder()
+            .dlqId(SOME_DLQ_ID.value().toString())
+            .status("ACCEPTED")
+            .timestamp(Instant.EPOCH)
+            .build();
+    assertThat(response.getBody())
+        .usingRecursiveComparison()
+        .ignoringFields("timestamp")
+        .isEqualTo(expected);
   }
 
   @Test
@@ -61,7 +69,15 @@ class IdempotencyReplaySemanticsBT extends BusinessTestBase {
     // then
     assertThat(replayResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(replayResponse.getHeaders().getFirst("Idempotency-Replayed")).isEqualTo("true");
-    assertThat(replayResponse.getBody()).isNotNull();
-    assertThat(replayResponse.getBody().dlqId()).isEqualTo(SOME_DLQ_ID.value().toString());
+    var expected =
+        DlqReplayResponse.builder()
+            .dlqId(SOME_DLQ_ID.value().toString())
+            .status("ACCEPTED")
+            .timestamp(Instant.EPOCH)
+            .build();
+    assertThat(replayResponse.getBody())
+        .usingRecursiveComparison()
+        .ignoringFields("timestamp")
+        .isEqualTo(expected);
   }
 }

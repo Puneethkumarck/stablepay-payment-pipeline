@@ -2,6 +2,7 @@ package io.stablepay.api.business;
 
 import static io.stablepay.api.domain.model.fixtures.TransactionFixtures.SOME_REFERENCE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import io.stablepay.api.application.web.dto.TransactionDto;
 import io.stablepay.api.config.BusinessTestBase;
@@ -28,8 +29,10 @@ class CrossCustomerEnforcementBT extends BusinessTestBase {
 
     // then
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().reference()).isEqualTo(SOME_REFERENCE);
+    assertThat(response.getBody())
+        .isNotNull()
+        .extracting(TransactionDto::reference)
+        .isEqualTo(SOME_REFERENCE);
   }
 
   @Test
@@ -37,9 +40,9 @@ class CrossCustomerEnforcementBT extends BusinessTestBase {
     // given
     var client = authenticatedClient(bobJwt());
 
-    // when
+    // when/then
     var exception =
-        org.junit.jupiter.api.Assertions.assertThrows(
+        catchThrowableOfType(
             HttpClientErrorException.class,
             () ->
                 client
@@ -48,11 +51,8 @@ class CrossCustomerEnforcementBT extends BusinessTestBase {
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .toEntity(String.class));
-
-    // then
     assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    var expected = "STBLPAY-3001";
-    assertThat(exception.getResponseBodyAsString()).contains(expected);
+    assertThat(exception.getResponseBodyAsString()).contains("STBLPAY-3001");
   }
 
   @Test
@@ -71,7 +71,9 @@ class CrossCustomerEnforcementBT extends BusinessTestBase {
 
     // then
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().reference()).isEqualTo(SOME_REFERENCE);
+    assertThat(response.getBody())
+        .isNotNull()
+        .extracting(TransactionDto::reference)
+        .isEqualTo(SOME_REFERENCE);
   }
 }
