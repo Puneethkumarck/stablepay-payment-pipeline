@@ -22,11 +22,12 @@ interface JwtPayload {
 }
 
 function decodeJwtPayload(token: string): JwtPayload {
-  const base64Payload = token.split('.')[1];
-  if (!base64Payload) {
+  const base64Url = token.split('.')[1];
+  if (!base64Url) {
     throw new Error('Invalid JWT: missing payload segment');
   }
-  return JSON.parse(atob(base64Payload)) as JwtPayload;
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(atob(base64)) as JwtPayload;
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
@@ -60,13 +61,14 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
   cookies: {
     sessionToken: {
       name: 'stablepay.session',
       options: {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
       },

@@ -3,9 +3,13 @@ import type { Session, User } from 'next-auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '~/types/auth';
 
+function toBase64Url(input: string): string {
+  return btoa(input).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function fakeJwt(payload: Record<string, unknown>): string {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = btoa(JSON.stringify(payload));
+  const header = toBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body = toBase64Url(JSON.stringify(payload));
   return `${header}.${body}.fake-signature`;
 }
 
