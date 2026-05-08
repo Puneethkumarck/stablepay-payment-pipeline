@@ -53,10 +53,7 @@ class SseCustomerScopeIT {
       // given
       var alice = someCustomerUser();
       var bobTx =
-          SOME_TRANSACTION.toBuilder()
-              .customerId(BOB_CUSTOMER_ID)
-              .eventId("evt-bob-001")
-              .build();
+          SOME_TRANSACTION.toBuilder().customerId(BOB_CUSTOMER_ID).eventId("evt-bob-001").build();
       given(transactionRepository.tailSinceSortValueAdmin(Optional.empty(), 100))
           .willReturn(Stream.of(bobTx));
 
@@ -81,10 +78,7 @@ class SseCustomerScopeIT {
               .eventId("evt-alice-001")
               .build();
       var bobTx =
-          SOME_TRANSACTION.toBuilder()
-              .customerId(BOB_CUSTOMER_ID)
-              .eventId("evt-bob-001")
-              .build();
+          SOME_TRANSACTION.toBuilder().customerId(BOB_CUSTOMER_ID).eventId("evt-bob-001").build();
       given(transactionRepository.tailSinceSortValueAdmin(Optional.empty(), 100))
           .willReturn(Stream.of(aliceTx, bobTx));
 
@@ -95,11 +89,15 @@ class SseCustomerScopeIT {
       // then
       StepVerifier.create(flux.take(2))
           .assertNext(
-              sse -> assertThat(sse.data()).extracting(TransactionEventDto::customerId)
-                  .isEqualTo(SOME_CUSTOMER_ID.value().toString()))
+              sse ->
+                  assertThat(sse.data())
+                      .extracting(TransactionEventDto::customerId)
+                      .isEqualTo(SOME_CUSTOMER_ID.value().toString()))
           .assertNext(
-              sse -> assertThat(sse.data()).extracting(TransactionEventDto::customerId)
-                  .isEqualTo(BOB_CUSTOMER_ID.value().toString()))
+              sse ->
+                  assertThat(sse.data())
+                      .extracting(TransactionEventDto::customerId)
+                      .isEqualTo(BOB_CUSTOMER_ID.value().toString()))
           .verifyComplete();
     }
   }
@@ -117,10 +115,7 @@ class SseCustomerScopeIT {
               .eventId("evt-alice-001")
               .build();
       var bobTx =
-          SOME_TRANSACTION.toBuilder()
-              .customerId(BOB_CUSTOMER_ID)
-              .eventId("evt-bob-001")
-              .build();
+          SOME_TRANSACTION.toBuilder().customerId(BOB_CUSTOMER_ID).eventId("evt-bob-001").build();
       given(transactionRepository.tailSinceSortValueAdmin(Optional.empty(), 50))
           .willReturn(Stream.of(aliceTx, bobTx));
 
@@ -129,8 +124,7 @@ class SseCustomerScopeIT {
 
       // then
       assertThat(result).hasSize(1);
-      assertThat(result.getFirst().customerId())
-          .isEqualTo(SOME_CUSTOMER_ID.value().toString());
+      assertThat(result.getFirst().customerId()).isEqualTo(SOME_CUSTOMER_ID.value().toString());
     }
 
     @Test
@@ -143,10 +137,7 @@ class SseCustomerScopeIT {
               .eventId("evt-alice-001")
               .build();
       var bobTx =
-          SOME_TRANSACTION.toBuilder()
-              .customerId(BOB_CUSTOMER_ID)
-              .eventId("evt-bob-001")
-              .build();
+          SOME_TRANSACTION.toBuilder().customerId(BOB_CUSTOMER_ID).eventId("evt-bob-001").build();
       given(transactionRepository.tailSinceSortValueAdmin(Optional.empty(), 50))
           .willReturn(Stream.of(aliceTx, bobTx));
 
