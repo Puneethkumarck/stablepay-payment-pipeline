@@ -21,7 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class AdminFlowControllerTest {
@@ -46,9 +46,8 @@ class AdminFlowControllerTest {
       var actual = controller.findById(SOME_FLOW_ID.value().toString(), SOME_ADMIN_USER);
 
       // then
-      assertThat(actual.getStatusCode()).isEqualTo(HttpStatus.OK);
-      var expected = mapper.toDto(SOME_FLOW);
-      assertThat(actual.getBody()).usingRecursiveComparison().isEqualTo(expected);
+      var expected = ResponseEntity.ok(mapper.toDto(SOME_FLOW));
+      assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     }
 
     @Test

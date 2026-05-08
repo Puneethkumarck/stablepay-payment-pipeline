@@ -24,7 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerControllerTest {
@@ -55,9 +55,8 @@ class CustomerControllerTest {
       var actual = controller.summary(SOME_CUSTOMER_ID.value().toString(), SOME_CUSTOMER_USER);
 
       // then
-      assertThat(actual.getStatusCode()).isEqualTo(HttpStatus.OK);
-      var expected = mapper.toDto(SOME_CUSTOMER_SUMMARY);
-      assertThat(actual.getBody()).usingRecursiveComparison().isEqualTo(expected);
+      var expected = ResponseEntity.ok(mapper.toDto(SOME_CUSTOMER_SUMMARY));
+      assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     }
 
     @Test
