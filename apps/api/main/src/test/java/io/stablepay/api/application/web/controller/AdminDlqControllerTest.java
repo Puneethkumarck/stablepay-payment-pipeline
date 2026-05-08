@@ -63,6 +63,20 @@ class AdminDlqControllerTest {
       var expected = mapper.toResponse(paginatedResult);
       assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     }
+
+    @Test
+    void shouldReturnPaginatedDlqListWithCursor() {
+      // given
+      var paginatedResult = new PaginatedResult<>(List.of(SOME_DLQ_EVENT), Optional.empty());
+      given(dlqRepository.searchAdmin(20, Optional.of("cursor-1"))).willReturn(paginatedResult);
+
+      // when
+      var actual = controller.list(Optional.of("cursor-1"), 20, SOME_ADMIN_USER);
+
+      // then
+      var expected = mapper.toResponse(paginatedResult);
+      assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    }
   }
 
   @Nested

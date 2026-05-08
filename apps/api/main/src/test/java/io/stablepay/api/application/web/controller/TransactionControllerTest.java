@@ -100,5 +100,32 @@ class TransactionControllerTest {
       var expected = mapper.toResponse(paginatedResult);
       assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     }
+
+    @Test
+    void shouldReturnPaginatedTransactionListWithStatusFilter() {
+      // given
+      var paginatedResult = new PaginatedResult<>(List.of(SOME_TRANSACTION), Optional.empty());
+      var search =
+          TransactionSearch.builder()
+              .customerStatus(Optional.of("COMPLETED"))
+              .reference(Optional.empty())
+              .flowType(Optional.empty())
+              .internalStatus(Optional.empty())
+              .from(Optional.empty())
+              .to(Optional.empty())
+              .pageSize(20)
+              .cursor(Optional.empty())
+              .build();
+      given(transactionRepository.search(search, SOME_CUSTOMER_USER.requireCustomerId()))
+          .willReturn(paginatedResult);
+
+      // when
+      var actual =
+          controller.list(Optional.of("COMPLETED"), Optional.empty(), 20, SOME_CUSTOMER_USER);
+
+      // then
+      var expected = mapper.toResponse(paginatedResult);
+      assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    }
   }
 }
