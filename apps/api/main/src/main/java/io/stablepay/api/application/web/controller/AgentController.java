@@ -15,6 +15,7 @@ import io.stablepay.api.domain.agent.FetchResult;
 import io.stablepay.api.domain.agent.SearchExecutionResult;
 import io.stablepay.api.domain.agent.SqlExecutionResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -128,7 +129,8 @@ public class AgentController {
       description = "Timeline not found",
       content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/timeline/{ref}")
-  public ResponseEntity<?> fetchTimeline(@PathVariable String ref) {
+  public ResponseEntity<?> fetchTimeline(
+      @Parameter(description = "Transaction reference") @PathVariable String ref) {
     var result = timelineService.fetch(ref);
     return switch (result) {
       case FetchResult.Found found -> {

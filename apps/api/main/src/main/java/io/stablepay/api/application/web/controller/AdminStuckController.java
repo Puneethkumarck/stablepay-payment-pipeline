@@ -6,6 +6,7 @@ import io.stablepay.api.application.web.dto.StuckPaymentDto;
 import io.stablepay.api.application.web.mapper.StuckPaymentWebMapper;
 import io.stablepay.api.domain.port.StuckRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -37,8 +38,12 @@ public class AdminStuckController {
   @ApiResponse(responseCode = "200", description = "Paginated stuck payment list")
   @GetMapping
   public PaginatedResponse<StuckPaymentDto> list(
-      @RequestParam Optional<String> cursor,
-      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+      @Parameter(description = "Opaque pagination cursor") @RequestParam Optional<String> cursor,
+      @Parameter(description = "Page size (1–100)")
+          @RequestParam(defaultValue = "20")
+          @Min(1)
+          @Max(100)
+          int size,
       @AuthenticationPrincipal AuthenticatedUser user) {
     var result = stuckRepository.searchAdmin(size, cursor);
     return mapper.toResponse(result);

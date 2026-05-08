@@ -8,6 +8,7 @@ import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.model.FlowId;
 import io.stablepay.api.domain.port.FlowRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -44,7 +45,8 @@ public class AdminFlowController {
       content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{id}")
   public ResponseEntity<FlowDto> findById(
-      @PathVariable String id, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "Flow UUID") @PathVariable String id,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     return flowRepository
         .findByIdAdmin(FlowId.of(UUID.fromString(id)))
         .map(mapper::toDto)

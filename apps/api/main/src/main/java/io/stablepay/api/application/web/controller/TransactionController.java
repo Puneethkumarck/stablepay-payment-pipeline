@@ -9,6 +9,7 @@ import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.model.TransactionSearch;
 import io.stablepay.api.domain.port.TransactionRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -44,9 +45,13 @@ public class TransactionController {
   @ApiResponse(responseCode = "200", description = "Paginated transaction list")
   @GetMapping
   public PaginatedResponse<TransactionDto> list(
-      @RequestParam Optional<String> status,
-      @RequestParam Optional<String> cursor,
-      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+      @Parameter(description = "Filter by customer status") @RequestParam Optional<String> status,
+      @Parameter(description = "Opaque pagination cursor") @RequestParam Optional<String> cursor,
+      @Parameter(description = "Page size (1–100)")
+          @RequestParam(defaultValue = "20")
+          @Min(1)
+          @Max(100)
+          int size,
       @AuthenticationPrincipal AuthenticatedUser user) {
     var search =
         TransactionSearch.builder()
@@ -71,7 +76,8 @@ public class TransactionController {
       content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{ref}")
   public ResponseEntity<TransactionDto> findByReference(
-      @PathVariable String ref, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "Transaction reference") @PathVariable String ref,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     return transactionRepository
         .findByReference(ref, user.requireCustomerId())
         .map(mapper::toDto)

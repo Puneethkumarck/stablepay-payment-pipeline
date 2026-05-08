@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import java.util.List;
@@ -41,5 +44,22 @@ class OpenApiConfigTest {
 
     // then
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+  }
+
+  @Test
+  void shouldAdd401And403ResponsesViaOperationCustomizer() {
+    // given
+    var customizer = config.globalAuthResponses();
+    var operation = new Operation().responses(new ApiResponses());
+    var expected =
+        new ApiResponses()
+            .addApiResponse("401", new ApiResponse().description("Missing or invalid JWT token"))
+            .addApiResponse("403", new ApiResponse().description("Insufficient role permissions"));
+
+    // when
+    var result = customizer.customize(operation, null);
+
+    // then
+    assertThat(result.getResponses()).usingRecursiveComparison().isEqualTo(expected);
   }
 }

@@ -14,6 +14,7 @@ import io.stablepay.api.domain.model.DlqId;
 import io.stablepay.api.domain.port.DlqRepository;
 import io.stablepay.api.domain.service.DlqReplayService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -55,8 +56,12 @@ public class AdminDlqController {
   @ApiResponse(responseCode = "200", description = "Paginated DLQ event list")
   @GetMapping
   public PaginatedResponse<DlqEventDto> list(
-      @RequestParam Optional<String> cursor,
-      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+      @Parameter(description = "Opaque pagination cursor") @RequestParam Optional<String> cursor,
+      @Parameter(description = "Page size (1–100)")
+          @RequestParam(defaultValue = "20")
+          @Min(1)
+          @Max(100)
+          int size,
       @AuthenticationPrincipal AuthenticatedUser user) {
     var result = dlqRepository.searchAdmin(size, cursor);
     return mapper.toResponse(result);
@@ -78,7 +83,8 @@ public class AdminDlqController {
       content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{id}")
   public ResponseEntity<DlqEventDto> findById(
-      @PathVariable String id, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "DLQ event UUID") @PathVariable String id,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     return dlqRepository
         .findByIdAdmin(DlqId.of(UUID.fromString(id)))
         .map(mapper::toDto)
@@ -99,7 +105,8 @@ public class AdminDlqController {
   @PostMapping("/{id}/replay")
   @Idempotent
   public ResponseEntity<DlqReplayResponse> replay(
-      @PathVariable String id, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "DLQ event UUID") @PathVariable String id,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     var dlqId = DlqId.of(UUID.fromString(id));
     dlqReplayService.replay(dlqId, user.userId());
     return ResponseEntity.ok(

@@ -7,6 +7,7 @@ import io.stablepay.api.client.ApiError;
 import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.port.TransactionRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,7 +43,8 @@ public class AdminTransactionController {
       content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{ref}")
   public ResponseEntity<TransactionDto> findByReference(
-      @PathVariable String ref, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "Transaction reference") @PathVariable String ref,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     return transactionRepository
         .findByReferenceAdmin(ref)
         .map(mapper::toDto)

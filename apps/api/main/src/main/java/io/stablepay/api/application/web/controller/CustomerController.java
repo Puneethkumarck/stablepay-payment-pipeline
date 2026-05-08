@@ -7,6 +7,7 @@ import io.stablepay.api.client.ApiError;
 import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.port.CustomerRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -43,7 +44,8 @@ public class CustomerController {
       content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{id}/summary")
   public ResponseEntity<CustomerSummaryDto> summary(
-      @PathVariable String id, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "Customer UUID") @PathVariable String id,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     var requestedId = UUID.fromString(id);
     if (!requestedId.equals(user.requireCustomerId().value())) {
       throw new NotFoundException("Customer", id);

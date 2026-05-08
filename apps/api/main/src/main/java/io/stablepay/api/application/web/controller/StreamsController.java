@@ -6,6 +6,7 @@ import io.stablepay.api.application.web.mapper.TransactionEventWebMapper;
 import io.stablepay.api.domain.model.TransactionEvent;
 import io.stablepay.api.domain.port.TransactionEventSource;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
@@ -61,7 +62,8 @@ public class StreamsController {
   @GetMapping("/transactions/recent")
   public List<TransactionEventDto> recent(
       @AuthenticationPrincipal AuthenticatedUser user,
-      @RequestParam(required = false) String since) {
+      @Parameter(description = "Event ID to fetch events after") @RequestParam(required = false)
+          String since) {
     return eventSource.snapshotSinceAdmin(Optional.ofNullable(since), 50).stream()
         .filter(e -> isVisibleTo(e, user))
         .map(mapper::toDto)
