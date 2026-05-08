@@ -34,7 +34,6 @@ class AgentTimelineServiceTest {
       var actual = service.fetch(SOME_REFERENCE);
 
       // then
-      assertThat(actual).isInstanceOf(FetchResult.Found.class);
       var found = (FetchResult.Found) actual;
       var expected =
           new FetchResult.Found(

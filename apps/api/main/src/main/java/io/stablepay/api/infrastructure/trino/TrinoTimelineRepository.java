@@ -40,7 +40,8 @@ public class TrinoTimelineRepository implements TimelineRepository {
               .source(rs.getString("source"))
               .status(rs.getString("status"))
               .detail(rs.getString("detail"))
-              .timestamp(rs.getTimestamp("event_time").toInstant())
+              .timestamp(
+                  Objects.requireNonNull(rs.getTimestamp("event_time"), "event_time").toInstant())
               .build();
 
   @Qualifier("trinoJdbcTemplate")

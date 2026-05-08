@@ -10,6 +10,7 @@ import io.stablepay.api.application.web.dto.AgentSearchResponse;
 import io.stablepay.api.application.web.dto.AgentSqlRequest;
 import io.stablepay.api.application.web.dto.AgentSqlResponse;
 import io.stablepay.api.application.web.dto.AgentTimelineResponse;
+import io.stablepay.api.application.web.dto.TimelineEntryDto;
 import io.stablepay.api.client.ApiError;
 import io.stablepay.api.domain.agent.AgentSearchService;
 import io.stablepay.api.domain.agent.AgentSqlService;
@@ -187,7 +188,7 @@ class AgentControllerTest {
           SOME_TIMELINE_ENTRIES.stream()
               .map(
                   e ->
-                      AgentTimelineResponse.TimelineEntryDto.builder()
+                      TimelineEntryDto.builder()
                           .eventId(e.eventId())
                           .source(e.source())
                           .status(e.status())

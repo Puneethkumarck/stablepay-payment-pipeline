@@ -23,6 +23,10 @@ class ApiArchitectureTest {
       "io.stablepay.api.domain.port.IdempotencyRepository";
   private static final String OUTBOX_REPOSITORY_FQN =
       "io.stablepay.api.domain.port.OutboxRepository";
+  private static final String AGENT_SQL_EXECUTOR_FQN =
+      "io.stablepay.api.domain.port.AgentSqlExecutor";
+  private static final String AGENT_SEARCH_EXECUTOR_FQN =
+      "io.stablepay.api.domain.port.AgentSearchExecutor";
 
   @ArchTest
   static final ArchRule layered =
@@ -89,6 +93,12 @@ class ApiArchitectureTest {
           .and()
           .areDeclaredInClassesThat()
           .doNotHaveFullyQualifiedName(OUTBOX_REPOSITORY_FQN)
+          .and()
+          .areDeclaredInClassesThat()
+          .doNotHaveFullyQualifiedName(AGENT_SQL_EXECUTOR_FQN)
+          .and()
+          .areDeclaredInClassesThat()
+          .doNotHaveFullyQualifiedName(AGENT_SEARCH_EXECUTOR_FQN)
           .should(
               new ArchCondition<JavaMethod>(
                   "take a CustomerId parameter or have a name ending in 'Admin'") {

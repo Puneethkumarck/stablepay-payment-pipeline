@@ -1,4 +1,6 @@
-package io.stablepay.api.domain.agent;
+package io.stablepay.api.domain.port;
+
+import io.stablepay.api.domain.agent.SqlExecutionResult;
 
 public interface AgentSqlExecutor {
 

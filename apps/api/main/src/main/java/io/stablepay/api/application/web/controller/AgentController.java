@@ -4,6 +4,8 @@ import io.stablepay.api.application.web.dto.AgentSearchResponse;
 import io.stablepay.api.application.web.dto.AgentSqlRequest;
 import io.stablepay.api.application.web.dto.AgentSqlResponse;
 import io.stablepay.api.application.web.dto.AgentTimelineResponse;
+import io.stablepay.api.application.web.dto.TimelineEntryDto;
+import io.stablepay.api.application.web.error.ErrorCodes;
 import io.stablepay.api.client.ApiError;
 import io.stablepay.api.domain.agent.AgentSearchRequest;
 import io.stablepay.api.domain.agent.AgentSearchService;
@@ -34,8 +36,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/agent")
 @Secured("ROLE_AGENT")
 public class AgentController {
-
-  private static final String NOT_FOUND_CODE = "STBLPAY-3001";
 
   private final AgentSqlService sqlService;
   private final AgentSearchService searchService;
@@ -96,7 +96,7 @@ public class AgentController {
             timeline.entries().stream()
                 .map(
                     e ->
-                        AgentTimelineResponse.TimelineEntryDto.builder()
+                        TimelineEntryDto.builder()
                             .eventId(e.eventId())
                             .source(e.source())
                             .status(e.status())
@@ -113,7 +113,7 @@ public class AgentController {
       }
       case FetchResult.NotFound notFound ->
           ResponseEntity.status(HttpStatus.NOT_FOUND)
-              .body(new ApiError(NOT_FOUND_CODE, "Timeline not found", clock.instant()));
+              .body(new ApiError(ErrorCodes.NOT_FOUND, "Timeline not found", clock.instant()));
     };
   }
 }

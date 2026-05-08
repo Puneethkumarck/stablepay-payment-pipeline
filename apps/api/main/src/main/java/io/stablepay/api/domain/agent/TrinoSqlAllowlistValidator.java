@@ -28,7 +28,7 @@ public class TrinoSqlAllowlistValidator {
   private final AllowedTableRegistry allowedTableRegistry;
   private final SqlParser sqlParser = new SqlParser();
 
-  public SqlValidationResult validate(String sql) {
+  public SqlValidationResult validate(String sql, int requestedLimit) {
     if (sql == null || sql.isBlank()) {
       return new SqlValidationResult.Invalid("SQL is empty", "STBLPAY-5001");
     }
@@ -63,7 +63,7 @@ public class TrinoSqlAllowlistValidator {
         }
       }
 
-      var appliedLimit = resolveLimit(query);
+      var appliedLimit = resolveLimit(query, requestedLimit);
       var sanitizedSql = rebuildWithLimit(sql.strip(), query, appliedLimit);
 
       return new SqlValidationResult.Valid(sanitizedSql, appliedLimit);
@@ -81,13 +81,14 @@ public class TrinoSqlAllowlistValidator {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private int resolveLimit(Query query) {
+  private int resolveLimit(Query query, int requestedLimit) {
+    var capped = Math.min(Math.max(requestedLimit, 1), MAX_LIMIT);
     var existingLimit = extractLimit(query);
     if (existingLimit.isEmpty()) {
-      return DEFAULT_LIMIT;
+      return capped;
     }
-    var userLimit = existingLimit.getAsLong();
-    return (int) Math.min(userLimit, MAX_LIMIT);
+    var sqlLimit = existingLimit.getAsLong();
+    return (int) Math.min(sqlLimit, capped);
   }
 
   private OptionalLong extractLimit(Query query) {

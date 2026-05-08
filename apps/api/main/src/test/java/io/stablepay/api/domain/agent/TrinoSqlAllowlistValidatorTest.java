@@ -31,7 +31,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldAcceptValidViewQuery() {
       // when
-      var result = validator.validate(VALID_VIEW_QUERY);
+      var result = validator.validate(VALID_VIEW_QUERY, 1000);
 
       // then
       var expected = new SqlValidationResult.Valid(VALID_VIEW_QUERY + " LIMIT 1000", 1000);
@@ -41,7 +41,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldAcceptValidAggQuery() {
       // when
-      var result = validator.validate(VALID_AGG_QUERY);
+      var result = validator.validate(VALID_AGG_QUERY, 1000);
 
       // then
       var expected =
@@ -53,7 +53,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldAcceptValidFactQuery() {
       // when
-      var result = validator.validate(VALID_FACT_QUERY);
+      var result = validator.validate(VALID_FACT_QUERY, 1000);
 
       // then
       var expected =
@@ -65,7 +65,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldAcceptNonRecursiveCte() {
       // when
-      var result = validator.validate(NON_RECURSIVE_CTE_SQL);
+      var result = validator.validate(NON_RECURSIVE_CTE_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Valid(NON_RECURSIVE_CTE_SQL + " LIMIT 1000", 1000);
@@ -75,7 +75,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldAcceptUppercaseTableNames() {
       // when
-      var result = validator.validate(UPPERCASE_TABLE_SQL);
+      var result = validator.validate(UPPERCASE_TABLE_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Valid(UPPERCASE_TABLE_SQL + " LIMIT 1000", 1000);
@@ -89,7 +89,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectInsertStatement() {
       // when
-      var result = validator.validate(INSERT_SQL);
+      var result = validator.validate(INSERT_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("Only SELECT queries allowed", "STBLPAY-5002");
@@ -99,7 +99,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectDeleteStatement() {
       // when
-      var result = validator.validate(DELETE_SQL);
+      var result = validator.validate(DELETE_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("Only SELECT queries allowed", "STBLPAY-5002");
@@ -109,7 +109,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectWithRecursive() {
       // when
-      var result = validator.validate(WITH_RECURSIVE_SQL);
+      var result = validator.validate(WITH_RECURSIVE_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("WITH RECURSIVE not allowed", "STBLPAY-5003");
@@ -119,7 +119,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectUnknownTable() {
       // when
-      var result = validator.validate(UNKNOWN_TABLE_SQL);
+      var result = validator.validate(UNKNOWN_TABLE_SQL, 1000);
 
       // then
       var expected =
@@ -131,7 +131,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectDlqTable() {
       // when
-      var result = validator.validate(DLQ_TABLE_SQL);
+      var result = validator.validate(DLQ_TABLE_SQL, 1000);
 
       // then
       var expected =
@@ -143,7 +143,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectUpdateStatement() {
       // when
-      var result = validator.validate(UPDATE_SQL);
+      var result = validator.validate(UPDATE_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("Only SELECT queries allowed", "STBLPAY-5002");
@@ -153,7 +153,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectDisallowedTableInSubquery() {
       // when
-      var result = validator.validate(SUBQUERY_DISALLOWED_SQL);
+      var result = validator.validate(SUBQUERY_DISALLOWED_SQL, 1000);
 
       // then
       var expected =
@@ -165,7 +165,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectDisallowedTableInJoin() {
       // when
-      var result = validator.validate(JOIN_MIXED_SQL);
+      var result = validator.validate(JOIN_MIXED_SQL, 1000);
 
       // then
       var expected =
@@ -181,7 +181,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldInjectDefaultLimitWhenMissing() {
       // when
-      var result = validator.validate(MISSING_LIMIT_SQL);
+      var result = validator.validate(MISSING_LIMIT_SQL, 1000);
 
       // then
       var expected = new SqlValidationResult.Valid(MISSING_LIMIT_SQL + " LIMIT 1000", 1000);
@@ -191,12 +191,12 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldCapOversizedLimit() {
       // when
-      var result = validator.validate(OVERSIZED_LIMIT_SQL);
+      var result = validator.validate(OVERSIZED_LIMIT_SQL, 10_000);
 
       // then
       var expected =
           new SqlValidationResult.Valid(
-              "SELECT * FROM iceberg.analytics.v_payment_summary LIMIT 10000", 10000);
+              "SELECT * FROM iceberg.analytics.v_payment_summary LIMIT 10000", 10_000);
       assertThat(result).usingRecursiveComparison().isEqualTo(expected);
     }
   }
@@ -207,7 +207,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectEmptyInput() {
       // when
-      var result = validator.validate("");
+      var result = validator.validate("", 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("SQL is empty", "STBLPAY-5001");
@@ -217,7 +217,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectNullInput() {
       // when
-      var result = validator.validate(null);
+      var result = validator.validate(null, 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("SQL is empty", "STBLPAY-5001");
@@ -227,7 +227,7 @@ class TrinoSqlAllowlistValidatorTest {
     @Test
     void shouldRejectMalformedSql() {
       // when
-      var result = validator.validate("NOT VALID SQL AT ALL !!!");
+      var result = validator.validate("NOT VALID SQL AT ALL !!!", 1000);
 
       // then
       var expected = new SqlValidationResult.Invalid("SQL parse error", "STBLPAY-5001");

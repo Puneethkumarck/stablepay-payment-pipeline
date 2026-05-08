@@ -1,8 +1,9 @@
 package io.stablepay.api.infrastructure.opensearch;
 
-import io.stablepay.api.domain.agent.AgentSearchExecutor;
+import io.stablepay.api.application.web.error.ErrorCodes;
 import io.stablepay.api.domain.agent.AgentSearchRequest;
 import io.stablepay.api.domain.agent.SearchExecutionResult;
+import io.stablepay.api.domain.port.AgentSearchExecutor;
 import java.io.IOException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +18,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 public class OpenSearchAgentSearchExecutor implements AgentSearchExecutor {
-
-  static final String EXECUTION_FAILED_CODE = "STBLPAY-6006";
 
   private final OpenSearchQueryTranslator translator;
   private final OpenSearchClient openSearchClient;
@@ -48,7 +47,8 @@ public class OpenSearchAgentSearchExecutor implements AgentSearchExecutor {
       return new SearchExecutionResult.Success(hits, totalHits, resolvedSize, tookMs);
     } catch (IOException | OpenSearchException e) {
       log.warn("Agent search execution failed: index={}", request.index(), e);
-      return new SearchExecutionResult.Failed(EXECUTION_FAILED_CODE, "Search execution failed");
+      return new SearchExecutionResult.Failed(
+          ErrorCodes.SEARCH_EXECUTION_FAILED, "Search execution failed");
     }
   }
 }

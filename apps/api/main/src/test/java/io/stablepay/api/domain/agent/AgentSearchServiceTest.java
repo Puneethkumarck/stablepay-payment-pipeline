@@ -4,6 +4,7 @@ import static io.stablepay.api.domain.agent.fixtures.DslValidationFixtures.valid
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
+import io.stablepay.api.domain.port.AgentSearchExecutor;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;

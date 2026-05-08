@@ -3,6 +3,7 @@ package io.stablepay.api.domain.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
+import io.stablepay.api.domain.port.AgentSqlExecutor;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class AgentSqlServiceTest {
     @Test
     void shouldReturnRejectedWhenValidationFails() {
       // given
-      given(validator.validate(VALID_SQL))
+      given(validator.validate(VALID_SQL, 1000))
           .willReturn(new SqlValidationResult.Invalid("Table not in allowlist", "STBLPAY-5004"));
 
       // when
@@ -46,7 +47,7 @@ class AgentSqlServiceTest {
       var success =
           new SqlExecutionResult.Success(
               List.of("currency", "total"), List.of(List.of("USD", 100L)), 1, "q-1", 42L);
-      given(validator.validate(VALID_SQL))
+      given(validator.validate(VALID_SQL, 1000))
           .willReturn(new SqlValidationResult.Valid(SANITIZED_SQL, 1000));
       given(executor.executeQuery(SANITIZED_SQL, 1000)).willReturn(success);
 
@@ -61,7 +62,7 @@ class AgentSqlServiceTest {
     void shouldReturnFailedWhenExecutorFails() {
       // given
       var failed = new SqlExecutionResult.Failed("STBLPAY-5005", "Query execution failed");
-      given(validator.validate(VALID_SQL))
+      given(validator.validate(VALID_SQL, 1000))
           .willReturn(new SqlValidationResult.Valid(SANITIZED_SQL, 1000));
       given(executor.executeQuery(SANITIZED_SQL, 1000)).willReturn(failed);
 

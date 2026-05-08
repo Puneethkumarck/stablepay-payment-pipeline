@@ -1,7 +1,8 @@
 package io.stablepay.api.infrastructure.trino;
 
-import io.stablepay.api.domain.agent.AgentSqlExecutor;
+import io.stablepay.api.application.web.error.ErrorCodes;
 import io.stablepay.api.domain.agent.SqlExecutionResult;
+import io.stablepay.api.domain.port.AgentSqlExecutor;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -19,7 +20,6 @@ import org.springframework.stereotype.Component;
 public class TrinoAgentSqlExecutor implements AgentSqlExecutor {
 
   static final int QUERY_TIMEOUT_SECONDS = 30;
-  static final String EXECUTION_FAILED_CODE = "STBLPAY-5005";
 
   @Qualifier("trinoDataSource")
   private final DataSource trinoDataSource;
@@ -32,7 +32,8 @@ public class TrinoAgentSqlExecutor implements AgentSqlExecutor {
       return executeWithConnection(conn, sanitizedSql, appliedLimit, queryId, startNanos);
     } catch (SQLException e) {
       log.warn("Agent SQL execution failed: queryId={}", queryId, e);
-      return new SqlExecutionResult.Failed(EXECUTION_FAILED_CODE, "Query execution failed");
+      return new SqlExecutionResult.Failed(
+          ErrorCodes.SQL_EXECUTION_FAILED, "Query execution failed");
     }
   }
 
