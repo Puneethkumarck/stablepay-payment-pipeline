@@ -1,15 +1,18 @@
 package io.stablepay.api.config;
 
 import io.stablepay.api.StablepayApiApplication;
+import io.stablepay.api.infrastructure.opensearch.OpenSearchAgentSearchExecutor;
 import io.stablepay.api.infrastructure.opensearch.OpenSearchConfig;
 import io.stablepay.api.infrastructure.opensearch.OpenSearchTransactionRepository;
 import io.stablepay.api.infrastructure.security.SecurityConfig;
 import io.stablepay.api.infrastructure.sse.SseTransactionPoller;
+import io.stablepay.api.infrastructure.trino.TrinoAgentSqlExecutor;
 import io.stablepay.api.infrastructure.trino.TrinoConfig;
 import io.stablepay.api.infrastructure.trino.TrinoCustomerRepository;
 import io.stablepay.api.infrastructure.trino.TrinoDlqRepository;
 import io.stablepay.api.infrastructure.trino.TrinoFlowRepository;
 import io.stablepay.api.infrastructure.trino.TrinoStuckRepository;
+import io.stablepay.api.infrastructure.trino.TrinoTimelineRepository;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
@@ -35,7 +38,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
               TrinoStuckRepository.class,
               OpenSearchConfig.class,
               OpenSearchTransactionRepository.class,
+              OpenSearchAgentSearchExecutor.class,
               SseTransactionPoller.class,
+              TrinoAgentSqlExecutor.class,
+              TrinoTimelineRepository.class,
               SecurityConfig.class
             }))
 public class BusinessTestApplication {}
