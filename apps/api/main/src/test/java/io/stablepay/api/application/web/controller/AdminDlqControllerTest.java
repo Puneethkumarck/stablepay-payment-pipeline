@@ -137,11 +137,12 @@ class AdminDlqControllerTest {
 
       // then
       var expected =
-          DlqReplayResponse.builder()
-              .dlqId(SOME_DLQ_ID.value().toString())
-              .status("ACCEPTED")
-              .timestamp(FIXED_NOW)
-              .build();
+          ResponseEntity.ok(
+              DlqReplayResponse.builder()
+                  .dlqId(SOME_DLQ_ID.value().toString())
+                  .status("ACCEPTED")
+                  .timestamp(FIXED_NOW)
+                  .build());
       assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
       then(dlqReplayService).should().replay(SOME_DLQ_ID, SOME_ADMIN_USER.userId());
     }

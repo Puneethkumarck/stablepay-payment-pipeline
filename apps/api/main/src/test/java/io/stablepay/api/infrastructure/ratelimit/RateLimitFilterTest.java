@@ -12,6 +12,7 @@ import static io.stablepay.api.infrastructure.ratelimit.fixtures.RateLimitFixtur
 import static io.stablepay.api.infrastructure.security.fixtures.JwtFixtures.jwtBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stablepay.api.application.security.AuthenticatedUser;
 import io.stablepay.api.client.ApiError;
 import io.stablepay.api.infrastructure.security.AuthenticatedUserToken;
@@ -31,8 +32,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 class RateLimitFilterTest {
 
@@ -46,7 +45,7 @@ class RateLimitFilterTest {
 
   @BeforeEach
   void setUp() {
-    objectMapper = JsonMapper.builder().findAndAddModules().build();
+    objectMapper = new ObjectMapper().findAndRegisterModules();
     filter =
         new RateLimitFilter(
             inMemoryResolverWith(tinyConfigurationsForAllRoles()),

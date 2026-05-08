@@ -6,6 +6,7 @@ import static io.stablepay.api.infrastructure.ratelimit.fixtures.RateLimitFixtur
 import static io.stablepay.api.infrastructure.security.fixtures.JwtFixtures.jwtBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.redis.lettuce.Bucket4jLettuce;
@@ -39,8 +40,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 @Testcontainers
 @Tag("integration")
@@ -68,7 +67,7 @@ class RateLimitFilterIT {
     connection = redisClient.connect(RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE));
     proxyManager = Bucket4jLettuce.casBasedBuilder(connection).build();
     roleConfigurations = productionConfigurationsForAllRoles();
-    objectMapper = JsonMapper.builder().findAndAddModules().build();
+    objectMapper = new ObjectMapper().findAndRegisterModules();
   }
 
   @AfterAll

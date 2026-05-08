@@ -1,5 +1,6 @@
 package io.stablepay.api.infrastructure.ratelimit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
@@ -79,6 +80,12 @@ public class RateLimitConfig {
       var configuration = roleBucketConfigurations.get(role);
       return rateLimitProxyManager.builder().build(key, () -> configuration);
     };
+  }
+
+  @Bean
+  public RateLimitFilter rateLimitFilter(
+      RateLimitBucketResolver rateLimitBucketResolver, ObjectMapper objectMapper, Clock clock) {
+    return new RateLimitFilter(rateLimitBucketResolver, objectMapper, clock);
   }
 
   static BucketConfiguration configurationFor(long capacity) {
