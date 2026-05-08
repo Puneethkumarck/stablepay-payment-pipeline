@@ -1,5 +1,6 @@
 package io.stablepay.api.infrastructure.ratelimit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.ConsumptionProbe;
 import io.stablepay.api.application.security.AuthenticatedUser;
 import io.stablepay.api.application.security.Role;
@@ -17,12 +18,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 

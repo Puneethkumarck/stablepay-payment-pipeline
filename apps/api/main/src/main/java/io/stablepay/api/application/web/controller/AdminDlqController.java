@@ -71,14 +71,15 @@ public class AdminDlqController {
 
   @PostMapping("/{id}/replay")
   @Idempotent
-  public DlqReplayResponse replay(
+  public ResponseEntity<DlqReplayResponse> replay(
       @PathVariable String id, @AuthenticationPrincipal AuthenticatedUser user) {
     var dlqId = DlqId.of(UUID.fromString(id));
     dlqReplayService.replay(dlqId, user.userId());
-    return DlqReplayResponse.builder()
-        .dlqId(id)
-        .status("ACCEPTED")
-        .timestamp(clock.instant())
-        .build();
+    return ResponseEntity.ok(
+        DlqReplayResponse.builder()
+            .dlqId(id)
+            .status("ACCEPTED")
+            .timestamp(clock.instant())
+            .build());
   }
 }

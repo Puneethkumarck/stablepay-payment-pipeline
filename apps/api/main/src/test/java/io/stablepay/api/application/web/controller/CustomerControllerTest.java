@@ -1,6 +1,7 @@
 package io.stablepay.api.application.web.controller;
 
-import static io.stablepay.api.domain.model.fixtures.CustomerSummaryFixtures.SOME_CUSTOMER_ID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_ID;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someCustomerUser;
 import static io.stablepay.api.domain.model.fixtures.CustomerSummaryFixtures.SOME_CUSTOMER_SUMMARY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,16 +9,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import io.stablepay.api.application.security.AuthenticatedUser;
-import io.stablepay.api.application.security.Role;
 import io.stablepay.api.application.web.mapper.AmountMapperImpl;
 import io.stablepay.api.application.web.mapper.CustomerSummaryWebMapper;
 import io.stablepay.api.application.web.mapper.CustomerSummaryWebMapperImpl;
 import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.model.CustomerId;
-import io.stablepay.api.domain.model.UserId;
 import io.stablepay.api.domain.port.CustomerRepository;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,21 +24,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerControllerTest {
 
-  private static final AuthenticatedUser SOME_CUSTOMER_USER =
-      AuthenticatedUser.builder()
-          .userId(UserId.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")))
-          .customerId(Optional.of(SOME_CUSTOMER_ID))
-          .roles(Set.of(Role.CUSTOMER))
-          .email("test@example.com")
-          .build();
+  private static final AuthenticatedUser SOME_CUSTOMER_USER = someCustomerUser();
 
   private static final CustomerId OTHER_CUSTOMER_ID =
-      CustomerId.of(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));
+      CustomerId.of(UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"));
 
   @Mock private CustomerRepository customerRepository;
 
@@ -63,9 +55,8 @@ class CustomerControllerTest {
       var actual = controller.summary(SOME_CUSTOMER_ID.value().toString(), SOME_CUSTOMER_USER);
 
       // then
-      assertThat(actual.getStatusCode()).isEqualTo(HttpStatus.OK);
-      assertThat(actual.getBody()).isNotNull();
-      assertThat(actual.getBody().id()).isEqualTo(SOME_CUSTOMER_ID.value().toString());
+      var expected = ResponseEntity.ok(mapper.toDto(SOME_CUSTOMER_SUMMARY));
+      assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     }
 
     @Test
