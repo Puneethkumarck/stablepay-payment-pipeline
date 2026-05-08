@@ -18,7 +18,7 @@ class AgentRateLimitBT extends BusinessTestBase {
       UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
 
   @Test
-  void agentShouldBeRateLimitedAfterBucketExhausted() {
+  void shouldRejectAgentAfterBucketExhausted() {
     // given — use a dedicated UUID so other agent tests don't deplete the bucket
     var jwt = mintJwt(RATE_LIMIT_AGENT_UUID, "rate-agent@stablepay.io", List.of("AGENT"), null);
     var client = authenticatedClient(jwt);
@@ -29,13 +29,15 @@ class AgentRateLimitBT extends BusinessTestBase {
 
     // when
     for (var i = 0; i < StubRepositoryConfig.BT_RATE_LIMIT_CAPACITY; i++) {
-      client
-          .post()
-          .uri("/api/v1/agent/sql")
-          .contentType(MediaType.APPLICATION_JSON)
-          .body(body)
-          .retrieve()
-          .toEntity(String.class);
+      var ok =
+          client
+              .post()
+              .uri("/api/v1/agent/sql")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(body)
+              .retrieve()
+              .toEntity(String.class);
+      assertThat(ok.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     // then

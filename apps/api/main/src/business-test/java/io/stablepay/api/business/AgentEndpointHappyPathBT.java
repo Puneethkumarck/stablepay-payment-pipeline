@@ -4,11 +4,14 @@ import static io.stablepay.api.domain.agent.fixtures.AgentServiceFixtures.SOME_E
 import static io.stablepay.api.domain.agent.fixtures.AgentServiceFixtures.SOME_EVENT_TIME_2;
 import static io.stablepay.api.domain.agent.fixtures.AgentServiceFixtures.SOME_REFERENCE;
 import static io.stablepay.api.domain.agent.fixtures.AgentServiceFixtures.SOME_TIMELINE_ENTRIES;
+import static io.stablepay.api.domain.agent.fixtures.AgentServiceFixtures.SOME_TIMELINE_ENTRY_1;
+import static io.stablepay.api.domain.agent.fixtures.AgentServiceFixtures.SOME_TIMELINE_ENTRY_2;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import io.stablepay.api.application.web.dto.AgentSqlResponse;
 import io.stablepay.api.application.web.dto.AgentTimelineResponse;
+import io.stablepay.api.application.web.dto.TimelineEntryDto;
 import io.stablepay.api.config.BusinessTestBase;
 import io.stablepay.api.domain.agent.SqlExecutionResult;
 import java.util.List;
@@ -133,15 +136,29 @@ class AgentEndpointHappyPathBT extends BusinessTestBase {
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-      var body = response.getBody();
-      assertThat(body).isNotNull();
-      assertThat(body.reference()).isEqualTo(SOME_REFERENCE);
-      assertThat(body.markdown()).contains("# Timeline for " + SOME_REFERENCE);
-      assertThat(body.entries()).hasSize(2);
-      assertThat(body.entries().getFirst().eventId())
-          .isEqualTo("evt-aabbccdd-1111-2222-3333-444444444444");
-      assertThat(body.entries().getFirst().timestamp()).isEqualTo(SOME_EVENT_TIME_1);
-      assertThat(body.entries().getLast().timestamp()).isEqualTo(SOME_EVENT_TIME_2);
+      var expected =
+          AgentTimelineResponse.builder()
+              .reference(SOME_REFERENCE)
+              .markdown(response.getBody().markdown())
+              .entries(
+                  List.of(
+                      TimelineEntryDto.builder()
+                          .eventId(SOME_TIMELINE_ENTRY_1.eventId())
+                          .source(SOME_TIMELINE_ENTRY_1.source())
+                          .status(SOME_TIMELINE_ENTRY_1.status())
+                          .detail(SOME_TIMELINE_ENTRY_1.detail())
+                          .timestamp(SOME_EVENT_TIME_1)
+                          .build(),
+                      TimelineEntryDto.builder()
+                          .eventId(SOME_TIMELINE_ENTRY_2.eventId())
+                          .source(SOME_TIMELINE_ENTRY_2.source())
+                          .status(SOME_TIMELINE_ENTRY_2.status())
+                          .detail(SOME_TIMELINE_ENTRY_2.detail())
+                          .timestamp(SOME_EVENT_TIME_2)
+                          .build()))
+              .build();
+      assertThat(response.getBody()).usingRecursiveComparison().isEqualTo(expected);
+      assertThat(response.getBody().markdown()).contains("# Timeline for " + SOME_REFERENCE);
     }
 
     @Test
