@@ -1,10 +1,21 @@
 package io.stablepay.api.domain.agent;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.Builder;
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+  @JsonSubTypes.Type(value = QueryShape.TermShape.class, name = "term"),
+  @JsonSubTypes.Type(value = QueryShape.RangeShape.class, name = "range"),
+  @JsonSubTypes.Type(value = QueryShape.MatchPhraseShape.class, name = "match_phrase"),
+  @JsonSubTypes.Type(value = QueryShape.BoolShape.class, name = "bool"),
+  @JsonSubTypes.Type(value = QueryShape.ExistsShape.class, name = "exists"),
+  @JsonSubTypes.Type(value = QueryShape.TermsShape.class, name = "terms")
+})
 public sealed interface QueryShape
     permits QueryShape.TermShape,
         QueryShape.RangeShape,
