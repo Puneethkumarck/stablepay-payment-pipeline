@@ -5,6 +5,9 @@ import io.stablepay.api.application.web.dto.TransactionEventDto;
 import io.stablepay.api.application.web.mapper.TransactionEventWebMapper;
 import io.stablepay.api.domain.model.TransactionEvent;
 import io.stablepay.api.domain.port.TransactionEventSource;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -25,11 +28,14 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/streams")
 @Secured({"ROLE_CUSTOMER", "ROLE_ADMIN"})
+@Tag(name = "customer")
 public class StreamsController {
 
   private final TransactionEventSource eventSource;
   private final TransactionEventWebMapper mapper;
 
+  @Operation(summary = "Stream real-time transaction events via SSE")
+  @ApiResponse(responseCode = "200", description = "SSE stream opened")
   @GetMapping(value = "/transactions", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public Flux<ServerSentEvent<TransactionEventDto>> transactions(
       @AuthenticationPrincipal AuthenticatedUser user) {
@@ -50,6 +56,8 @@ public class StreamsController {
     return events.mergeWith(heartbeat);
   }
 
+  @Operation(summary = "List recent transaction events")
+  @ApiResponse(responseCode = "200", description = "Recent events returned")
   @GetMapping("/transactions/recent")
   public List<TransactionEventDto> recent(
       @AuthenticationPrincipal AuthenticatedUser user,

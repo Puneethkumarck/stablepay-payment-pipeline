@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":schemas"))
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.swagger.annotations)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)

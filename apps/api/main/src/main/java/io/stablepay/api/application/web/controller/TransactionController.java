@@ -4,9 +4,15 @@ import io.stablepay.api.application.security.AuthenticatedUser;
 import io.stablepay.api.application.web.dto.PaginatedResponse;
 import io.stablepay.api.application.web.dto.TransactionDto;
 import io.stablepay.api.application.web.mapper.TransactionWebMapper;
+import io.stablepay.api.client.ApiError;
 import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.model.TransactionSearch;
 import io.stablepay.api.domain.port.TransactionRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.Optional;
@@ -28,11 +34,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/transactions")
 @Secured("ROLE_CUSTOMER")
+@Tag(name = "customer")
 public class TransactionController {
 
   private final TransactionRepository transactionRepository;
   private final TransactionWebMapper mapper;
 
+  @Operation(summary = "List transactions for the authenticated customer")
+  @ApiResponse(responseCode = "200", description = "Paginated transaction list")
   @GetMapping
   public PaginatedResponse<TransactionDto> list(
       @RequestParam Optional<String> status,
@@ -54,6 +63,12 @@ public class TransactionController {
     return mapper.toResponse(result);
   }
 
+  @Operation(summary = "Find transaction by reference")
+  @ApiResponse(responseCode = "200", description = "Transaction found")
+  @ApiResponse(
+      responseCode = "404",
+      description = "Transaction not found",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{ref}")
   public ResponseEntity<TransactionDto> findByReference(
       @PathVariable String ref, @AuthenticationPrincipal AuthenticatedUser user) {

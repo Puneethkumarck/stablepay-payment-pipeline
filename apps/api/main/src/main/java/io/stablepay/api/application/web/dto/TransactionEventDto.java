@@ -1,10 +1,12 @@
 package io.stablepay.api.application.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.Objects;
 import lombok.Builder;
 
+@Schema(description = "Real-time transaction event")
 @Builder(toBuilder = true)
 public record TransactionEventDto(
     @JsonProperty("event_id") String eventId,

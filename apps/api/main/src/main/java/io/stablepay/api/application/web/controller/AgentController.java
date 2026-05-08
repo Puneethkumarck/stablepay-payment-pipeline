@@ -14,6 +14,11 @@ import io.stablepay.api.domain.agent.AgentTimelineService;
 import io.stablepay.api.domain.agent.FetchResult;
 import io.stablepay.api.domain.agent.SearchExecutionResult;
 import io.stablepay.api.domain.agent.SqlExecutionResult;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Clock;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/agent")
 @Secured("ROLE_AGENT")
+@Tag(name = "agent")
 public class AgentController {
 
   private final AgentSqlService sqlService;
@@ -42,6 +48,19 @@ public class AgentController {
   private final AgentTimelineService timelineService;
   private final Clock clock;
 
+  @Operation(summary = "Execute a validated Trino SQL query")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Query executed successfully",
+      content = @Content(schema = @Schema(implementation = AgentSqlResponse.class)))
+  @ApiResponse(
+      responseCode = "400",
+      description = "SQL rejected by allowlist validator",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
+  @ApiResponse(
+      responseCode = "503",
+      description = "Trino query execution failed",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
   @PostMapping("/sql")
   public ResponseEntity<?> executeSql(@Valid @RequestBody AgentSqlRequest request) {
     var limit = request.limit().orElse(1_000);
@@ -65,6 +84,19 @@ public class AgentController {
     };
   }
 
+  @Operation(summary = "Execute a validated OpenSearch DSL query")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Search executed successfully",
+      content = @Content(schema = @Schema(implementation = AgentSearchResponse.class)))
+  @ApiResponse(
+      responseCode = "400",
+      description = "DSL rejected by whitelist validator",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
+  @ApiResponse(
+      responseCode = "503",
+      description = "OpenSearch query execution failed",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
   @PostMapping("/search")
   public ResponseEntity<?> executeSearch(@Valid @RequestBody AgentSearchRequest request) {
     var result = searchService.execute(request);
@@ -86,6 +118,15 @@ public class AgentController {
     };
   }
 
+  @Operation(summary = "Fetch transaction timeline by reference")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Timeline found",
+      content = @Content(schema = @Schema(implementation = AgentTimelineResponse.class)))
+  @ApiResponse(
+      responseCode = "404",
+      description = "Timeline not found",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/timeline/{ref}")
   public ResponseEntity<?> fetchTimeline(@PathVariable String ref) {
     var result = timelineService.fetch(ref);

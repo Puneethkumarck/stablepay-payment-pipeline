@@ -1,10 +1,12 @@
 package io.stablepay.api.application.web.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Optional;
 
+@Schema(description = "Agent Trino SQL execution request")
 public record AgentSqlRequest(@NotBlank String sql, Optional<@Min(1) @Max(10_000) Integer> limit) {
 
   public AgentSqlRequest {
