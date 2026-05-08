@@ -49,7 +49,10 @@ public class StubRepositoryConfig {
 
   public void emitEvent(TransactionEvent event) {
     eventBuffer.add(event);
-    eventSink.tryEmitNext(event);
+    var result = eventSink.tryEmitNext(event);
+    if (result.isFailure()) {
+      throw new IllegalStateException("Failed to emit event to sink: " + result);
+    }
   }
 
   public void clearEvents() {

@@ -5,6 +5,7 @@ import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFi
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_EMAIL;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_AGENT_USER_UUID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_EMAIL;
+import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_ID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_USER_UUID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.SOME_CUSTOMER_UUID;
 import static io.stablepay.api.application.security.fixtures.AuthenticatedUserFixtures.someAdminUser;
@@ -240,7 +241,9 @@ class JwtToAuthenticatedUserConverterTest {
     var principal = (AuthenticatedUser) token.getPrincipal();
 
     // then
-    assertThat(principal.requireCustomerId().value()).isEqualTo(SOME_CUSTOMER_UUID);
+    assertThat(principal.requireCustomerId())
+        .usingRecursiveComparison()
+        .isEqualTo(SOME_CUSTOMER_ID);
   }
 
   @Test

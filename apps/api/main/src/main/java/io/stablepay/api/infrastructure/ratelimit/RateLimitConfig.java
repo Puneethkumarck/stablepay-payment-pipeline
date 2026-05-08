@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -86,6 +87,14 @@ public class RateLimitConfig {
   public RateLimitFilter rateLimitFilter(
       RateLimitBucketResolver rateLimitBucketResolver, ObjectMapper objectMapper, Clock clock) {
     return new RateLimitFilter(rateLimitBucketResolver, objectMapper, clock);
+  }
+
+  @Bean
+  public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(
+      RateLimitFilter rateLimitFilter) {
+    var registration = new FilterRegistrationBean<>(rateLimitFilter);
+    registration.setEnabled(false);
+    return registration;
   }
 
   static BucketConfiguration configurationFor(long capacity) {

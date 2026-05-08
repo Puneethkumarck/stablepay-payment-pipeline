@@ -6,17 +6,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.stablepay.api.config.BusinessTestBase;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.test.context.TestConstructor;
 
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class OutboxExactlyOnceBT extends BusinessTestBase {
 
   private static final String COUNT_OUTBOX_SQL =
       "SELECT COUNT(*) FROM outbox_record WHERE record_key = :recordKey";
 
-  @Autowired private NamedParameterJdbcTemplate jdbc;
+  private final NamedParameterJdbcTemplate jdbc;
+
+  OutboxExactlyOnceBT(NamedParameterJdbcTemplate jdbc) {
+    this.jdbc = jdbc;
+  }
 
   @Test
   void replayShouldCreateExactlyOneOutboxRow() {
