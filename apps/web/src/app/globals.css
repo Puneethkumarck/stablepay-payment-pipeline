@@ -4,6 +4,8 @@
 
 /* Solana gradient is purely visual identity, not chain affinity */
 
+/* @theme inline: utilities like bg-surface-1 inline their value at build time.
+   For theme-switchable properties use shadcn tokens (bg-background, bg-card). */
 @theme inline {
   /* ───── Fonts ───── */
   --font-sans: var(--font-space-grotesk);
@@ -159,9 +161,9 @@
   --inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   /* ───── Solana gradients ───── */
-  --solana-gradient: linear-gradient(90deg, #00FFA3 0%, #9945FF 50%, #DC1FFF 100%);
-  --solana-gradient-45: linear-gradient(45deg, #00FFA3 0%, #9945FF 50%, #DC1FFF 100%);
-  --solana-gradient-vertical: linear-gradient(180deg, #00FFA3 0%, #9945FF 50%, #DC1FFF 100%);
+  --solana-gradient: linear-gradient(90deg, var(--color-solana-teal) 0%, var(--color-solana-purple) 50%, var(--color-solana-magenta) 100%);
+  --solana-gradient-45: linear-gradient(45deg, var(--color-solana-teal) 0%, var(--color-solana-purple) 50%, var(--color-solana-magenta) 100%);
+  --solana-gradient-vertical: linear-gradient(180deg, var(--color-solana-teal) 0%, var(--color-solana-purple) 50%, var(--color-solana-magenta) 100%);
 
   /* ───── Semantic soft/border variants ───── */
   --success-soft: rgba(34, 197, 94, 0.16);
@@ -264,6 +266,11 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
     border-radius: 4px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   }
 
   ::-webkit-scrollbar {
