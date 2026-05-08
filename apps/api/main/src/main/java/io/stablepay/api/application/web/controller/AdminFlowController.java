@@ -3,9 +3,16 @@ package io.stablepay.api.application.web.controller;
 import io.stablepay.api.application.security.AuthenticatedUser;
 import io.stablepay.api.application.web.dto.FlowDto;
 import io.stablepay.api.application.web.mapper.FlowWebMapper;
+import io.stablepay.api.client.ApiError;
 import io.stablepay.api.domain.exception.NotFoundException;
 import io.stablepay.api.domain.model.FlowId;
 import io.stablepay.api.domain.port.FlowRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,14 +31,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/flows")
 @Secured("ROLE_ADMIN")
+@Tag(name = "admin")
 public class AdminFlowController {
 
   private final FlowRepository flowRepository;
   private final FlowWebMapper mapper;
 
+  @Operation(summary = "Find payment flow by ID (admin)")
+  @ApiResponse(responseCode = "200", description = "Flow found")
+  @ApiResponse(
+      responseCode = "404",
+      description = "Flow not found",
+      content = @Content(schema = @Schema(implementation = ApiError.class)))
   @GetMapping("/{id}")
   public ResponseEntity<FlowDto> findById(
-      @PathVariable String id, @AuthenticationPrincipal AuthenticatedUser user) {
+      @Parameter(description = "Flow UUID") @PathVariable String id,
+      @AuthenticationPrincipal AuthenticatedUser user) {
     return flowRepository
         .findByIdAdmin(FlowId.of(UUID.fromString(id)))
         .map(mapper::toDto)

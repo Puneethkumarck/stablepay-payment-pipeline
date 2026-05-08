@@ -1,11 +1,13 @@
 package io.stablepay.api.application.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.Builder;
 
+@Schema(description = "Dead-letter queue event details")
 @Builder(toBuilder = true)
 public record DlqEventDto(
     String id,
