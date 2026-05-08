@@ -10,17 +10,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neovisionaries.i18n.CurrencyCode;
 import io.github.bucket4j.BucketConfiguration;
 import io.stablepay.api.application.security.Role;
+import io.stablepay.api.domain.agent.SearchExecutionResult;
+import io.stablepay.api.domain.agent.SqlExecutionResult;
 import io.stablepay.api.domain.model.CustomerId;
 import io.stablepay.api.domain.model.DashboardStats;
 import io.stablepay.api.domain.model.DlqSummary;
 import io.stablepay.api.domain.model.PaginatedResult;
 import io.stablepay.api.domain.model.Transaction;
 import io.stablepay.api.domain.model.TransactionEvent;
+import io.stablepay.api.domain.port.AgentSearchExecutor;
+import io.stablepay.api.domain.port.AgentSqlExecutor;
 import io.stablepay.api.domain.port.CustomerRepository;
 import io.stablepay.api.domain.port.DashboardStatsRepository;
 import io.stablepay.api.domain.port.DlqRepository;
 import io.stablepay.api.domain.port.FlowRepository;
 import io.stablepay.api.domain.port.StuckRepository;
+import io.stablepay.api.domain.port.TimelineRepository;
 import io.stablepay.api.domain.port.TransactionEventSource;
 import io.stablepay.api.domain.port.TransactionRepository;
 import java.time.Duration;
@@ -223,6 +228,25 @@ public class StubRepositoryConfig {
         return List.copyOf(eventBuffer);
       }
     };
+  }
+
+  @Bean
+  @Primary
+  public TimelineRepository stubTimelineRepository() {
+    return reference -> List.of();
+  }
+
+  @Bean
+  @Primary
+  public AgentSqlExecutor stubAgentSqlExecutor() {
+    return (sql, limit) ->
+        new SqlExecutionResult.Success(List.of(), List.of(), 0, "stub-query-id", 0L);
+  }
+
+  @Bean
+  @Primary
+  public AgentSearchExecutor stubAgentSearchExecutor() {
+    return (request, size) -> new SearchExecutionResult.Success(List.of(), 0L, size, 0L);
   }
 
   @Bean

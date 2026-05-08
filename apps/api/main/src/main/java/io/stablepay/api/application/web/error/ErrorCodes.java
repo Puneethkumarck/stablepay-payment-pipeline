@@ -13,4 +13,6 @@ public final class ErrorCodes {
   public static final String NOT_FOUND = "STBLPAY-3001";
   public static final String INVALID_CURSOR = "STBLPAY-3010";
   public static final String RATE_LIMITED = "STBLPAY-4001";
+  public static final String SQL_EXECUTION_FAILED = "STBLPAY-5005";
+  public static final String SEARCH_EXECUTION_FAILED = "STBLPAY-6006";
 }
