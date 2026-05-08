@@ -119,6 +119,39 @@ export function SearchBar() {
 - Never put `'use client'` on a layout or a page component if only a child needs interactivity.
 - Prefer composition: RSC parent with a client child, not a client parent wrapping RSC children.
 
+### 3.3 Component File Structure
+
+```tsx
+// 1. Directive (if client component)
+'use client';
+
+// 2. Imports (type imports first, then libraries, then local)
+import type { ComponentProps } from 'react';
+import { useState } from 'react';
+import { cn } from '~/lib/utils';
+
+// 3. Types (co-located, not in a separate file unless shared)
+interface StatusBadgeProps {
+  status: string;
+  pulse?: boolean;
+}
+
+// 4. Component (named function, not arrow function for top-level components)
+function StatusBadge({ status, pulse = false }: StatusBadgeProps) {
+  return (/* ... */);
+}
+
+// 5. Named export (not default export — except page.tsx, layout.tsx, etc.)
+export { StatusBadge };
+```
+
+**Rules:**
+- Use named function declarations for components, not `const Foo = () => {}`.
+- Use named exports for reusable components. Only use `export default` for Next.js route files (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`).
+- Co-locate types with the component file. Extract to `src/types/` only if shared across 3+ files.
+- Props interfaces are named `{ComponentName}Props`.
+- Destructure props in the function signature.
+
 ### 3.4 React 19 Patterns
 
 React 19 introduces several APIs that replace older patterns:
@@ -164,39 +197,6 @@ function DlqList({ entries }: { entries: DlqEntry[] }) {
   // ...
 }
 ```
-
-### 3.3 Component File Structure
-
-```tsx
-// 1. Directive (if client component)
-'use client';
-
-// 2. Imports (type imports first, then libraries, then local)
-import type { ComponentProps } from 'react';
-import { useState } from 'react';
-import { cn } from '~/lib/utils';
-
-// 3. Types (co-located, not in a separate file unless shared)
-interface StatusBadgeProps {
-  status: string;
-  pulse?: boolean;
-}
-
-// 4. Component (named function, not arrow function for top-level components)
-function StatusBadge({ status, pulse = false }: StatusBadgeProps) {
-  return (/* ... */);
-}
-
-// 5. Named export (not default export — except page.tsx, layout.tsx, etc.)
-export { StatusBadge };
-```
-
-**Rules:**
-- Use named function declarations for components, not `const Foo = () => {}`.
-- Use named exports for reusable components. Only use `export default` for Next.js route files (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`).
-- Co-locate types with the component file. Extract to `src/types/` only if shared across 3+ files.
-- Props interfaces are named `{ComponentName}Props`.
-- Destructure props in the function signature.
 
 ---
 

@@ -3,6 +3,7 @@ import nextConfig from 'eslint-config-next/core-web-vitals';
 const eslintConfig = [
   ...nextConfig,
   {
+    files: ['src/components/**/*.{ts,tsx}', 'src/hooks/**/*.{ts,tsx}', 'src/app/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',

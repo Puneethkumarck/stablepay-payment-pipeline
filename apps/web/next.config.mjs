@@ -1,3 +1,9 @@
+if (!process.env.STABLEPAY_API_INTERNAL_URL && process.env.NODE_ENV === 'production') {
+  console.warn(
+    'STABLEPAY_API_INTERNAL_URL is not set — API rewrites will fall back to http://localhost:8080',
+  );
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
