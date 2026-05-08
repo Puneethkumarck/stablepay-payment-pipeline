@@ -1,0 +1,111 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "schedule": ["before 6am on Monday"],
+  "timezone": "Europe/Berlin",
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10,
+  "packageRules": [
+    {
+      "description": "Group all Spring Boot + Spring Cloud updates",
+      "matchPackagePrefixes": [
+        "org.springframework.boot",
+        "org.springframework.cloud",
+        "org.springframework.security",
+        "org.springframework:spring-",
+        "io.spring.dependency-management"
+      ],
+      "groupName": "Spring",
+      "automerge": false
+    },
+    {
+      "description": "Group all Flink dependencies",
+      "matchPackagePrefixes": ["org.apache.flink"],
+      "groupName": "Apache Flink"
+    },
+    {
+      "description": "Group all Testcontainers dependencies",
+      "matchPackagePrefixes": ["org.testcontainers"],
+      "groupName": "Testcontainers"
+    },
+    {
+      "description": "Group all JUnit 5 dependencies",
+      "matchPackagePrefixes": ["org.junit"],
+      "groupName": "JUnit 5"
+    },
+    {
+      "description": "Group all Mockito dependencies",
+      "matchPackagePrefixes": ["org.mockito"],
+      "groupName": "Mockito"
+    },
+    {
+      "description": "Group all MapStruct dependencies",
+      "matchPackagePrefixes": ["org.mapstruct"],
+      "groupName": "MapStruct"
+    },
+    {
+      "description": "Group all Flyway dependencies",
+      "matchPackagePrefixes": ["org.flywaydb"],
+      "groupName": "Flyway"
+    },
+    {
+      "description": "Group all Bucket4j dependencies",
+      "matchPackagePrefixes": ["com.bucket4j"],
+      "groupName": "Bucket4j"
+    },
+    {
+      "description": "Group Trino JDBC + parser (must stay in sync)",
+      "matchPackagePrefixes": ["io.trino"],
+      "groupName": "Trino"
+    },
+    {
+      "description": "Group Lombok + Lombok-MapStruct binding",
+      "matchPackagePrefixes": ["org.projectlombok"],
+      "groupName": "Lombok"
+    },
+    {
+      "description": "Group all Apache Iceberg dependencies",
+      "matchPackagePrefixes": ["org.apache.iceberg"],
+      "groupName": "Apache Iceberg"
+    },
+    {
+      "description": "Group Docker Compose infrastructure images",
+      "matchManagers": ["docker-compose"],
+      "groupName": "Docker infrastructure images",
+      "automerge": false
+    },
+    {
+      "description": "Group GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge patch updates for test-only dependencies",
+      "matchDepTypes": ["testImplementation", "testFixturesApi", "devDependencies"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Pin minio images to latest (no digest pinning)",
+      "matchPackageNames": ["minio/minio", "minio/mc"],
+      "versioning": "loose",
+      "pinDigests": false
+    }
+  ],
+  "gradle": {
+    "fileMatch": [
+      "(^|/)build\\.gradle\\.kts$",
+      "(^|/)settings\\.gradle\\.kts$",
+      "(^|/)gradle/libs\\.versions\\.toml$",
+      "(^|/)buildSrc/.*\\.gradle\\.kts$"
+    ]
+  },
+  "pip_requirements": {
+    "enabled": false
+  },
+  "pep621": {
+    "fileMatch": ["(^|/)pyproject\\.toml$"]
+  }
+}

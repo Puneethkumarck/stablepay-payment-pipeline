@@ -58,7 +58,7 @@ Four source sets per Java module: `test/` (unit, JUnit 5 + Mockito BDD + AssertJ
 
 ### 4. Latest stable versions everywhere
 
-Pin latest stable for every dependency. CI runs a weekly `ci-version-bump.yml` workflow that opens auto-PRs with version bumps. Document any pin caused by a known incompatibility in `docs/STACK.md` with a one-line justification.
+Pin latest stable for every dependency. Renovate Bot (`renovate.json`) runs weekly and opens grouped auto-PRs with version bumps across Gradle, npm, Python, Docker, and GitHub Actions. Document any pin caused by a known incompatibility in `docs/STACK.md` with a one-line justification.
 
 ### 5. Money never as float
 
@@ -74,7 +74,7 @@ Repository adapters apply `customer_id` filter from the JWT principal automatica
 
 ## Stack snapshot
 
-See `docs/STACK.md` (auto-updated by `ci-version-bump.yml`) for the full pin list. Key versions:
+See `docs/STACK.md` for the full pin list. Key versions:
 
 - Java 25 LTS, Spring Boot 4.0.x, Spring Cloud 2025.x, Gradle 9 Kotlin DSL
 - Python 3.13+ with `uv`, ruff
@@ -146,7 +146,7 @@ just dlq-replay <id>     # replay a single DLQ entry
 - `docs/EVENT-MODEL.md` — full state machines + topic listing + event examples (Phase 8)
 - `docs/EXTENDING.md` — forking guide with worked example (Phase 8)
 - `docs/RUNBOOK.md` — alert response procedures (Phase 6/8)
-- `docs/STACK.md` — auto-updated version pin list (Phase 7)
+- `docs/STACK.md` — version pin list, kept current by Renovate PRs (Phase 7)
 - `docs/EVAL-METHODOLOGY.md` — agent eval rubrics + reproduction steps (Phase 8)
 - `docs/PRIVACY.md` — PII inventory + masking + retention (Phase 6)
 
