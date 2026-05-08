@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.opensearch.java)
     implementation(libs.httpclient5)
     implementation(libs.trino.jdbc)
+    implementation(libs.trino.parser)
     implementation(libs.nv.i18n)
 
     implementation(libs.bucket4j.core)
@@ -96,7 +97,6 @@ dependencies {
     testImplementation(libs.assertj.core)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit)
-    testImplementation(libs.trino.parser)
     testImplementation(libs.reactor.test)
     testCompileOnly(libs.lombok)
     testAnnotationProcessor(libs.lombok)
