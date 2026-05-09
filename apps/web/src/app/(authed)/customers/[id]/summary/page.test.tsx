@@ -203,10 +203,21 @@ describe('CustomerSummaryPage', () => {
     expect(riskValue.className).toContain('text-red-400');
   });
 
+  it('renders risk LOW with success color', async () => {
+    // arrange
+    mockFetch.mockResolvedValue(createCustomerSummary({ risk_tier: 'LOW' }));
+
+    // act
+    await renderPage();
+
+    // assert
+    const compliance = screen.getByTestId('compliance-card');
+    const riskValue = within(compliance).getByText('LOW');
+    expect(riskValue.className).toContain('text-green-400');
+  });
+
   it('page has no use-client directive (pure RSC)', async () => {
-    // This test verifies the page module doesn't export a client marker.
-    // If it were a client component, vi.mock('~/lib/data') with server-only
-    // would throw at import time.
+    // vi.mock('~/lib/data') with server-only would throw at import time for client components
     // arrange
     mockFetch.mockResolvedValue(createCustomerSummary());
 

@@ -91,7 +91,7 @@ export default async function CustomerSummaryPage({ params }: { params: Promise<
         <div className="rounded-card border border-border-1 bg-surface-2 px-5 py-[18px]">
           <span className="sp-eyebrow text-[10px]">Transactions</span>
           <div className="mt-[14px] text-[28px] font-bold leading-none tracking-[-0.025em] text-fg-1">
-            {customer.total_transactions.toLocaleString()}
+            {customer.total_transactions.toLocaleString('en-US')}
           </div>
         </div>
       </div>
