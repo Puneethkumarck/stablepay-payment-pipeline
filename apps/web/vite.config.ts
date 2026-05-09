@@ -15,5 +15,8 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test-setup.ts'],
     css: false,
+    coverage: {
+      exclude: ['src/lib/api-client/_generated/**', 'src/test/**'],
+    },
   },
 });
