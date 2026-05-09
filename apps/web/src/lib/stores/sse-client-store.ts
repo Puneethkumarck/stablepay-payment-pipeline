@@ -18,7 +18,7 @@ interface TransactionFeedActions {
   disconnect: () => void;
 }
 
-type TransactionFeedStore = TransactionFeedState & TransactionFeedActions;
+export type TransactionFeedStore = TransactionFeedState & TransactionFeedActions;
 
 const HEARTBEAT_TIMEOUT_MS = 60_000;
 const DEFAULT_RETRY_MS = 2_000;
