@@ -1,0 +1,66 @@
+name: CI — OpenAPI Client Codegen
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/api/main/src/main/**', 'apps/api/api/**']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Regenerate OpenAPI Client
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '11.0.8'
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Build backend JARs
+        run: ./gradlew :apps:auth:main:bootJar :apps:api:main:bootJar
+
+      - name: Bring up backend dependencies
+        run: |
+          docker compose -f infra/docker-compose.yml up -d postgres redis kafka schema-registry opensearch trino apps-auth apps-api
+          npx wait-on -t 180000 http://localhost:8080/actuator/health
+
+      - name: Regenerate client
+        working-directory: apps/web
+        run: |
+          pnpm install --frozen-lockfile
+          OPENAPI_INPUT=http://localhost:8080/v3/api-docs pnpm exec openapi-ts
+
+      - name: Open PR if diff
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: 'chore(web): regenerate OpenAPI client'
+          title: 'chore(web): regenerate OpenAPI client'
+          body: 'API spec changed — review the diff and merge to update the web client.'
+          branch: auto/openapi-codegen
+          add-paths: 'apps/web/src/lib/api-client/_generated/**'
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down -v

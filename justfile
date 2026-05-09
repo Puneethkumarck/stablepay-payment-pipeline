@@ -163,6 +163,12 @@ dlq-replay ID *ARGS:
 dlq-replay-class CLASS *ARGS:
     cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} {{ARGS}}
 
+# ─── Web Codegen ─────────────────────────────────
+
+# Regenerate OpenAPI TypeScript client from running API
+web-codegen:
+    cd apps/web && OPENAPI_INPUT=http://localhost:8080/v3/api-docs pnpm exec openapi-ts
+
 # ─── Stubs (expanded in later phases) ─────────────
 
 # Run all tests
