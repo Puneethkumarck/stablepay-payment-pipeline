@@ -2,13 +2,11 @@
 
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { Amount } from '~/components/amount';
 import { IdChip } from '~/components/id-chip';
-import { KVRow } from '~/components/kv-row';
 import { PageHeader } from '~/components/layout/page-header';
 import { LegStepper, type LegState } from '~/components/leg-stepper';
 import { StatusBadge } from '~/components/status-badge';
-import { Card, CardContent } from '~/components/ui/card';
+import { Card } from '~/components/ui/card';
 import { formatAbsoluteTooltip, formatRelativeTime } from '~/lib/format/time';
 import { formatMoney } from '~/lib/format/money';
 import { useFlowDetail } from '~/lib/hooks/use-flow-detail';
@@ -32,7 +30,7 @@ function mapLegs(legs: FlowLegDto[]): LegState[] {
     .map((leg) => ({
       label: legLabel(leg),
       status: leg.status,
-      detail: `${leg.transaction_ref}`,
+      detail: leg.transaction_ref,
     }));
 }
 
