@@ -26,6 +26,7 @@ export function useTransactionsList(
     queryKey: ['transactions', criteria],
     initialData,
     queryFn: () => clientFetch<CursorPage<TransactionDto>>(buildTransactionQuery(criteria)),
-    staleTime: 5_000,
+    staleTime: 3_000,
+    refetchInterval: 3_000,
   });
 }
