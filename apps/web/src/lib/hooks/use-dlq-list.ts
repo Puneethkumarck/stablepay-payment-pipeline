@@ -1,22 +1,15 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { clientFetch } from '~/lib/api-client/client-fetch';
 import type { CursorPage, DlqEntryDto } from '~/types/api';
 
-async function fetchDlqList(cursor?: string): Promise<CursorPage<DlqEntryDto>> {
-  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const response = await fetch(`/api/v1/admin/dlq${params}`);
-  if (!response.ok) {
-    throw new Error('STBLPAY-1999');
-  }
-  return response.json() as Promise<CursorPage<DlqEntryDto>>;
-}
-
 export function useDlqList(cursor?: string, initialData?: CursorPage<DlqEntryDto>) {
+  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
   return useQuery({
-    queryKey: ['dlq', cursor],
+    queryKey: ['dlq', 'list', cursor],
     initialData,
-    queryFn: () => fetchDlqList(cursor),
+    queryFn: () => clientFetch<CursorPage<DlqEntryDto>>(`/api/v1/admin/dlq${params}`),
     staleTime: 5_000,
   });
 }
