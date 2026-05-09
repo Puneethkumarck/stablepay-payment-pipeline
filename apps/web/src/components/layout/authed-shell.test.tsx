@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next-auth/react', () => ({
@@ -12,7 +13,11 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('~/components/layout/sidebar', () => ({
   Sidebar: (props: Record<string, unknown>) => (
-    <nav data-testid="sidebar" data-email={props.email} data-role={props.role} />
+    <nav data-testid="sidebar" data-email={props.email} data-role={props.role}>
+      <button data-testid="mock-signout" onClick={props.onSignOut as () => void} type="button">
+        Sign out
+      </button>
+    </nav>
   ),
 }));
 
@@ -22,6 +27,7 @@ vi.mock('~/components/live-feed', () => ({
   ),
 }));
 
+import { signOut } from 'next-auth/react';
 import { AuthedShell } from './authed-shell';
 
 describe('AuthedShell', () => {
@@ -85,5 +91,23 @@ describe('AuthedShell', () => {
 
     // assert
     expect(screen.getByTestId('live-feed')).toHaveAttribute('data-visible', 'true');
+  });
+
+  it('removes sp4_authed from localStorage and calls signOut on sign out', async () => {
+    // arrange
+    const user = userEvent.setup();
+    localStorage.setItem('sp4_authed', '1');
+    render(
+      <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
+        <div>content</div>
+      </AuthedShell>,
+    );
+
+    // act
+    await user.click(screen.getByTestId('mock-signout'));
+
+    // assert
+    expect(localStorage.getItem('sp4_authed')).toBeNull();
+    expect(signOut).toHaveBeenCalledWith({ redirectTo: '/login' });
   });
 });
