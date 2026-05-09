@@ -26,9 +26,30 @@ describe('FlowDetail', () => {
     const flow = createFlow({
       flow_type: 'CRYPTO_TO_CRYPTO',
       legs: [
-        { leg_index: 0, transaction_ref: 'TXN-A', direction: 'PAYIN', type: 'CRYPTO', status: 'COMPLETED', amount: { amount: 50_000, currency: 'USDC' } },
-        { leg_index: 1, transaction_ref: 'TXN-B', direction: 'PAYOUT', type: 'CRYPTO', status: 'COMPLETED', amount: { amount: 50_000, currency: 'USDC' } },
-        { leg_index: 2, transaction_ref: 'TXN-C', direction: 'PAYOUT', type: 'CRYPTO', status: 'COMPLETED', amount: { amount: 49_000, currency: 'ETH' } },
+        {
+          leg_index: 0,
+          transaction_ref: 'TXN-A',
+          direction: 'PAYIN',
+          type: 'CRYPTO',
+          status: 'COMPLETED',
+          amount: { amount: 50_000, currency: 'USDC' },
+        },
+        {
+          leg_index: 1,
+          transaction_ref: 'TXN-B',
+          direction: 'PAYOUT',
+          type: 'CRYPTO',
+          status: 'COMPLETED',
+          amount: { amount: 50_000, currency: 'USDC' },
+        },
+        {
+          leg_index: 2,
+          transaction_ref: 'TXN-C',
+          direction: 'PAYOUT',
+          type: 'CRYPTO',
+          status: 'COMPLETED',
+          amount: { amount: 49_000, currency: 'ETH' },
+        },
       ],
     });
 
@@ -45,8 +66,22 @@ describe('FlowDetail', () => {
     const flow = createFlow({
       status: 'FAILED',
       legs: [
-        { leg_index: 0, transaction_ref: 'TXN-001', direction: 'PAYIN', type: 'FIAT', status: 'COMPLETED', amount: { amount: 100_000, currency: 'USD' } },
-        { leg_index: 1, transaction_ref: 'TXN-002', direction: 'PAYOUT', type: 'FIAT', status: 'FAILED', amount: { amount: 92_000, currency: 'EUR' } },
+        {
+          leg_index: 0,
+          transaction_ref: 'TXN-001',
+          direction: 'PAYIN',
+          type: 'FIAT',
+          status: 'COMPLETED',
+          amount: { amount: 100_000, currency: 'USD' },
+        },
+        {
+          leg_index: 1,
+          transaction_ref: 'TXN-002',
+          direction: 'PAYOUT',
+          type: 'FIAT',
+          status: 'FAILED',
+          amount: { amount: 92_000, currency: 'EUR' },
+        },
       ],
     });
 
@@ -64,9 +99,30 @@ describe('FlowDetail', () => {
     const flow = createFlow({
       status: 'FAILED',
       legs: [
-        { leg_index: 0, transaction_ref: 'TXN-A', direction: 'PAYIN', type: 'CRYPTO', status: 'FAILED', amount: { amount: 50_000, currency: 'USDC' } },
-        { leg_index: 1, transaction_ref: 'TXN-B', direction: 'PAYOUT', type: 'CRYPTO', status: 'PENDING', amount: { amount: 50_000, currency: 'USDC' } },
-        { leg_index: 2, transaction_ref: 'TXN-C', direction: 'PAYOUT', type: 'CRYPTO', status: 'PENDING', amount: { amount: 49_000, currency: 'ETH' } },
+        {
+          leg_index: 0,
+          transaction_ref: 'TXN-A',
+          direction: 'PAYIN',
+          type: 'CRYPTO',
+          status: 'FAILED',
+          amount: { amount: 50_000, currency: 'USDC' },
+        },
+        {
+          leg_index: 1,
+          transaction_ref: 'TXN-B',
+          direction: 'PAYOUT',
+          type: 'CRYPTO',
+          status: 'PENDING',
+          amount: { amount: 50_000, currency: 'USDC' },
+        },
+        {
+          leg_index: 2,
+          transaction_ref: 'TXN-C',
+          direction: 'PAYOUT',
+          type: 'CRYPTO',
+          status: 'PENDING',
+          amount: { amount: 49_000, currency: 'ETH' },
+        },
       ],
     });
 
@@ -85,8 +141,22 @@ describe('FlowDetail', () => {
     const flow = createFlow({
       status: 'COMPENSATION_INITIATED',
       legs: [
-        { leg_index: 0, transaction_ref: 'TXN-001', direction: 'PAYIN', type: 'FIAT', status: 'COMPLETED', amount: { amount: 100_000, currency: 'USD' } },
-        { leg_index: 1, transaction_ref: 'TXN-002', direction: 'PAYOUT', type: 'FIAT', status: 'FAILED', amount: { amount: 92_000, currency: 'EUR' } },
+        {
+          leg_index: 0,
+          transaction_ref: 'TXN-001',
+          direction: 'PAYIN',
+          type: 'FIAT',
+          status: 'COMPLETED',
+          amount: { amount: 100_000, currency: 'USD' },
+        },
+        {
+          leg_index: 1,
+          transaction_ref: 'TXN-002',
+          direction: 'PAYOUT',
+          type: 'FIAT',
+          status: 'FAILED',
+          amount: { amount: 92_000, currency: 'EUR' },
+        },
       ],
     });
 
@@ -103,8 +173,22 @@ describe('FlowDetail', () => {
     const flow = createFlow({
       status: 'COMPENSATION_COMPLETED',
       legs: [
-        { leg_index: 0, transaction_ref: 'TXN-001', direction: 'PAYIN', type: 'FIAT', status: 'COMPLETED', amount: { amount: 100_000, currency: 'USD' } },
-        { leg_index: 1, transaction_ref: 'TXN-002', direction: 'PAYOUT', type: 'FIAT', status: 'FAILED', amount: { amount: 92_000, currency: 'EUR' } },
+        {
+          leg_index: 0,
+          transaction_ref: 'TXN-001',
+          direction: 'PAYIN',
+          type: 'FIAT',
+          status: 'COMPLETED',
+          amount: { amount: 100_000, currency: 'USD' },
+        },
+        {
+          leg_index: 1,
+          transaction_ref: 'TXN-002',
+          direction: 'PAYOUT',
+          type: 'FIAT',
+          status: 'FAILED',
+          amount: { amount: 92_000, currency: 'EUR' },
+        },
       ],
     });
 

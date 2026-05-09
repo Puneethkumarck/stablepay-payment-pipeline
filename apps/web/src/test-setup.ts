@@ -28,7 +28,6 @@ if (typeof window !== 'undefined') {
     readonly root = null;
     readonly rootMargin = '';
     readonly thresholds: readonly number[] = [];
-    constructor(_cb: IntersectionObserverCallback, _opts?: IntersectionObserverInit) {}
     observe() {}
     unobserve() {}
     disconnect() {}

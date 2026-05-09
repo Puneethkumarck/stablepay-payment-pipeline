@@ -26,7 +26,11 @@ export function Amount({
   className,
 }: AmountProps) {
   return (
-    <span data-testid="amount" data-size={size} className={cn('sp-amount', sizeClasses[size], className)}>
+    <span
+      data-testid="amount"
+      data-size={size}
+      className={cn('sp-amount', sizeClasses[size], className)}
+    >
       {formatMoney(value, currency, precision)}
     </span>
   );

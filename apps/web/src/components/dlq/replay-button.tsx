@@ -47,8 +47,7 @@ export function ReplayButton({ dlqId, errorClass, retryCount }: ReplayButtonProp
       const cached = response.headers.get('Idempotency-Replayed') === 'true';
       setState('done');
       toast.success(cached ? 'Replay re-queued' : 'Replay queued', {
-        description:
-          'Command published. Replay execution is wired in Phase 6.',
+        description: 'Command published. Replay execution is wired in Phase 6.',
         duration: 8000,
       });
     } catch (err) {

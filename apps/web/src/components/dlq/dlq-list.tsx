@@ -1,19 +1,19 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import type { Route } from 'next';
-import { AlertTriangle, Clock, Cpu, FileWarning } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { AlertTriangle, Clock, Cpu, FileWarning } from 'lucide-react';
+import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
+import { useCallback, useMemo, useState } from 'react';
 import type { ColumnConfig } from '~/components/data-table';
 import { DataTable } from '~/components/data-table';
+import { ReplayButton } from '~/components/dlq/replay-button';
 import { SearchBar } from '~/components/search-bar';
 import { StatusBadge } from '~/components/status-badge';
-import { ReplayButton } from '~/components/dlq/replay-button';
 import { useDlqList } from '~/lib/hooks/use-dlq-list';
 import { useDlqSummary } from '~/lib/hooks/use-dlq-summary';
-import type { DlqEntryDto } from '~/types/api';
 import { cn } from '~/lib/utils';
+import type { DlqEntryDto } from '~/types/api';
 
 const ERROR_CLASSES: { key: string; label: string; color: string; icon: LucideIcon }[] = [
   { key: 'SCHEMA_INVALID', label: 'Schema invalid', color: 'text-red-400', icon: FileWarning },
@@ -115,15 +115,9 @@ export function DlqList() {
       <h1 className="mb-5 text-[22px] font-bold tracking-tight text-fg-1">DLQ Inspector</h1>
 
       {/* 4-class breakdown row */}
-      <div
-        data-testid="dlq-breakdown"
-        className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4"
-      >
+      <div data-testid="dlq-breakdown" className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {ERROR_CLASSES.map(({ key, label, color, icon: Icon }) => (
-          <div
-            key={key}
-            className="rounded-card border border-border-1 bg-surface-2 px-4 py-3"
-          >
+          <div key={key} className="rounded-card border border-border-1 bg-surface-2 px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
                 {label}

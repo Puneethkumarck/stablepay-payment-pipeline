@@ -39,7 +39,7 @@ describe('AuthedShell', () => {
   it('renders sidebar, main content, and live feed', () => {
     // act
     render(
-      <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
+      <AuthedShell email="alice@stablepay.io" isAdmin>
         <div data-testid="page-content">Dashboard</div>
       </AuthedShell>,
     );
@@ -53,7 +53,7 @@ describe('AuthedShell', () => {
   it('passes email and role to sidebar', () => {
     // act
     render(
-      <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
+      <AuthedShell email="alice@stablepay.io" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );
@@ -70,7 +70,7 @@ describe('AuthedShell', () => {
 
     // act
     render(
-      <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
+      <AuthedShell email="alice@stablepay.io" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );
@@ -84,7 +84,7 @@ describe('AuthedShell', () => {
   it('shows live feed by default', () => {
     // act
     render(
-      <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
+      <AuthedShell email="alice@stablepay.io" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );
@@ -98,7 +98,7 @@ describe('AuthedShell', () => {
     const user = userEvent.setup();
     localStorage.setItem('sp4_authed', '1');
     render(
-      <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
+      <AuthedShell email="alice@stablepay.io" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );

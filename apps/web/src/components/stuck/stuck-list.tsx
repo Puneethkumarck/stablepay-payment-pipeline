@@ -1,19 +1,19 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import Link from 'next/link';
-import type { Route } from 'next';
 import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import type { Route } from 'next';
+import Link from 'next/link';
+import { useCallback, useMemo, useState } from 'react';
+import { Amount } from '~/components/amount';
 import type { ColumnConfig } from '~/components/data-table';
 import { DataTable } from '~/components/data-table';
-import { Amount } from '~/components/amount';
 import { StatusBadge } from '~/components/status-badge';
+import { RefundConfirmationDialog } from '~/components/stuck/refund-confirmation-dialog';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import { RefundConfirmationDialog } from '~/components/stuck/refund-confirmation-dialog';
 import { useStuckList } from '~/lib/hooks/use-stuck-list';
-import type { StuckPaymentDto } from '~/types/api';
 import { cn } from '~/lib/utils';
+import type { StuckPaymentDto } from '~/types/api';
 
 const CRITICAL_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
@@ -115,7 +115,8 @@ export function StuckList() {
             {items.length} stuck payment{items.length !== 1 ? 's' : ''}
             {criticalCount > 0 && (
               <span className="text-red-400">
-                {' '}— {criticalCount} exceed{criticalCount === 1 ? 's' : ''} 24h threshold
+                {' '}
+                — {criticalCount} exceed{criticalCount === 1 ? 's' : ''} 24h threshold
               </span>
             )}
           </span>
@@ -142,9 +143,7 @@ export function StuckList() {
                 aria-controls={`stuck-detail-${payment.transaction_ref}`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-[12px] text-fg-2">
-                    {payment.transaction_ref}
-                  </span>
+                  <span className="font-mono text-[12px] text-fg-2">{payment.transaction_ref}</span>
                   <StatusBadge status={payment.status} />
                   <Amount
                     value={payment.amount.amount}

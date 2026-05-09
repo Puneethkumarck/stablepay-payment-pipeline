@@ -87,8 +87,8 @@ describe('deriveTimeline', () => {
 
     // assert
     expect(steps).toHaveLength(1);
-    expect(steps[0]!.state).toBe('live');
-    expect(steps[0]!.label).toBe('some unknown status');
+    expect(steps[0]?.state).toBe('live');
+    expect(steps[0]?.label).toBe('some unknown status');
   });
 
   it('marks INITIATED as live with all others pending', () => {
@@ -96,8 +96,8 @@ describe('deriveTimeline', () => {
     const steps = deriveTimeline('INITIATED', 'FIAT', 'PAYIN');
 
     // assert
-    expect(steps[0]!.label).toBe('Initiated');
-    expect(steps[0]!.state).toBe('live');
+    expect(steps[0]?.label).toBe('Initiated');
+    expect(steps[0]?.state).toBe('live');
     expect(steps.slice(1).every((s) => s.state === 'pending')).toBe(true);
   });
 });

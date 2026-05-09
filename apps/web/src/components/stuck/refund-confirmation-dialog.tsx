@@ -38,11 +38,7 @@ export function RefundConfirmationDialog({ stuckPayment }: RefundConfirmationDia
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
         render={
-          <Button
-            data-testid="trigger-refund-button"
-            variant="destructive"
-            size="xs"
-          >
+          <Button data-testid="trigger-refund-button" variant="destructive" size="xs">
             Trigger refund
           </Button>
         }
@@ -51,9 +47,8 @@ export function RefundConfirmationDialog({ stuckPayment }: RefundConfirmationDia
         <AlertDialogHeader>
           <AlertDialogTitle>Trigger refund?</AlertDialogTitle>
           <AlertDialogDescription>
-            This creates an irreversible refund initiation event for{' '}
-            {formattedAmount} to customer {stuckPayment.customer_id}. The refund
-            will be processed by the partner provider.
+            This creates an irreversible refund initiation event for {formattedAmount} to customer{' '}
+            {stuckPayment.customer_id}. The refund will be processed by the partner provider.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

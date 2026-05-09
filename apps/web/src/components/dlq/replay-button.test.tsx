@@ -97,10 +97,7 @@ describe('ReplayButton', () => {
     const user = userEvent.setup();
     server.use(
       http.post('/api/v1/admin/dlq/DLQ-001/replay', () =>
-        HttpResponse.json(
-          { status: 'queued' },
-          { headers: { 'Idempotency-Replayed': 'true' } },
-        ),
+        HttpResponse.json({ status: 'queued' }, { headers: { 'Idempotency-Replayed': 'true' } }),
       ),
     );
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);
@@ -119,7 +116,10 @@ describe('ReplayButton', () => {
     const user = userEvent.setup();
     server.use(
       http.post('/api/v1/admin/dlq/DLQ-001/replay', () =>
-        HttpResponse.json({ error_code: 'STBLPAY-5000', message: 'Internal error' }, { status: 500 }),
+        HttpResponse.json(
+          { error_code: 'STBLPAY-5000', message: 'Internal error' },
+          { status: 500 },
+        ),
       ),
     );
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);

@@ -4,11 +4,11 @@ import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { IdChip } from '~/components/id-chip';
 import { PageHeader } from '~/components/layout/page-header';
-import { LegStepper, type LegState } from '~/components/leg-stepper';
+import { type LegState, LegStepper } from '~/components/leg-stepper';
 import { StatusBadge } from '~/components/status-badge';
 import { Card } from '~/components/ui/card';
-import { formatAbsoluteTooltip, formatRelativeTime } from '~/lib/format/time';
 import { formatMoney } from '~/lib/format/money';
+import { formatAbsoluteTooltip, formatRelativeTime } from '~/lib/format/time';
 import { useFlowDetail } from '~/lib/hooks/use-flow-detail';
 import { isTerminal } from '~/lib/terminal-status';
 import { cn } from '~/lib/utils';
@@ -93,26 +93,10 @@ export function FlowDetail({ flowId, initialData }: FlowDetailProps) {
       {/* Flow metadata */}
       <Card data-testid="metadata-grid" className="p-0">
         <div className="grid grid-cols-2">
-          <MetadataCell
-            label="flow_id"
-            value={<IdChip value={flow.id} />}
-            mono
-            borderRight
-          />
-          <MetadataCell
-            label="customer_id"
-            value={<IdChip value={flow.customer_id} />}
-            mono
-          />
-          <MetadataCell
-            label="flow_type"
-            value={flow.flow_type}
-            borderRight
-          />
-          <MetadataCell
-            label="status"
-            value={<StatusBadge status={flow.status} />}
-          />
+          <MetadataCell label="flow_id" value={<IdChip value={flow.id} />} mono borderRight />
+          <MetadataCell label="customer_id" value={<IdChip value={flow.customer_id} />} mono />
+          <MetadataCell label="flow_type" value={flow.flow_type} borderRight />
+          <MetadataCell label="status" value={<StatusBadge status={flow.status} />} />
           <MetadataCell
             label="source_amount"
             value={formatMoney(flow.source_amount.amount, flow.source_amount.currency)}
@@ -152,8 +136,7 @@ export function FlowDetail({ flowId, initialData }: FlowDetailProps) {
 
       {/* Polling footer */}
       <div data-testid="polling-footer" className="mt-3 text-[11px] tracking-wide text-fg-4">
-        {isTerminal(flow.status) ? 'Terminal state reached' : '3s polling active'}
-        {' '}&middot;{' '}
+        {isTerminal(flow.status) ? 'Terminal state reached' : '3s polling active'} &middot;{' '}
         <span title={formatAbsoluteTooltip(flow.updated_at)}>
           updated {formatRelativeTime(flow.updated_at)}
         </span>

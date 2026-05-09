@@ -1,10 +1,10 @@
 'use client';
 
 import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
 import type { Route } from 'next';
-import { DlqErrorBlock } from '~/components/dlq-error-block';
+import Link from 'next/link';
 import { ReplayButton } from '~/components/dlq/replay-button';
+import { DlqErrorBlock } from '~/components/dlq-error-block';
 import { KVRow } from '~/components/kv-row';
 import { StatusBadge } from '~/components/status-badge';
 import { buttonVariants } from '~/components/ui/button';

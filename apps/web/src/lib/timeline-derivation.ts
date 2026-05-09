@@ -154,8 +154,7 @@ export function deriveTimeline(
 
   if (TERMINAL_FAILURE.has(internalStatus)) {
     const idx = lifecycle.statuses.indexOf(internalStatus);
-    const stepsBeforeFailure =
-      idx >= 0 ? lifecycle.statuses.slice(0, idx) : lifecycle.statuses;
+    const stepsBeforeFailure = idx >= 0 ? lifecycle.statuses.slice(0, idx) : lifecycle.statuses;
 
     const steps: TimelineStep[] = stepsBeforeFailure.map((s) => ({
       label: lifecycle.labels[s] ?? s,
@@ -174,6 +173,11 @@ export function deriveTimeline(
 
   return lifecycle.statuses.map((s, i) => ({
     label: lifecycle.labels[s] ?? s,
-    state: i < currentIndex ? ('done' as const) : i === currentIndex ? ('live' as const) : ('pending' as const),
+    state:
+      i < currentIndex
+        ? ('done' as const)
+        : i === currentIndex
+          ? ('live' as const)
+          : ('pending' as const),
   }));
 }

@@ -33,8 +33,17 @@
       "suspicious": {
         "noArrayIndexKey": "warn"
       },
+      "style": {
+        "noNonNullAssertion": "warn"
+      },
+      "performance": {
+        "noImgElement": "warn"
+      },
       "a11y": {
-        "useAnchorContent": "warn"
+        "useAnchorContent": "warn",
+        "useAltText": "warn",
+        "useButtonType": "warn",
+        "noStaticElementInteractions": "warn"
       }
     }
   },

@@ -1,8 +1,8 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
 import type { Route } from 'next';
 import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LiveFeed } from '~/components/live-feed';
 import { Sidebar } from './sidebar';
@@ -27,13 +27,7 @@ interface AuthedShellProps {
   children: React.ReactNode;
 }
 
-export function AuthedShell({
-  email,
-  role,
-  customerId,
-  isAdmin,
-  children,
-}: AuthedShellProps) {
+export function AuthedShell({ email, role, customerId, isAdmin, children }: AuthedShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const activePage = deriveActivePage(pathname);

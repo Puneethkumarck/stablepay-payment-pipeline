@@ -9,8 +9,7 @@ export function useTransactionDetail(ref: string, initialData?: TransactionDto) 
   return useQuery({
     queryKey: ['transaction', ref],
     initialData,
-    queryFn: () =>
-      clientFetch<TransactionDto>(`/api/v1/transactions/${encodeURIComponent(ref)}`),
+    queryFn: () => clientFetch<TransactionDto>(`/api/v1/transactions/${encodeURIComponent(ref)}`),
     refetchInterval: (query) => (isTerminal(query.state.data?.internal_status) ? false : 3_000),
     staleTime: 1_000,
   });
