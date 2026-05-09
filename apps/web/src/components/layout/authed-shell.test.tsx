@@ -31,48 +31,57 @@ describe('AuthedShell', () => {
   });
 
   it('renders sidebar, main content, and live feed', () => {
+    // act
     render(
       <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
         <div data-testid="page-content">Dashboard</div>
       </AuthedShell>,
     );
 
+    // assert
     expect(screen.getByTestId('sidebar')).toBeInTheDocument();
     expect(screen.getByTestId('page-content')).toBeInTheDocument();
     expect(screen.getByTestId('live-feed')).toBeInTheDocument();
   });
 
   it('passes email and role to sidebar', () => {
+    // act
     render(
       <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );
 
+    // assert
     const sidebar = screen.getByTestId('sidebar');
     expect(sidebar).toHaveAttribute('data-email', 'alice@stablepay.io');
     expect(sidebar).toHaveAttribute('data-role', 'Admin');
   });
 
   it('hides live feed when localStorage is set to false', () => {
+    // arrange
     localStorage.setItem('sp4_livefeed_visible', 'false');
 
+    // act
     render(
       <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );
 
+    // assert
     expect(screen.getByTestId('live-feed')).toHaveAttribute('data-visible', 'false');
   });
 
   it('shows live feed by default', () => {
+    // act
     render(
       <AuthedShell email="alice@stablepay.io" role="Admin" isAdmin>
         <div>content</div>
       </AuthedShell>,
     );
 
+    // assert
     expect(screen.getByTestId('live-feed')).toHaveAttribute('data-visible', 'true');
   });
 });

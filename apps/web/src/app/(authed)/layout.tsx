@@ -23,7 +23,6 @@ export default async function AuthedLayout({ children }: { children: React.React
         role={role}
         customerId={session.user.customerId}
         isAdmin={isAdmin}
-        accessToken={session.accessToken}
       >
         {children}
       </AuthedShell>

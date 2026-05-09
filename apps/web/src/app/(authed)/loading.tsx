@@ -3,7 +3,6 @@ import { Skeleton } from '~/components/ui/skeleton';
 export default function AuthedLoading() {
   return (
     <div className="page" data-testid="authed-loading">
-      {/* Stat card skeletons */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
@@ -17,7 +16,6 @@ export default function AuthedLoading() {
         ))}
       </div>
 
-      {/* Table row skeletons */}
       <div className="rounded-card border border-border-1 bg-surface-2">
         <div className="border-b border-border-1 px-[14px] py-[9px]">
           <Skeleton className="h-[11px] w-[200px]" />

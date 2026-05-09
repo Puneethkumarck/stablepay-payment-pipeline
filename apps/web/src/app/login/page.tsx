@@ -50,8 +50,15 @@ export default function LoginPage() {
         if (result.error) {
           setError(result.error);
         }
-      } catch {
-        // signIn redirect throws — swallow it
+      } catch (err: unknown) {
+        const isRedirect =
+          typeof err === 'object' &&
+          err !== null &&
+          'digest' in err &&
+          typeof (err as Record<string, unknown>).digest === 'string' &&
+          ((err as Record<string, unknown>).digest as string).startsWith('NEXT_REDIRECT');
+        if (isRedirect) throw err;
+        setError('server_error');
       } finally {
         setLoading(false);
       }

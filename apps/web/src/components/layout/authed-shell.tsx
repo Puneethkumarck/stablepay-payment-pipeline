@@ -24,7 +24,6 @@ interface AuthedShellProps {
   role: string;
   customerId?: string;
   isAdmin: boolean;
-  accessToken?: string;
   children: React.ReactNode;
 }
 
@@ -33,7 +32,6 @@ export function AuthedShell({
   role,
   customerId,
   isAdmin,
-  accessToken,
   children,
 }: AuthedShellProps) {
   const router = useRouter();
