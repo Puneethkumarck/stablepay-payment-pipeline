@@ -12,7 +12,7 @@ import { StatusBadge } from '~/components/status-badge';
 import { ReplayButton } from '~/components/dlq/replay-button';
 import { useDlqList } from '~/lib/hooks/use-dlq-list';
 import { useDlqSummary } from '~/lib/hooks/use-dlq-summary';
-import type { CursorPage, DlqEntryDto, DlqSummaryDto } from '~/types/api';
+import type { DlqEntryDto } from '~/types/api';
 import { cn } from '~/lib/utils';
 
 const ERROR_CLASSES: { key: string; label: string; color: string; icon: LucideIcon }[] = [
@@ -22,18 +22,13 @@ const ERROR_CLASSES: { key: string; label: string; color: string; icon: LucideIc
   { key: 'LATE_EVENT', label: 'Late event', color: 'text-sky-400', icon: Clock },
 ];
 
-interface DlqListProps {
-  initialData?: CursorPage<DlqEntryDto>;
-  initialSummary?: DlqSummaryDto;
-}
-
 type DlqRow = DlqEntryDto & Record<string, unknown>;
 
-export function DlqList({ initialData, initialSummary }: DlqListProps) {
+export function DlqList() {
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const { data: listData, isLoading } = useDlqList(undefined, initialData);
-  const { data: summaryData } = useDlqSummary(initialSummary);
+  const { data: listData, isLoading } = useDlqList();
+  const { data: summaryData } = useDlqSummary();
 
   const byClass = summaryData?.by_error_class ?? {};
 

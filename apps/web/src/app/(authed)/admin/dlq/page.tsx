@@ -5,12 +5,12 @@ import { fetchDlqList, fetchDlqSummary } from '~/lib/data';
 export default async function DlqListPage() {
   const queryClient = new QueryClient();
 
-  const [listData, summaryData] = await Promise.all([
-    queryClient.fetchQuery({
+  await Promise.all([
+    queryClient.prefetchQuery({
       queryKey: ['dlq', 'list', undefined],
       queryFn: () => fetchDlqList(),
     }),
-    queryClient.fetchQuery({
+    queryClient.prefetchQuery({
       queryKey: ['dlq', 'summary'],
       queryFn: () => fetchDlqSummary(),
     }),
@@ -18,7 +18,7 @@ export default async function DlqListPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <DlqList initialData={listData} initialSummary={summaryData} />
+      <DlqList />
     </HydrationBoundary>
   );
 }

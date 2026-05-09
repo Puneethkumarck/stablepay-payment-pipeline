@@ -8,11 +8,7 @@ vi.mock('~/lib/data', () => ({
 }));
 
 vi.mock('~/components/dlq/dlq-list', () => ({
-  DlqList: ({ initialData, initialSummary }: { initialData: unknown; initialSummary: unknown }) => (
-    <div data-testid="dlq-list-mock">
-      {JSON.stringify({ hasData: !!initialData, hasSummary: !!initialSummary })}
-    </div>
-  ),
+  DlqList: () => <div data-testid="dlq-list-mock">DlqList</div>,
 }));
 
 vi.mock('@tanstack/react-query', async () => {

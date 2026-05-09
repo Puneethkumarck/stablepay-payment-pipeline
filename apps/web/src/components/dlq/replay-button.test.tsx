@@ -20,7 +20,7 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);
 
     // assert
-    expect(screen.getByTestId('replay-button')).toHaveTextContent('Replay');
+    expect(screen.getByRole('button', { name: 'Replay' })).toBeInTheDocument();
   });
 
   it('shows "Retry budget exhausted" when retryCount >= 2', () => {
@@ -28,8 +28,8 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={2} />);
 
     // assert
-    expect(screen.getByTestId('replay-exhausted')).toHaveTextContent('Retry budget exhausted');
-    expect(screen.queryByTestId('replay-button')).not.toBeInTheDocument();
+    expect(screen.getByText('Retry budget exhausted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Replay' })).not.toBeInTheDocument();
   });
 
   it('shows "Retry budget exhausted" when retryCount > 2', () => {
@@ -37,7 +37,7 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={5} />);
 
     // assert
-    expect(screen.getByTestId('replay-exhausted')).toHaveTextContent('Retry budget exhausted');
+    expect(screen.getByText('Retry budget exhausted')).toBeInTheDocument();
   });
 
   it('shows "No retry" for SCHEMA_INVALID error class', () => {
@@ -45,8 +45,8 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="SCHEMA_INVALID" retryCount={0} />);
 
     // assert
-    expect(screen.getByTestId('replay-no-retry')).toHaveTextContent('No retry');
-    expect(screen.queryByTestId('replay-button')).not.toBeInTheDocument();
+    expect(screen.getByText('No retry')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Replay' })).not.toBeInTheDocument();
   });
 
   it('shows "No retry" for LATE_EVENT error class', () => {
@@ -54,7 +54,7 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="LATE_EVENT" retryCount={0} />);
 
     // assert
-    expect(screen.getByTestId('replay-no-retry')).toHaveTextContent('No retry');
+    expect(screen.getByText('No retry')).toBeInTheDocument();
   });
 
   it('transitions to "Replaying…" then "Replayed" on success', async () => {
@@ -66,13 +66,13 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);
 
     // act
-    await user.click(screen.getByTestId('replay-button'));
+    await user.click(screen.getByRole('button', { name: 'Replay' }));
 
     // assert
     await waitFor(() => {
-      expect(screen.getByTestId('replay-button')).toHaveTextContent('Replayed');
+      expect(screen.getByRole('button', { name: 'Replayed' })).toBeInTheDocument();
     });
-    expect(screen.getByTestId('replay-button')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replayed' })).toBeDisabled();
   });
 
   it('shows success toast with "Replay queued" on fresh replay', async () => {
@@ -84,11 +84,11 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);
 
     // act
-    await user.click(screen.getByTestId('replay-button'));
+    await user.click(screen.getByRole('button', { name: 'Replay' }));
 
     // assert
     await waitFor(() => {
-      expect(screen.getByTestId('replay-button')).toHaveTextContent('Replayed');
+      expect(screen.getByRole('button', { name: 'Replayed' })).toBeInTheDocument();
     });
   });
 
@@ -106,11 +106,11 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);
 
     // act
-    await user.click(screen.getByTestId('replay-button'));
+    await user.click(screen.getByRole('button', { name: 'Replay' }));
 
     // assert
     await waitFor(() => {
-      expect(screen.getByTestId('replay-button')).toHaveTextContent('Replayed');
+      expect(screen.getByRole('button', { name: 'Replayed' })).toBeInTheDocument();
     });
   });
 
@@ -119,19 +119,19 @@ describe('ReplayButton', () => {
     const user = userEvent.setup();
     server.use(
       http.post('/api/v1/admin/dlq/DLQ-001/replay', () =>
-        HttpResponse.json({ error_code: 'STBLPAY-5000' }, { status: 500 }),
+        HttpResponse.json({ error_code: 'STBLPAY-5000', message: 'Internal error' }, { status: 500 }),
       ),
     );
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={0} />);
 
     // act
-    await user.click(screen.getByTestId('replay-button'));
+    await user.click(screen.getByRole('button', { name: 'Replay' }));
 
     // assert
     await waitFor(() => {
-      expect(screen.getByTestId('replay-button')).toHaveTextContent('Replay');
+      expect(screen.getByRole('button', { name: 'Replay' })).toBeInTheDocument();
     });
-    expect(screen.getByTestId('replay-button')).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Replay' })).not.toBeDisabled();
   });
 
   it('sends X-Idempotency-Key header with request', async () => {
@@ -147,7 +147,7 @@ describe('ReplayButton', () => {
     render(<ReplayButton dlqId="DLQ-001" errorClass="PROCESSING_FAILED" retryCount={1} />);
 
     // act
-    await user.click(screen.getByTestId('replay-button'));
+    await user.click(screen.getByRole('button', { name: 'Replay' }));
 
     // assert
     await waitFor(() => {

@@ -66,11 +66,13 @@ describe('DlqList', () => {
     );
 
     // act
-    render(<DlqList initialSummary={summary} />);
+    render(<DlqList />);
 
     // assert
     const breakdown = screen.getByTestId('dlq-breakdown');
-    expect(within(breakdown).getByText('5')).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(within(breakdown).getByText('5')).toBeInTheDocument();
+    });
     expect(within(breakdown).getByText('3')).toBeInTheDocument();
     expect(within(breakdown).getByText('2')).toBeInTheDocument();
     expect(within(breakdown).getByText('1')).toBeInTheDocument();
@@ -85,7 +87,7 @@ describe('DlqList', () => {
     );
 
     // act
-    render(<DlqList initialSummary={summary} />);
+    render(<DlqList />);
 
     // assert
     const breakdown = screen.getByTestId('dlq-breakdown');
@@ -107,7 +109,7 @@ describe('DlqList', () => {
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
   });
 
-  it('renders DLQ entries in data table', () => {
+  it('renders DLQ entries in data table', async () => {
     // arrange
     const page = createDlqPage({
       data: [
@@ -121,10 +123,10 @@ describe('DlqList', () => {
     );
 
     // act
-    render(<DlqList initialData={page} />);
+    render(<DlqList />);
 
     // assert
-    expect(screen.getByText('DLQ-100')).toBeInTheDocument();
+    expect(await screen.findByText('DLQ-100')).toBeInTheDocument();
     expect(screen.getByText('DLQ-200')).toBeInTheDocument();
   });
 
@@ -138,10 +140,11 @@ describe('DlqList', () => {
       http.get('/api/v1/admin/dlq', () => HttpResponse.json(page)),
       http.get('/api/v1/admin/dlq/summary', () => HttpResponse.json(createDlqSummary())),
     );
-    render(<DlqList initialData={page} />);
+    render(<DlqList />);
 
     // act
-    const row = screen.getByText('DLQ-NAV').closest('tr');
+    const cell = await screen.findByText('DLQ-NAV');
+    const row = cell.closest('tr');
     expect(row).toBeTruthy();
     await user.click(row as HTMLElement);
 
@@ -162,7 +165,7 @@ describe('DlqList', () => {
       http.get('/api/v1/admin/dlq', () => HttpResponse.json(page)),
       http.get('/api/v1/admin/dlq/summary', () => HttpResponse.json(createDlqSummary())),
     );
-    render(<DlqList initialData={page} />);
+    render(<DlqList />);
 
     // act
     const input = screen.getByPlaceholderText('Search by DLQ ID, error class, or topic…');
@@ -175,7 +178,7 @@ describe('DlqList', () => {
     });
   });
 
-  it('shows empty state when no DLQ entries', () => {
+  it('shows empty state when no DLQ entries', async () => {
     // arrange
     const page = createDlqPage({ data: [] });
     server.use(
@@ -184,13 +187,13 @@ describe('DlqList', () => {
     );
 
     // act
-    render(<DlqList initialData={page} />);
+    render(<DlqList />);
 
     // assert
-    expect(screen.getByText('No DLQ entries')).toBeInTheDocument();
+    expect(await screen.findByText('No DLQ entries')).toBeInTheDocument();
   });
 
-  it('renders replay button per row via ReplayButton mock', () => {
+  it('renders replay button per row via ReplayButton mock', async () => {
     // arrange
     const page = createDlqPage({
       data: [createDlqEntry({ id: 'DLQ-RPL', error_class: 'PROCESSING_FAILED', retry_count: 1 })],
@@ -201,9 +204,9 @@ describe('DlqList', () => {
     );
 
     // act
-    render(<DlqList initialData={page} />);
+    render(<DlqList />);
 
     // assert
-    expect(screen.getByTestId('replay-DLQ-RPL')).toBeInTheDocument();
+    expect(await screen.findByTestId('replay-DLQ-RPL')).toBeInTheDocument();
   });
 });

@@ -41,10 +41,12 @@ export async function clientFetchWithResponse<T>(
 ): Promise<ClientFetchResult<T>> {
   const token = await getAccessToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
     ...options.headers,
   };
+  if (options.body) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -60,7 +62,9 @@ export async function clientFetchWithResponse<T>(
       error_code?: string;
       message?: string;
     } | null;
-    throw new Error(error?.error_code ?? 'STBLPAY-1999');
+    const code = error?.error_code ?? 'STBLPAY-1999';
+    const message = error?.message ?? code;
+    throw new Error(message, { cause: code });
   }
 
   const data = (await response.json()) as T;

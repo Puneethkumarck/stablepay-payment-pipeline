@@ -51,9 +51,10 @@ export function ReplayButton({ dlqId, errorClass, retryCount }: ReplayButtonProp
           'Command published. Replay execution is wired in Phase 6.',
         duration: 8000,
       });
-    } catch {
+    } catch (err) {
       setState('idle');
-      toast.error('Replay failed', { description: 'See logs for details.' });
+      const message = err instanceof Error ? err.message : 'See logs for details.';
+      toast.error('Replay failed', { description: message });
     }
   };
 
