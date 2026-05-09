@@ -2,10 +2,10 @@ name: CI — Web
 
 on:
   pull_request:
-    paths: ['apps/web/**']
+    paths: ['apps/web/**', 'apps/api/**', 'apps/auth/**', 'infra/docker-compose.yml']
   push:
     branches: [main]
-    paths: ['apps/web/**']
+    paths: ['apps/web/**', 'apps/api/**', 'apps/auth/**', 'infra/docker-compose.yml']
   workflow_dispatch:
 
 concurrency:
