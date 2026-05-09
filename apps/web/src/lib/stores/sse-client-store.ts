@@ -23,6 +23,7 @@ type TransactionFeedStore = TransactionFeedState & TransactionFeedActions;
 const HEARTBEAT_TIMEOUT_MS = 60_000;
 const DEFAULT_RETRY_MS = 2_000;
 const MAX_RETRY_MS = 30_000;
+const MAX_EVENTS = 500;
 
 export interface ParsedSSEFrame {
   events: TransactionEvent[];
@@ -113,23 +114,115 @@ export function createTransactionFeedStore() {
     }
   }
 
+  function teardown() {
+    clearTimers();
+    abortController?.abort();
+    abortController = null;
+  }
+
+  function appendEvents(
+    set: (fn: (state: TransactionFeedState) => Partial<TransactionFeedState>) => void,
+    newEvents: TransactionEvent[],
+  ) {
+    set((state) => {
+      const all = [...state.events, ...newEvents];
+      return { events: all.length > MAX_EVENTS ? all.slice(-MAX_EVENTS) : all };
+    });
+  }
+
   const store = createStore<TransactionFeedStore>((set, get) => ({
     events: [],
     status: 'disconnected',
 
     connect(accessToken: string, url: string) {
-      get().disconnect();
+      teardown();
       set({ status: 'connecting', events: [] });
 
       const controller = new AbortController();
       abortController = controller;
       currentRetryMs = DEFAULT_RETRY_MS;
 
+      const startStream = (preserveEvents: boolean) => {
+        teardown();
+        if (!preserveEvents) {
+          set({ status: 'connecting', events: [] });
+        } else {
+          set({ status: 'connecting' });
+        }
+
+        const ctrl = new AbortController();
+        abortController = ctrl;
+
+        (async () => {
+          try {
+            const response = await fetch(url, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+              signal: ctrl.signal,
+            });
+
+            if (response.status === 401) {
+              set({ status: 'disconnected' });
+              return;
+            }
+
+            if (!response.ok || !response.body) {
+              scheduleReconnect();
+              return;
+            }
+
+            set({ status: 'connected' });
+            currentRetryMs = DEFAULT_RETRY_MS;
+            resetHeartbeat();
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+
+              const lastDoubleNewline = buffer.lastIndexOf('\n\n');
+              if (lastDoubleNewline === -1) continue;
+
+              const complete = buffer.slice(0, lastDoubleNewline + 2);
+              buffer = buffer.slice(lastDoubleNewline + 2);
+
+              const { events: newEvents, retryMs, hadHeartbeat } = parseSSEFrames(complete);
+
+              if (retryMs !== undefined) {
+                currentRetryMs = retryMs;
+              }
+
+              if (newEvents.length > 0 || hadHeartbeat) {
+                resetHeartbeat();
+              }
+
+              if (newEvents.length > 0) {
+                appendEvents(set, newEvents);
+              }
+            }
+
+            scheduleReconnect();
+          } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+              return;
+            }
+
+            if (get().status !== 'disconnected') {
+              set({ status: 'fallback-polling' });
+            }
+          }
+        })();
+      };
+
       const scheduleReconnect = () => {
         clearTimers();
         set({ status: 'connecting' });
         reconnectTimer = setTimeout(() => {
-          get().connect(accessToken, url);
+          startStream(true);
         }, currentRetryMs);
         currentRetryMs = Math.min(currentRetryMs * 2, MAX_RETRY_MS);
       };
@@ -142,75 +235,11 @@ export function createTransactionFeedStore() {
         }, HEARTBEAT_TIMEOUT_MS);
       };
 
-      (async () => {
-        try {
-          const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            signal: controller.signal,
-          });
-
-          if (response.status === 401) {
-            set({ status: 'disconnected' });
-            return;
-          }
-
-          if (!response.ok || !response.body) {
-            scheduleReconnect();
-            return;
-          }
-
-          set({ status: 'connected' });
-          currentRetryMs = DEFAULT_RETRY_MS;
-          resetHeartbeat();
-
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            const lastDoubleNewline = buffer.lastIndexOf('\n\n');
-            if (lastDoubleNewline === -1) continue;
-
-            const complete = buffer.slice(0, lastDoubleNewline + 2);
-            buffer = buffer.slice(lastDoubleNewline + 2);
-
-            const { events: newEvents, retryMs, hadHeartbeat } = parseSSEFrames(complete);
-
-            if (retryMs !== undefined) {
-              currentRetryMs = retryMs;
-            }
-
-            if (newEvents.length > 0 || hadHeartbeat) {
-              resetHeartbeat();
-            }
-
-            if (newEvents.length > 0) {
-              set((state) => ({ events: [...state.events, ...newEvents] }));
-            }
-          }
-
-          scheduleReconnect();
-        } catch (error) {
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            return;
-          }
-
-          if (get().status !== 'disconnected') {
-            set({ status: 'fallback-polling' });
-          }
-        }
-      })();
+      startStream(false);
     },
 
     disconnect() {
-      clearTimers();
-      abortController?.abort();
-      abortController = null;
+      teardown();
       set({ status: 'disconnected', events: [] });
     },
   }));

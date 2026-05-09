@@ -69,6 +69,17 @@ describe('formatRelativeTime', () => {
     // assert
     expect(result).toBe('1 minute ago');
   });
+
+  it('returns absolute date for future dates', () => {
+    // arrange
+    const iso = '2026-05-10T12:00:00Z';
+
+    // act
+    const result = formatRelativeTime(iso, now);
+
+    // assert
+    expect(result).toBe('May 10, 2026');
+  });
 });
 
 describe('formatDuration', () => {

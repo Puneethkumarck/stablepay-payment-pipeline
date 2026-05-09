@@ -26,6 +26,7 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   const date = new Date(iso);
   const diffMs = now.getTime() - date.getTime();
 
+  if (diffMs < 0) return absoluteFormatter.format(date);
   if (diffMs < MINUTE) return 'just now';
   if (diffMs < HOUR) return relativeFormatter.format(-Math.floor(diffMs / MINUTE), 'minute');
   if (diffMs < DAY) return relativeFormatter.format(-Math.floor(diffMs / HOUR), 'hour');

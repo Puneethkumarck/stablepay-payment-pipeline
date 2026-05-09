@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTransactionFeedStore, parseSSEFrames } from './sse-client';
+import { createTransactionFeedStore, parseSSEFrames } from './sse-client-store';
 
 describe('parseSSEFrames', () => {
   it('parses a single data event', () => {
@@ -210,6 +210,75 @@ describe('createTransactionFeedStore', () => {
     // assert
     expect(store.getState().events).toHaveLength(1);
     expect(store.getState().events[0]?.data).toEqual({ ref: 'TXN-001' });
+
+    // cleanup
+    store.getState().disconnect();
+  });
+
+  it('preserves events across reconnections after stream ends', async () => {
+    // arrange
+    const store = createTransactionFeedStore();
+    const chunk1 = new TextEncoder().encode('data: {"ref":"TXN-001"}\n\n');
+    const stream1 = new ReadableStream({
+      start(controller) {
+        controller.enqueue(chunk1);
+        controller.close();
+      },
+    });
+    const chunk2 = new TextEncoder().encode('data: {"ref":"TXN-002"}\n\n');
+    const stream2 = new ReadableStream({
+      start(controller) {
+        controller.enqueue(chunk2);
+        controller.close();
+      },
+    });
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(stream1, { status: 200 }))
+      .mockResolvedValueOnce(new Response(stream2, { status: 200 }));
+
+    // act — first connection delivers TXN-001, stream closes, schedules reconnect
+    store.getState().connect('token', 'http://localhost/sse');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(store.getState().events).toHaveLength(1);
+    expect(store.getState().events[0]?.data).toEqual({ ref: 'TXN-001' });
+
+    // act — reconnect timer fires (2s default), second stream delivers TXN-002
+    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    // assert — both events preserved
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(store.getState().events).toHaveLength(2);
+    expect(store.getState().events[0]?.data).toEqual({ ref: 'TXN-001' });
+    expect(store.getState().events[1]?.data).toEqual({ ref: 'TXN-002' });
+
+    // cleanup
+    store.getState().disconnect();
+  });
+
+  it('caps event buffer at MAX_EVENTS (500)', async () => {
+    // arrange
+    const store = createTransactionFeedStore();
+    const lines = Array.from({ length: 510 }, (_, i) => `data: {"i":${i}}\n\n`).join('');
+    const chunk = new TextEncoder().encode(lines);
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(stream, { status: 200 }));
+
+    // act
+    store.getState().connect('token', 'http://localhost/sse');
+    await vi.advanceTimersByTimeAsync(0);
+
+    // assert — capped at 500, oldest events evicted
+    expect(store.getState().events).toHaveLength(500);
+    expect(store.getState().events[0]?.data).toEqual({ i: 10 });
+    expect(store.getState().events[499]?.data).toEqual({ i: 509 });
 
     // cleanup
     store.getState().disconnect();
