@@ -94,10 +94,18 @@ export interface StuckPaymentDto {
 
 export interface CustomerSummaryDto {
   customer_id: string;
+  name: string;
+  email: string;
+  kyc_status: 'VERIFIED' | 'PENDING' | 'FLAGGED';
+  risk_tier: 'LOW' | 'MEDIUM' | 'HIGH';
+  balance: MoneyDto;
+  total_sent: MoneyDto;
   total_transactions: number;
   total_volume: MoneyDto;
   active_flows: number;
+  member_since: string;
   last_activity_at: string;
+  recent_transactions: TransactionDto[];
 }
 
 export interface DashboardStatsDto {
