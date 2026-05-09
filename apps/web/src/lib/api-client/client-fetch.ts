@@ -24,6 +24,49 @@ export function resetTokenCache() {
   tokenExpiresAt = 0;
 }
 
+interface ClientFetchOptions {
+  method?: string;
+  body?: unknown;
+  headers?: Record<string, string>;
+}
+
+export interface ClientFetchResult<T> {
+  data: T;
+  response: Response;
+}
+
+export async function clientFetchWithResponse<T>(
+  path: string,
+  options: ClientFetchOptions = {},
+): Promise<ClientFetchResult<T>> {
+  const token = await getAccessToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...options.headers,
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(path, {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as {
+      error_code?: string;
+      message?: string;
+    } | null;
+    throw new Error(error?.error_code ?? 'STBLPAY-1999');
+  }
+
+  const data = (await response.json()) as T;
+  return { data, response };
+}
+
 export async function clientFetch<T>(path: string): Promise<T> {
   const token = await getAccessToken();
   const headers: Record<string, string> = {
