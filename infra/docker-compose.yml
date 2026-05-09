@@ -337,6 +337,35 @@ services:
     networks:
       - stablepay_default
 
+  # ─── Web App (Next.js) ─────────────────────────────
+  apps-web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    container_name: stablepay-web
+    ports:
+      - "3000:3000"
+    environment:
+      STABLEPAY_API_INTERNAL_URL: http://apps-api:8080
+      STABLEPAY_AUTH_INTERNAL_URL: http://apps-auth:9000
+      AUTH_SECRET: ${AUTH_SECRET:-stablepay-dev-secret-change-in-prod}
+      AUTH_TRUST_HOST: "true"
+    depends_on:
+      apps-api:
+        condition: service_healthy
+      apps-auth:
+        condition: service_healthy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - stablepay_default
+
   # ─── Lakehouse Maintenance Jobs ───────────────────
   # Gated behind the `lakehouse` profile.
   # Run with: docker compose --profile lakehouse up -d lakehouse-jobs

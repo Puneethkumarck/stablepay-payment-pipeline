@@ -1,0 +1,43 @@
+.git
+.github
+.planning
+.claude
+META-INF
+
+# Java / Gradle
+apps/api
+apps/auth
+apps/flink-jobs
+apps/simulator
+apps/llm-agent
+apps/agent-tools-mcp
+apps/dlq-tools
+apps/lakehouse-jobs
+build
+.gradle
+*.jar
+
+# Node
+**/node_modules
+apps/web/.next
+apps/web/.env*
+
+# Python
+__pycache__
+.venv
+*.pyc
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Docs & config not needed in image
+docs
+tests
+ops
+schemas
+infra
+*.md
+justfile
+renovate.json
