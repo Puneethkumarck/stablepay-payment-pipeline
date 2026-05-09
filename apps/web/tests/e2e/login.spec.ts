@@ -6,8 +6,8 @@ test.describe('Login flow', () => {
     await page.goto('/login');
 
     // act
-    await page.getByTestId('demo-alice').click();
-    await page.getByTestId('login-submit').click();
+    await page.getByText('alice@stablepay.io').click();
+    await page.getByRole('button', { name: 'Sign in' }).click();
 
     // assert
     await expect(page).toHaveURL('/');
