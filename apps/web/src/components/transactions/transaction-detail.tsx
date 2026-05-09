@@ -13,6 +13,7 @@ import { formatAbsoluteTooltip, formatRelativeTime } from '~/lib/format/time';
 import { useTransactionDetail } from '~/lib/hooks/use-transaction-detail';
 import { isTerminal } from '~/lib/terminal-status';
 import { deriveTimeline } from '~/lib/timeline-derivation';
+import { cn } from '~/lib/utils';
 import type { TransactionDto } from '~/types/api';
 
 interface TransactionDetailProps {
@@ -35,20 +36,20 @@ function MetadataCell({
 }) {
   return (
     <div
-      className={[
+      className={cn(
         'p-[10px_16px]',
-        borderBottom ? 'border-b border-[rgba(255,255,255,0.05)]' : '',
-        borderRight ? 'border-r border-[rgba(255,255,255,0.05)]' : '',
-      ].join(' ')}
+        borderBottom && 'border-b border-[rgba(255,255,255,0.05)]',
+        borderRight && 'border-r border-[rgba(255,255,255,0.05)]',
+      )}
     >
       <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.09em] text-fg-3">
         {label}
       </div>
       <div
-        className={[
+        className={cn(
           'break-all text-[12px] font-medium leading-[1.3] text-fg-1',
           mono ? 'font-mono' : 'font-sans',
-        ].join(' ')}
+        )}
       >
         {value}
       </div>
