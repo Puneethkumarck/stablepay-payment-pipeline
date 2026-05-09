@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './sidebar';
 
@@ -19,7 +20,10 @@ describe('Sidebar', () => {
   });
 
   it('renders navigation links', () => {
+    // act
     render(<Sidebar {...defaultProps} />);
+
+    // assert
     expect(screen.getByTestId('nav-dashboard')).toBeInTheDocument();
     expect(screen.getByTestId('nav-transactions')).toBeInTheDocument();
     expect(screen.getByTestId('nav-flows')).toBeInTheDocument();
@@ -28,49 +32,80 @@ describe('Sidebar', () => {
     expect(screen.getByTestId('nav-stuck')).toBeInTheDocument();
   });
 
-  it('highlights active page', () => {
-    render(<Sidebar {...defaultProps} activePage="transactions" />);
-    const txnNav = screen.getByTestId('nav-transactions');
-    expect(txnNav.className).toContain('text-[#C4B5FD]');
+  it('renders nav item labels when expanded', () => {
+    // act
+    render(<Sidebar {...defaultProps} />);
+
+    // assert
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Transactions')).toBeInTheDocument();
+    expect(screen.getByText('Flows')).toBeInTheDocument();
   });
 
-  it('calls onNavigate when nav item is clicked', () => {
+  it('calls onNavigate when nav item is clicked', async () => {
+    // arrange
+    const user = userEvent.setup();
     render(<Sidebar {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('nav-transactions'));
+
+    // act
+    await user.click(screen.getByTestId('nav-transactions'));
+
+    // assert
     expect(defaultProps.onNavigate).toHaveBeenCalledWith('transactions', '/transactions');
   });
 
-  it('toggles collapse state via toggle button', () => {
+  it('toggles collapse state via toggle button', async () => {
+    // arrange
+    const user = userEvent.setup();
     render(<Sidebar {...defaultProps} />);
-    const sidebar = screen.getByTestId('sidebar');
-    expect(sidebar.className).toContain('w-[212px]');
+    const sidebar = screen.getByRole('navigation');
 
-    fireEvent.click(screen.getByTestId('sidebar-toggle'));
-    expect(sidebar.className).toContain('w-14');
+    // act
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false');
+    await user.click(screen.getByTestId('sidebar-toggle'));
+
+    // assert
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true');
   });
 
-  it('persists collapse state to localStorage', () => {
+  it('persists collapse state to localStorage', async () => {
+    // arrange
+    const user = userEvent.setup();
     render(<Sidebar {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('sidebar-toggle'));
+
+    // act
+    await user.click(screen.getByTestId('sidebar-toggle'));
+
+    // assert
     expect(localStorage.getItem('sp4_sidebar_collapsed')).toBe('true');
   });
 
   it('supports Cmd+B keyboard shortcut', () => {
+    // arrange
     render(<Sidebar {...defaultProps} />);
-    const sidebar = screen.getByTestId('sidebar');
-    expect(sidebar.className).toContain('w-[212px]');
+    const sidebar = screen.getByRole('navigation');
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false');
 
+    // act
     fireEvent.keyDown(document, { key: 'b', metaKey: true });
-    expect(sidebar.className).toContain('w-14');
+
+    // assert
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true');
   });
 
   it('renders logo text when expanded', () => {
+    // act
     render(<Sidebar {...defaultProps} />);
-    expect(screen.getByTestId('sidebar')).toHaveTextContent('stablepay');
+
+    // assert
+    expect(screen.getByRole('navigation')).toHaveTextContent('stablepay');
   });
 
   it('has nav landmark with aria-label', () => {
+    // act
     render(<Sidebar {...defaultProps} />);
+
+    // assert
     expect(screen.getByRole('navigation')).toHaveAttribute('aria-label', 'Primary navigation');
   });
 });

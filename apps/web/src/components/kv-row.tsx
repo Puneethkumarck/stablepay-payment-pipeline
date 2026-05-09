@@ -11,6 +11,8 @@ export function KVRow({ label, value, mono = true, last = false }: KVRowProps) {
   return (
     <div
       data-testid="kv-row"
+      data-last={last || undefined}
+      data-mono={mono}
       className={cn(
         'flex items-center justify-between gap-4 py-[9px]',
         !last && 'border-b border-[rgba(255,255,255,0.05)]',

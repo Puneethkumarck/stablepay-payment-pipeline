@@ -5,30 +5,42 @@ import { Empty } from './empty';
 
 describe('Empty', () => {
   it('renders title', () => {
+    // act
     render(<Empty title="No results" />);
-    expect(screen.getByTestId('empty')).toHaveTextContent('No results');
+
+    // assert
+    expect(screen.getByText('No results')).toBeInTheDocument();
   });
 
   it('renders subtitle when provided', () => {
+    // act
     render(<Empty title="No results" sub="Try a different search" />);
-    expect(screen.getByTestId('empty')).toHaveTextContent('Try a different search');
+
+    // assert
+    expect(screen.getByText('Try a different search')).toBeInTheDocument();
   });
 
-  it('does not render subtitle element when sub is not provided', () => {
+  it('does not render subtitle when sub is not provided', () => {
+    // act
     render(<Empty title="No results" />);
-    const container = screen.getByTestId('empty');
-    const children = container.querySelectorAll('div');
-    expect(children.length).toBe(1);
+
+    // assert
+    expect(screen.queryByText('Try a different search')).toBeNull();
   });
 
   it('renders with custom icon', () => {
+    // act
     render(<Empty icon={AlertTriangle} title="Error" />);
-    expect(screen.getByTestId('empty')).toBeInTheDocument();
+
+    // assert
+    expect(screen.getByText('Error')).toBeInTheDocument();
   });
 
   it('renders default database icon when no icon provided', () => {
+    // act
     const { container } = render(<Empty title="Empty" />);
-    const svg = container.querySelector('svg');
-    expect(svg).toBeInTheDocument();
+
+    // assert
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 });

@@ -1,27 +1,43 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ErrorBoundaryCard } from './error-boundary-card';
 
 describe('ErrorBoundaryCard', () => {
   it('renders heading', () => {
+    // act
     render(<ErrorBoundaryCard />);
+
+    // assert
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Something went wrong');
   });
 
   it('renders support text', () => {
+    // act
     render(<ErrorBoundaryCard />);
-    expect(screen.getByTestId('error-boundary-card')).toHaveTextContent('logged the error');
+
+    // assert
+    expect(screen.getByText(/logged the error/)).toBeInTheDocument();
   });
 
   it('renders reload CTA', () => {
+    // act
     render(<ErrorBoundaryCard />);
-    expect(screen.getByTestId('error-boundary-reload')).toHaveTextContent('Reload');
+
+    // assert
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
   });
 
-  it('calls onReset when reload is clicked', () => {
+  it('calls onReset when reload is clicked', async () => {
+    // arrange
+    const user = userEvent.setup();
     const onReset = vi.fn();
     render(<ErrorBoundaryCard onReset={onReset} />);
-    fireEvent.click(screen.getByTestId('error-boundary-reload'));
+
+    // act
+    await user.click(screen.getByRole('button', { name: 'Reload' }));
+
+    // assert
     expect(onReset).toHaveBeenCalledOnce();
   });
 });

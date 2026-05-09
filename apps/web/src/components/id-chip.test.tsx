@@ -1,34 +1,57 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IdChip } from './id-chip';
+
+const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+const originalDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard');
 
 describe('IdChip', () => {
   const fullId = 'b8f6c8a4-7d2e-4f3b-9c1e-2a5d6f8e0b1d';
 
   beforeEach(() => {
-    Object.assign(navigator, {
-      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    writeTextSpy.mockClear();
+    Object.defineProperty(Navigator.prototype, 'clipboard', {
+      get: () => ({ writeText: writeTextSpy }),
+      configurable: true,
     });
   });
 
+  afterEach(() => {
+    if (originalDescriptor) {
+      Object.defineProperty(Navigator.prototype, 'clipboard', originalDescriptor);
+    }
+  });
+
   it('truncates to 8 chars by default', () => {
+    // act
     render(<IdChip value={fullId} />);
-    expect(screen.getByTestId('id-chip')).toHaveTextContent('b8f6c8a4…');
+
+    // assert
+    expect(screen.getByText('b8f6c8a4…')).toBeInTheDocument();
   });
 
   it('shows full value when full prop is true', () => {
+    // act
     render(<IdChip value={fullId} full />);
-    expect(screen.getByTestId('id-chip')).toHaveTextContent(fullId);
+
+    // assert
+    expect(screen.getByText(fullId)).toBeInTheDocument();
   });
 
   it('copies full value on click', () => {
+    // act
     render(<IdChip value={fullId} />);
     fireEvent.click(screen.getByTestId('id-chip-copy'));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(fullId);
+
+    // assert
+    expect(writeTextSpy).toHaveBeenCalledWith(fullId);
   });
 
   it('shows short ids without truncation', () => {
+    // act
     render(<IdChip value="abc" />);
-    expect(screen.getByTestId('id-chip')).toHaveTextContent('abc');
+
+    // assert
+    expect(screen.getByText('abc')).toBeInTheDocument();
   });
 });

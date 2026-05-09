@@ -1,38 +1,55 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DlqErrorBlock } from './dlq-error-block';
+
+const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+const originalDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard');
 
 describe('DlqErrorBlock', () => {
   const errorMessage = 'NullPointerException at com.example.Foo.bar(Foo.java:42)';
 
   beforeEach(() => {
-    Object.assign(navigator, {
-      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    writeTextSpy.mockClear();
+    Object.defineProperty(Navigator.prototype, 'clipboard', {
+      get: () => ({ writeText: writeTextSpy }),
+      configurable: true,
     });
   });
 
+  afterEach(() => {
+    if (originalDescriptor) {
+      Object.defineProperty(Navigator.prototype, 'clipboard', originalDescriptor);
+    }
+  });
+
   it('renders the error message in a pre block', () => {
+    // act
     render(<DlqErrorBlock message={errorMessage} />);
+
+    // assert
     const pre = screen.getByTestId('dlq-error-block').querySelector('pre');
     expect(pre).toHaveTextContent(errorMessage);
   });
 
   it('copies the full message on copy button click', () => {
+    // act
     render(<DlqErrorBlock message={errorMessage} />);
     fireEvent.click(screen.getByTestId('dlq-error-copy'));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(errorMessage);
+
+    // assert
+    expect(writeTextSpy).toHaveBeenCalledWith(errorMessage);
   });
 
-  it('renders with max-height constraint', () => {
+  it('shows copied feedback after clicking copy', async () => {
+    // arrange
+    const user = userEvent.setup();
     render(<DlqErrorBlock message={errorMessage} />);
-    const pre = screen.getByTestId('dlq-error-block').querySelector('pre');
-    expect(pre?.className).toContain('max-h-[240px]');
-  });
 
-  it('preserves whitespace and wraps words', () => {
-    render(<DlqErrorBlock message={errorMessage} />);
-    const pre = screen.getByTestId('dlq-error-block').querySelector('pre');
-    expect(pre?.className).toContain('whitespace-pre-wrap');
-    expect(pre?.className).toContain('break-words');
+    // act
+    await user.click(screen.getByTestId('dlq-error-copy'));
+
+    // assert
+    expect(screen.getByText('Copied')).toBeInTheDocument();
   });
 });

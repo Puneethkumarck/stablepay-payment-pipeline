@@ -19,7 +19,7 @@ export function Timeline({ steps, className }: TimelineProps) {
       {steps.map((step, i) => {
         const isLast = i === steps.length - 1;
         return (
-          <div key={i} className={cn('relative flex gap-3', !isLast && 'pb-[18px]')}>
+          <div key={i} data-state={step.state} className={cn('relative flex gap-3', !isLast && 'pb-[18px]')}>
             {!isLast && <div className="absolute bottom-0 left-[9px] top-5 w-px bg-border-1" />}
             <div
               className={cn(

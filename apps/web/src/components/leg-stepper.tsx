@@ -50,6 +50,8 @@ export function LegStepper({ legs, flowStatus, className }: LegStepperProps) {
             <div key={i} className="flex items-stretch">
               <div
                 data-testid="leg-card"
+                data-failed={isFailed || undefined}
+                data-skipped={isSkipped || undefined}
                 className={cn(
                   'flex min-w-[160px] flex-1 flex-col gap-2 rounded-card border bg-surface-2 p-4',
                   isFailed ? 'border-[rgba(239,68,68,0.32)]' : 'border-border-1',

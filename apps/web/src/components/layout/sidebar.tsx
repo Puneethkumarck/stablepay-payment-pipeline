@@ -86,12 +86,10 @@ export function Sidebar({
   customerId,
   onSignOut,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'true') setCollapsed(true);
-  }, []);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(STORAGE_KEY) === 'true';
+  });
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
@@ -115,6 +113,7 @@ export function Sidebar({
   return (
     <nav
       data-testid="sidebar"
+      data-collapsed={collapsed}
       aria-label="Primary navigation"
       className={cn(
         'sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden border-r border-border-1 bg-sidebar transition-[width] duration-200',

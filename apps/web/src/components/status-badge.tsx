@@ -55,6 +55,8 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
     <span
       data-testid="status-badge"
+      data-color={style.color}
+      data-pulse={style.pulse || undefined}
       className={cn(
         'inline-flex items-center gap-[5px] rounded-full border px-[9px] py-[3px] text-[11px] font-medium whitespace-nowrap tracking-[0.01em]',
         colors.bg,

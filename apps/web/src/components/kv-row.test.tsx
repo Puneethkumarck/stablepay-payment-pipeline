@@ -4,31 +4,43 @@ import { KVRow } from './kv-row';
 
 describe('KVRow', () => {
   it('renders label and value', () => {
+    // act
     render(<KVRow label="Status" value="Active" />);
-    const row = screen.getByTestId('kv-row');
-    expect(row).toHaveTextContent('Status');
-    expect(row).toHaveTextContent('Active');
+
+    // assert
+    expect(screen.getByText('Status')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
-  it('renders a bottom border by default', () => {
+  it('does not mark as last row by default', () => {
+    // act
     render(<KVRow label="Key" value="Value" />);
-    expect(screen.getByTestId('kv-row').className).toContain('border-b');
+
+    // assert
+    expect(screen.getByTestId('kv-row')).not.toHaveAttribute('data-last');
   });
 
-  it('omits bottom border when last is true', () => {
+  it('marks as last row when last is true', () => {
+    // act
     render(<KVRow label="Key" value="Value" last />);
-    expect(screen.getByTestId('kv-row').className).not.toContain('border-b');
+
+    // assert
+    expect(screen.getByTestId('kv-row')).toHaveAttribute('data-last', 'true');
   });
 
   it('uses mono font by default', () => {
+    // act
     render(<KVRow label="Key" value="Value" />);
-    const valueEl = screen.getByTestId('kv-row').querySelector('span:last-child');
-    expect(valueEl?.className).toContain('font-mono');
+
+    // assert
+    expect(screen.getByTestId('kv-row')).toHaveAttribute('data-mono', 'true');
   });
 
   it('uses sans font when mono is false', () => {
+    // act
     render(<KVRow label="Key" value="Value" mono={false} />);
-    const valueEl = screen.getByTestId('kv-row').querySelector('span:last-child');
-    expect(valueEl?.className).toContain('font-sans');
+
+    // assert
+    expect(screen.getByTestId('kv-row')).toHaveAttribute('data-mono', 'false');
   });
 });

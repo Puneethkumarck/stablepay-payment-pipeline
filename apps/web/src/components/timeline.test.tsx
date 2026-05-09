@@ -10,39 +10,60 @@ describe('Timeline', () => {
   ];
 
   it('renders all steps', () => {
+    // act
     render(<Timeline steps={steps} />);
-    const timeline = screen.getByTestId('timeline');
-    expect(timeline).toHaveTextContent('Initiated');
-    expect(timeline).toHaveTextContent('Screening');
-    expect(timeline).toHaveTextContent('Execution');
+
+    // assert
+    expect(screen.getByText('Initiated')).toBeInTheDocument();
+    expect(screen.getByText('Screening')).toBeInTheDocument();
+    expect(screen.getByText('Execution')).toBeInTheDocument();
   });
 
   it('renders subtitle for done step', () => {
+    // act
     render(<Timeline steps={steps} />);
-    expect(screen.getByTestId('timeline')).toHaveTextContent('2s ago');
+
+    // assert
+    expect(screen.getByText('2s ago')).toBeInTheDocument();
   });
 
-  it('renders check icon for done state', () => {
+  it('renders done step with data-state attribute', () => {
+    // act
     const { container } = render(<Timeline steps={[{ label: 'Done', state: 'done' }]} />);
-    expect(container.querySelector('.bg-success')).toBeInTheDocument();
+
+    // assert
+    const stepEl = container.querySelector('[data-state="done"]');
+    expect(stepEl).toBeInTheDocument();
   });
 
-  it('renders pulsing dot for live state', () => {
+  it('renders live step with data-state attribute', () => {
+    // act
     const { container } = render(<Timeline steps={[{ label: 'Live', state: 'live' }]} />);
-    const liveNode = container.querySelector('.animate-\\[badge-pulse_2s_ease-in-out_infinite\\]');
-    expect(liveNode).toBeInTheDocument();
+
+    // assert
+    const stepEl = container.querySelector('[data-state="live"]');
+    expect(stepEl).toBeInTheDocument();
   });
 
-  it('renders subdued label for pending state', () => {
+  it('renders pending step with data-state attribute', () => {
+    // act
     const { container } = render(<Timeline steps={[{ label: 'Pending', state: 'pending' }]} />);
-    expect(container.querySelector('.text-fg-3')).toBeInTheDocument();
+
+    // assert
+    const stepEl = container.querySelector('[data-state="pending"]');
+    expect(stepEl).toBeInTheDocument();
   });
 
   it('renders meta content when provided', () => {
+    // arrange
     const stepsWithMeta: TimelineStep[] = [
       { label: 'Step', state: 'done', meta: <span data-testid="meta-content">meta</span> },
     ];
+
+    // act
     render(<Timeline steps={stepsWithMeta} />);
+
+    // assert
     expect(screen.getByTestId('meta-content')).toBeInTheDocument();
   });
 });

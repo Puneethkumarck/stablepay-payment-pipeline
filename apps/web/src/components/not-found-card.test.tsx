@@ -4,23 +4,31 @@ import { NotFoundCard } from './not-found-card';
 
 describe('NotFoundCard', () => {
   it('renders heading', () => {
+    // act
     render(<NotFoundCard />);
+
+    // assert
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
       "We can't find that transaction",
     );
   });
 
   it('renders non-enumerating body text', () => {
+    // act
     render(<NotFoundCard />);
-    expect(screen.getByTestId('not-found-card')).toHaveTextContent(
-      'It may have been removed, or you may not have access',
-    );
+
+    // assert
+    expect(
+      screen.getByText(/It may have been removed, or you may not have access/),
+    ).toBeInTheDocument();
   });
 
   it('renders back-to-dashboard CTA', () => {
+    // act
     render(<NotFoundCard />);
-    const cta = screen.getByTestId('not-found-cta');
+
+    // assert
+    const cta = screen.getByRole('link', { name: 'Back to dashboard' });
     expect(cta).toHaveAttribute('href', '/');
-    expect(cta).toHaveTextContent('Back to dashboard');
   });
 });
