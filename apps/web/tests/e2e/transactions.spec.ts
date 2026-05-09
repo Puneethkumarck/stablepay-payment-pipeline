@@ -20,7 +20,7 @@ test.describe('Transactions happy path (WEB-08)', () => {
     // act — type search query into search bar
     const searchInput = page.getByPlaceholder(/search/i);
     await searchInput.fill('TXN');
-    await page.waitForTimeout(500);
+    await expect(rows.first()).toBeVisible();
 
     // act — click first row to navigate to detail
     await rows.first().click();

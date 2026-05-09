@@ -86,7 +86,7 @@ jobs:
         working-directory: .
         run: |
           docker compose -f infra/docker-compose.yml up -d postgres redis kafka schema-registry opensearch apps-auth apps-api
-          npx wait-on -t 180000 http://localhost:8080/actuator/health
+          timeout 180 bash -c 'until curl -sf http://localhost:8080/actuator/health; do sleep 5; done'
 
       - name: Run Playwright tests
         run: pnpm exec playwright test

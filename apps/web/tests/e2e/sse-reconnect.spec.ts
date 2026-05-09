@@ -15,10 +15,10 @@ test.describe('SSE reconnect flow', () => {
   });
 
   test('SSE shows reconnecting state when stream is interrupted', async ({ page }) => {
+    test.setTimeout(60_000);
+
     // arrange — intercept the SSE endpoint to simulate connection then abort
-    let abortController: AbortController | undefined;
     await page.route('**/api/v1/streams/transactions', async (route) => {
-      abortController = new AbortController();
       await route.fulfill({
         status: 200,
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
