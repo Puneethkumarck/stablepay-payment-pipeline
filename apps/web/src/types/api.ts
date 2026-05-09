@@ -7,6 +7,7 @@ export interface TransactionDto {
   ref: string;
   flow_id: string;
   customer_id: string;
+  account_id?: string;
   direction: 'PAYIN' | 'PAYOUT';
   type: 'FIAT' | 'CRYPTO';
   internal_status: string;
@@ -14,8 +15,14 @@ export interface TransactionDto {
   amount: MoneyDto;
   fee?: MoneyDto;
   counterparty?: string;
+  provider?: string;
   blockchain?: string;
   tx_hash?: string;
+  event_id?: string;
+  correlation_id?: string;
+  trace_id?: string;
+  schema_version?: string;
+  source_topic?: string;
   created_at: string;
   updated_at: string;
 }

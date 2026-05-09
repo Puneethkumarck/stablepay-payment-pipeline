@@ -6,6 +6,9 @@ const TERMINAL = new Set([
   'REFUND_COMPLETED',
   'CONFISCATED',
   'REPLACED',
+  'SCREENING_REJECTED',
+  'SCREENING_SEIZED',
+  'SUSPENDED',
 ]);
 
 export function isTerminal(status?: string): boolean {

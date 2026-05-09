@@ -10,6 +10,9 @@ describe('isTerminal', () => {
     'REFUND_COMPLETED',
     'CONFISCATED',
     'REPLACED',
+    'SCREENING_REJECTED',
+    'SCREENING_SEIZED',
+    'SUSPENDED',
   ])('returns true for terminal status %s', (status) => {
     // arrange / act / assert
     expect(isTerminal(status)).toBe(true);
@@ -38,7 +41,7 @@ describe('isTerminal', () => {
     expect(isTerminal('')).toBe(false);
   });
 
-  it('covers exactly 7 terminal states', () => {
+  it('covers exactly 10 terminal states', () => {
     // arrange
     const allTerminal = [
       'COMPLETED',
@@ -48,9 +51,12 @@ describe('isTerminal', () => {
       'REFUND_COMPLETED',
       'CONFISCATED',
       'REPLACED',
+      'SCREENING_REJECTED',
+      'SCREENING_SEIZED',
+      'SUSPENDED',
     ];
 
     // act / assert
-    expect(allTerminal.filter((s) => isTerminal(s))).toHaveLength(7);
+    expect(allTerminal.filter((s) => isTerminal(s))).toHaveLength(10);
   });
 });
