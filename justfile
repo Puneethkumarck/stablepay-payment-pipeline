@@ -163,6 +163,24 @@ dlq-replay ID *ARGS:
 dlq-replay-class CLASS *ARGS:
     cd apps/dlq-tools && uv run dlq replay-class {{CLASS}} {{ARGS}}
 
+# ─── Web App ──────────────────────────────────────
+
+# Build the web app Docker image
+web-build:
+    docker compose -f infra/docker-compose.yml build apps-web
+
+# Bring up the web app (waits for healthy)
+web-up:
+    docker compose -f infra/docker-compose.yml up -d --wait apps-web
+
+# Follow web app logs
+web-logs:
+    docker compose -f infra/docker-compose.yml logs -f apps-web
+
+# Run Next.js dev server locally (no Docker)
+web-dev:
+    cd apps/web && pnpm dev
+
 # ─── Web Codegen ─────────────────────────────────
 
 # Regenerate OpenAPI TypeScript client from running API
