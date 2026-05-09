@@ -40,11 +40,17 @@ export function DataTable<T extends Record<string, unknown>>({
   className,
 }: DataTableProps<T>) {
   const sentinelRef = useRef<HTMLTableRowElement>(null);
+  const loadTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!loading) loadTriggeredRef.current = false;
+  }, [loading]);
 
   const handleIntersection = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const entry = entries[0];
-      if (entry?.isIntersecting && hasMore && onLoadMore && !loading) {
+      if (entry?.isIntersecting && hasMore && onLoadMore && !loading && !loadTriggeredRef.current) {
+        loadTriggeredRef.current = true;
         onLoadMore();
       }
     },
@@ -96,7 +102,10 @@ export function DataTable<T extends Record<string, unknown>>({
               key={i}
               onClick={() => onRowClick?.(row)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && onRowClick) onRowClick(row);
+                if ((e.key === 'Enter' || e.key === ' ') && onRowClick) {
+                  e.preventDefault();
+                  onRowClick(row);
+                }
               }}
               role={onRowClick ? 'button' : undefined}
               tabIndex={onRowClick ? 0 : undefined}

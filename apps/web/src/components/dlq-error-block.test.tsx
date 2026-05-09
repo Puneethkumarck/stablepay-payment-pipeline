@@ -52,4 +52,20 @@ describe('DlqErrorBlock', () => {
     // assert
     expect(screen.getByText('Copied')).toBeInTheDocument();
   });
+
+  it('does not crash or show copied when clipboard is unavailable', () => {
+    // arrange
+    Object.defineProperty(Navigator.prototype, 'clipboard', {
+      get: () => undefined,
+      configurable: true,
+    });
+    render(<DlqErrorBlock message={errorMessage} />);
+
+    // act
+    fireEvent.click(screen.getByTestId('dlq-error-copy'));
+
+    // assert
+    expect(screen.queryByText('Copied')).toBeNull();
+    expect(screen.getByText('Copy')).toBeInTheDocument();
+  });
 });

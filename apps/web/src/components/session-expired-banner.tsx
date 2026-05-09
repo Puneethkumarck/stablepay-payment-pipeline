@@ -1,5 +1,4 @@
-'use client';
-
+import Link from 'next/link';
 import { cn } from '~/lib/utils';
 
 interface SessionExpiredBannerProps {
@@ -20,13 +19,13 @@ export function SessionExpiredBanner({ visible, className }: SessionExpiredBanne
       )}
     >
       <span>Your session has expired.</span>
-      <a
-        href="/login?reason=session-expired"
+      <Link
+        href={{ pathname: '/login', query: { reason: 'session-expired' } }}
         data-testid="session-expired-cta"
         className="rounded-md border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[12px] font-semibold text-[#FCD34D] transition-colors duration-[120ms] hover:bg-[rgba(245,158,11,0.20)]"
       >
         Sign in again
-      </a>
+      </Link>
     </div>
   );
 }

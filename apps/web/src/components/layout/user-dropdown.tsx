@@ -1,6 +1,7 @@
 'use client';
 
 import { LogOut, User } from 'lucide-react';
+import Link from 'next/link';
 import { ThemeSwitch } from '~/components/theme-switch';
 import { Avatar, AvatarFallback } from '~/components/ui/avatar';
 import {
@@ -19,7 +20,7 @@ interface UserDropdownProps {
   onSignOut: () => void;
 }
 
-function getInitials(email: string): string {
+function getInitial(email: string): string {
   return email.charAt(0).toUpperCase();
 }
 
@@ -32,7 +33,7 @@ export function UserDropdown({ email, role, customerId, onSignOut }: UserDropdow
       >
         <Avatar size="sm">
           <AvatarFallback className="bg-gradient-to-br from-solana-purple to-solana-magenta text-[10px] font-bold text-white">
-            {getInitials(email)}
+            {getInitial(email)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 text-left">
@@ -50,7 +51,10 @@ export function UserDropdown({ email, role, customerId, onSignOut }: UserDropdow
         {customerId && (
           <DropdownMenuItem
             render={
-              <a href={`/customers/${customerId}/summary`} data-testid="user-dropdown-summary" />
+              <Link
+                href={{ pathname: `/customers/${customerId}/summary` }}
+                data-testid="user-dropdown-summary"
+              />
             }
           >
             <User size={14} />

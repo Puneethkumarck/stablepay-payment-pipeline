@@ -114,4 +114,48 @@ describe('DataTable', () => {
     // assert
     expect(screen.getByText('Alice').tagName).toBe('STRONG');
   });
+
+  it('activates row on Space key press', async () => {
+    // arrange
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(<DataTable columns={columns} rows={rows} onRowClick={onClick} />);
+    const row = screen.getByText('Alice').closest('tr') as HTMLElement;
+
+    // act
+    row.focus();
+    await user.keyboard(' ');
+
+    // assert
+    expect(onClick).toHaveBeenCalledWith(rows[0]);
+  });
+
+  it('calls onLoadMore when sentinel intersects', () => {
+    // arrange
+    let observerCallback: IntersectionObserverCallback | null = null;
+    const mockObserve = vi.fn();
+    const mockDisconnect = vi.fn();
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          observerCallback = cb;
+        }
+        observe = mockObserve;
+        disconnect = mockDisconnect;
+        unobserve = vi.fn();
+      },
+    );
+    const onLoadMore = vi.fn();
+    render(<DataTable columns={columns} rows={rows} hasMore onLoadMore={onLoadMore} />);
+
+    // act
+    expect(observerCallback).not.toBeNull();
+    const cb = observerCallback as unknown as IntersectionObserverCallback;
+    cb([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+
+    // assert
+    expect(onLoadMore).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
 });

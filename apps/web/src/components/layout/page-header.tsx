@@ -20,6 +20,7 @@ export function PageHeader({ title, eyebrow, actions, onBack, className }: PageH
           <button
             type="button"
             onClick={onBack}
+            aria-label="Back"
             data-testid="page-header-back"
             className="grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-md border border-border-1 bg-[rgba(255,255,255,0.05)] text-fg-2 transition-colors duration-[120ms] hover:border-border-2 hover:text-fg-1"
           >

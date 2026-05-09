@@ -22,12 +22,12 @@ function parseEvent(event: TransactionEvent): LiveFeedEvent | null {
   const data = event.data as Record<string, unknown> | null;
   if (!data) return null;
   return {
-    id: (data.event_id as string) ?? event.id ?? '',
-    type: (data.flow_type as string) ?? '',
-    status: (data.status as string) ?? '',
+    id: String(data.event_id ?? event.id ?? ''),
+    type: String(data.flow_type ?? ''),
+    status: String(data.status ?? ''),
     amount: String(data.amount_micros ?? ''),
-    ts: (data.event_time as string) ?? '',
-    customer_id: data.customer_id as string | undefined,
+    ts: String(data.event_time ?? ''),
+    customer_id: data.customer_id != null ? String(data.customer_id) : undefined,
   };
 }
 
@@ -84,6 +84,7 @@ export function LiveFeed({
         <button
           type="button"
           onClick={onHide}
+          aria-label="Close live feed"
           data-testid="live-feed-close"
           className="grid cursor-pointer place-items-center p-[2px] text-fg-3 hover:text-fg-2"
         >

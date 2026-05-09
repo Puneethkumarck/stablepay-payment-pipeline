@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '~/lib/utils';
 
 interface NotFoundCardProps {
@@ -21,13 +22,13 @@ export function NotFoundCard({ className }: NotFoundCardProps) {
       <p className="text-[13px] leading-relaxed text-fg-3">
         It may have been removed, or you may not have access. Check the reference and try again.
       </p>
-      <a
+      <Link
         href="/"
         data-testid="not-found-cta"
         className="mt-2 inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-solana-purple to-solana-magenta px-4 py-2 text-[13px] font-semibold text-white shadow-[var(--glow-solana-soft)] transition-opacity hover:opacity-90"
       >
         Back to dashboard
-      </a>
+      </Link>
     </div>
   );
 }

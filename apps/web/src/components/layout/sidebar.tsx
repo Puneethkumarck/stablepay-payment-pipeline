@@ -74,6 +74,7 @@ function SidebarNavItem({
       )}
       <item.icon size={15} />
       {!collapsed && <span className="text-[13px] font-medium leading-none">{item.label}</span>}
+      {collapsed && <span className="sr-only">{item.label}</span>}
     </button>
   );
 }
@@ -185,6 +186,8 @@ export function Sidebar({
         <button
           type="button"
           onClick={toggle}
+          aria-label="Toggle sidebar"
+          aria-expanded={!collapsed}
           data-testid="sidebar-toggle"
           className="mx-[6px] flex w-[calc(100%-12px)] cursor-pointer justify-center rounded-[7px] p-[5px] text-[rgba(255,255,255,0.25)] transition-colors duration-[120ms] hover:text-[rgba(255,255,255,0.55)]"
         >

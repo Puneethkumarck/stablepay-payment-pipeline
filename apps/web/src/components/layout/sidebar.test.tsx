@@ -93,6 +93,19 @@ describe('Sidebar', () => {
     expect(sidebar).toHaveAttribute('data-collapsed', 'true');
   });
 
+  it('supports Ctrl+B keyboard shortcut', () => {
+    // arrange
+    render(<Sidebar {...defaultProps} />);
+    const sidebar = screen.getByRole('navigation');
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false');
+
+    // act
+    fireEvent.keyDown(document, { key: 'b', ctrlKey: true });
+
+    // assert
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true');
+  });
+
   it('renders logo text when expanded', () => {
     // act
     render(<Sidebar {...defaultProps} />);

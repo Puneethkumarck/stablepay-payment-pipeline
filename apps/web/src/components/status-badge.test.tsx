@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StatusBadge } from './status-badge';
 
 describe('StatusBadge', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('renders the label for a known status', () => {
     // act
     render(<StatusBadge status="COMPLETED" />);
@@ -13,14 +17,13 @@ describe('StatusBadge', () => {
 
   it('renders the raw status string for an unknown status', () => {
     // arrange
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     // act
     render(<StatusBadge status="UNKNOWN_STATUS" />);
 
     // assert
     expect(screen.getByText('UNKNOWN_STATUS')).toBeInTheDocument();
-    warnSpy.mockRestore();
   });
 
   it('applies pulse for in-progress statuses via data attribute', () => {
@@ -65,14 +68,13 @@ describe('StatusBadge', () => {
 
   it('renders neutral color for unknown statuses', () => {
     // arrange
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     // act
     render(<StatusBadge status="SOMETHING_NEW" />);
 
     // assert
     expect(screen.getByTestId('status-badge')).toHaveAttribute('data-color', 'neutral');
-    warnSpy.mockRestore();
   });
 
   it('accepts additional className', () => {

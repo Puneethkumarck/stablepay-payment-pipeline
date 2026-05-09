@@ -40,4 +40,21 @@ describe('ErrorBoundaryCard', () => {
     // assert
     expect(onReset).toHaveBeenCalledOnce();
   });
+
+  it('calls window.location.reload when no onReset provided', async () => {
+    // arrange
+    const user = userEvent.setup();
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadMock },
+      writable: true,
+    });
+    render(<ErrorBoundaryCard />);
+
+    // act
+    await user.click(screen.getByRole('button', { name: 'Reload' }));
+
+    // assert
+    expect(reloadMock).toHaveBeenCalledOnce();
+  });
 });
