@@ -68,6 +68,10 @@ const STATUS_GROUPS: StatusGroup[] = [
     ],
   },
   {
+    label: 'Payin',
+    statuses: ['DETECTED', 'MATCHED', 'PENDING_ALLOCATION', 'ALLOCATED'],
+  },
+  {
     label: 'Crypto-specific',
     statuses: [
       'PENDING_SIGNING',
@@ -80,6 +84,10 @@ const STATUS_GROUPS: StatusGroup[] = [
       'RBF_BROADCAST',
       'REPLACED',
     ],
+  },
+  {
+    label: 'Customer-facing',
+    statuses: ['PENDING', 'PROCESSING', 'REFUNDED'],
   },
 ];
 

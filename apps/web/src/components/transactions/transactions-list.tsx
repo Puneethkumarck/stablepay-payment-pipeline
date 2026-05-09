@@ -2,7 +2,7 @@
 
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Amount } from '~/components/amount';
 import { type ColumnConfig, DataTable } from '~/components/data-table';
 import { PageHeader } from '~/components/layout/page-header';
@@ -76,6 +76,7 @@ export function TransactionsList() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [pages, setPages] = useState<TxnRow[][]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const loadingMoreRef = useRef(false);
 
   const criteria = useMemo(
     () => ({
@@ -93,9 +94,11 @@ export function TransactionsList() {
   const hasMore = pages.length > 0 ? cursor !== null : (data?.has_more ?? false);
 
   const handleLoadMore = useCallback(() => {
+    if (loadingMoreRef.current) return;
     const nextCursor = pages.length > 0 ? cursor : data?.next_cursor;
     if (!nextCursor) return;
 
+    loadingMoreRef.current = true;
     const params = new URLSearchParams();
     params.set('cursor', nextCursor);
     params.set('limit', String(PAGE_SIZE));
@@ -117,6 +120,9 @@ export function TransactionsList() {
         if (process.env.NODE_ENV === 'development') {
           console.error('[TransactionsList] pagination error:', err);
         }
+      })
+      .finally(() => {
+        loadingMoreRef.current = false;
       });
   }, [pages, cursor, data?.next_cursor, criteria]);
 

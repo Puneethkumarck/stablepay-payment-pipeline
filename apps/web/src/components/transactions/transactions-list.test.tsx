@@ -106,4 +106,25 @@ describe('TransactionsList', () => {
     // assert — chip should now have active styling (accent border visible)
     expect(chip).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('sends status filter param when chip is active', async () => {
+    // arrange
+    const user = userEvent.setup();
+    let capturedUrl = '';
+    server.use(
+      http.get('/api/v1/transactions', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json(createTransactionPage());
+      }),
+    );
+
+    // act
+    render(<TransactionsList />);
+    await screen.findByText('Transactions');
+    await user.click(screen.getByTestId('chip-COMPLETED'));
+
+    // assert — wait for refetch with status param
+    await screen.findByText('Transactions');
+    expect(capturedUrl).toContain('status=COMPLETED');
+  });
 });
