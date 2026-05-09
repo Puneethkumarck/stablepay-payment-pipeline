@@ -52,6 +52,7 @@ export function AuthedShell({
   );
 
   const handleSignOut = useCallback(() => {
+    localStorage.removeItem('sp4_authed');
     void signOut({ redirectTo: '/login' });
   }, []);
 
