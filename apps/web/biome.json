@@ -43,6 +43,7 @@
         "useAnchorContent": "warn",
         "useAltText": "warn",
         "useButtonType": "warn",
+        "useValidAriaRole": "warn",
         "noStaticElementInteractions": "warn"
       }
     }
