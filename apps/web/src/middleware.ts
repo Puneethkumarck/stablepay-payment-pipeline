@@ -28,10 +28,12 @@ export default auth((req) => {
   }
 
   const roles = session.user.roles;
-  if (path.startsWith('/admin') && !roles?.includes('ROLE_ADMIN')) {
+  const isAdminRoute = path === '/admin' || path.startsWith('/admin/');
+  const isAgentRoute = path === '/agent' || path.startsWith('/agent/');
+  if (isAdminRoute && !roles?.includes('ROLE_ADMIN')) {
     return NextResponse.rewrite(new URL('/not-found', req.url));
   }
-  if (path.startsWith('/agent') && !roles?.includes('ROLE_AGENT')) {
+  if (isAgentRoute && !roles?.includes('ROLE_AGENT')) {
     return NextResponse.rewrite(new URL('/not-found', req.url));
   }
 

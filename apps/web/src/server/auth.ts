@@ -5,6 +5,7 @@ import Credentials from 'next-auth/providers/credentials';
 import '~/types/auth';
 
 const AUTH_API_URL = process.env.AUTH_API_URL ?? 'http://localhost:8081';
+const AUTH_API_TIMEOUT_MS = 5_000;
 
 interface AuthLoginResponse {
   access_token: string;
@@ -35,6 +36,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     const response = await fetch(`${AUTH_API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(AUTH_API_TIMEOUT_MS),
       body: JSON.stringify({ refresh_token: token.refreshToken }),
     });
 
@@ -88,6 +90,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const response = await fetch(`${AUTH_API_URL}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(AUTH_API_TIMEOUT_MS),
             body: JSON.stringify({
               email: credentials.email,
               password: credentials.password,
@@ -151,19 +154,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   events: {
-    async signOut(message) {
+    signOut(message) {
       if ('token' in message && message.token?.refreshToken) {
-        try {
-          await fetch(`${AUTH_API_URL}/api/v1/auth/logout`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              refresh_token: message.token.refreshToken,
-            }),
-          });
-        } catch {
-          // Fire-and-forget: logout failure should not block sign-out
-        }
+        void fetch(`${AUTH_API_URL}/api/v1/auth/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(AUTH_API_TIMEOUT_MS),
+          body: JSON.stringify({
+            refresh_token: message.token.refreshToken,
+          }),
+        }).catch(() => {});
       }
     },
   },
