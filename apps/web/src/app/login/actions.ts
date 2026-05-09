@@ -1,6 +1,7 @@
 'use server';
 
 import { AuthError } from 'next-auth';
+import { NEXT_URL_ALLOWLIST } from '~/middleware';
 import { signIn } from '~/server/auth';
 
 export type LoginError =
@@ -21,13 +22,20 @@ export async function login(
   password: string,
   redirectTo: string,
 ): Promise<LoginResult> {
+  const safeRedirect = NEXT_URL_ALLOWLIST.test(redirectTo) ? redirectTo : '/';
+
   try {
-    const probe = await fetch(`${AUTH_API_URL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(AUTH_API_TIMEOUT_MS),
-      body: JSON.stringify({ email, password }),
-    });
+    let probe: Response;
+    try {
+      probe = await fetch(`${AUTH_API_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(AUTH_API_TIMEOUT_MS),
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      return { error: 'server_error' };
+    }
 
     if (!probe.ok) {
       if (probe.status === 401) return { error: 'invalid_credentials' };
@@ -36,13 +44,12 @@ export async function login(
       return { error: 'server_error' };
     }
 
-    await signIn('credentials', { email, password, redirectTo });
+    await signIn('credentials', { email, password, redirectTo: safeRedirect });
     return {};
   } catch (error) {
     if (error instanceof AuthError && error.type === 'CredentialsSignin') {
       return { error: 'invalid_credentials' };
     }
-    // signIn redirects throw NEXT_REDIRECT — let it propagate
     throw error;
   }
 }

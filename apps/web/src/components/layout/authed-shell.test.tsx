@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next-auth/react', () => ({
@@ -58,7 +58,7 @@ describe('AuthedShell', () => {
     expect(sidebar).toHaveAttribute('data-role', 'Admin');
   });
 
-  it('hides live feed when localStorage is set to false', () => {
+  it('hides live feed when localStorage is set to false', async () => {
     // arrange
     localStorage.setItem('sp4_livefeed_visible', 'false');
 
@@ -70,7 +70,9 @@ describe('AuthedShell', () => {
     );
 
     // assert
-    expect(screen.getByTestId('live-feed')).toHaveAttribute('data-visible', 'false');
+    await waitFor(() => {
+      expect(screen.getByTestId('live-feed')).toHaveAttribute('data-visible', 'false');
+    });
   });
 
   it('shows live feed by default', () => {

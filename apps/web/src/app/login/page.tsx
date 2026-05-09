@@ -35,7 +35,7 @@ export default function LoginPage() {
   const [error, setError] = useState<LoginError | null>(null);
   const [emailTouched, setEmailTouched] = useState(false);
 
-  const emailInvalid = emailTouched && email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const emailInvalid = emailTouched && email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
   const submitDisabled = loading || email === '' || password === '';
 
   const redirectTo = next && NEXT_URL_ALLOWLIST.test(next) ? next : '/';

@@ -3,7 +3,7 @@
 import { signOut } from 'next-auth/react';
 import type { Route } from 'next';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LiveFeed } from '~/components/live-feed';
 import { Sidebar } from './sidebar';
 
@@ -38,10 +38,11 @@ export function AuthedShell({
   const pathname = usePathname();
   const activePage = deriveActivePage(pathname);
 
-  const [liveFeedVisible, setLiveFeedVisible] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(LIVEFEED_STORAGE_KEY) !== 'false';
-  });
+  const [liveFeedVisible, setLiveFeedVisible] = useState(true);
+
+  useEffect(() => {
+    setLiveFeedVisible(localStorage.getItem(LIVEFEED_STORAGE_KEY) !== 'false');
+  }, []);
 
   const handleNavigate = useCallback(
     (_key: string, href: string) => {

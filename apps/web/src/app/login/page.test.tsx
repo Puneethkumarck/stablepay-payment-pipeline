@@ -265,4 +265,56 @@ describe('LoginPage', () => {
     // assert
     expect(screen.getByText('Payment Pipeline Dashboard')).toBeInTheDocument();
   });
+
+  it('shows loading state during submission', async () => {
+    // arrange
+    let resolveLogin!: (value: { error?: string }) => void;
+    mockLogin.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLogin = resolve as typeof resolveLogin;
+      }),
+    );
+    render(<LoginPage />);
+
+    // act
+    fireEvent.click(screen.getByTestId('demo-alice'));
+    fireEvent.submit(screen.getByTestId('login-submit'));
+
+    // assert
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('login-submit')).toHaveTextContent('Signing in…');
+      expect(screen.getByTestId('login-submit')).toBeDisabled();
+    });
+
+    resolveLogin({});
+  });
+
+  it('clears loading state after successful login', async () => {
+    // arrange
+    mockLogin.mockResolvedValue({});
+    render(<LoginPage />);
+
+    // act
+    fireEvent.click(screen.getByTestId('demo-alice'));
+    fireEvent.submit(screen.getByTestId('login-submit'));
+
+    // assert
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('login-submit')).toHaveTextContent('Sign in');
+      expect(screen.queryByTestId('login-error')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows email error for single-char TLD after blur', () => {
+    // arrange
+    render(<LoginPage />);
+    const emailInput = screen.getByTestId('login-email');
+
+    // act
+    fireEvent.change(emailInput, { target: { value: 'a@b.c' } });
+    fireEvent.blur(emailInput);
+
+    // assert
+    expect(screen.getByTestId('email-error')).toHaveTextContent('Enter a valid email address');
+  });
 });
