@@ -198,5 +198,6 @@ describe('StuckList', () => {
 
     // assert
     expect(await screen.findByText('No stuck payments')).toBeInTheDocument();
+    expect(screen.queryByTestId('stuck-banner')).not.toBeInTheDocument();
   });
 });

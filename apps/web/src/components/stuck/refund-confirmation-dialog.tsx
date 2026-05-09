@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -21,9 +22,11 @@ interface RefundConfirmationDialogProps {
 }
 
 export function RefundConfirmationDialog({ stuckPayment }: RefundConfirmationDialogProps) {
+  const [open, setOpen] = useState(false);
   const formattedAmount = formatMoney(stuckPayment.amount.amount, stuckPayment.amount.currency);
 
   const handleConfirmRefund = () => {
+    setOpen(false);
     toast.info('Refund initiation deferred to Phase 6', {
       description:
         'The Stuck refund endpoint is not in REQUIREMENTS v1; backend wiring will be added in Phase 6.',
@@ -32,7 +35,7 @@ export function RefundConfirmationDialog({ stuckPayment }: RefundConfirmationDia
   };
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
         render={
           <Button

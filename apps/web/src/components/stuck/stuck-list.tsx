@@ -97,28 +97,30 @@ export function StuckList() {
       <h1 className="mb-5 text-[22px] font-bold tracking-tight text-fg-1">Stuck Payments</h1>
 
       {/* Banner */}
-      <div
-        data-testid="stuck-banner"
-        className={cn(
-          'mb-5 flex items-center gap-3 rounded-card border px-4 py-3',
-          criticalCount > 0
-            ? 'border-red-500/24 bg-red-500/10'
-            : 'border-amber-500/24 bg-amber-500/10',
-        )}
-      >
-        <AlertTriangle
-          size={16}
-          className={criticalCount > 0 ? 'text-red-400' : 'text-amber-400'}
-        />
-        <span className="text-[13px] font-medium text-fg-1">
-          {items.length} stuck payment{items.length !== 1 ? 's' : ''}
-          {criticalCount > 0 && (
-            <span className="text-red-400">
-              {' '}— {criticalCount} exceed{criticalCount === 1 ? 's' : ''} 24h threshold
-            </span>
+      {items.length > 0 && (
+        <div
+          data-testid="stuck-banner"
+          className={cn(
+            'mb-5 flex items-center gap-3 rounded-card border px-4 py-3',
+            criticalCount > 0
+              ? 'border-red-500/24 bg-red-500/10'
+              : 'border-amber-500/24 bg-amber-500/10',
           )}
-        </span>
-      </div>
+        >
+          <AlertTriangle
+            size={16}
+            className={criticalCount > 0 ? 'text-red-400' : 'text-amber-400'}
+          />
+          <span className="text-[13px] font-medium text-fg-1">
+            {items.length} stuck payment{items.length !== 1 ? 's' : ''}
+            {criticalCount > 0 && (
+              <span className="text-red-400">
+                {' '}— {criticalCount} exceed{criticalCount === 1 ? 's' : ''} 24h threshold
+              </span>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Expandable cards */}
       <div className="mb-6 space-y-2" data-testid="stuck-cards">
@@ -137,6 +139,7 @@ export function StuckList() {
                 className="flex w-full items-center justify-between px-4 py-3 text-left"
                 onClick={() => toggleExpanded(payment.transaction_ref)}
                 aria-expanded={isOpen}
+                aria-controls={`stuck-detail-${payment.transaction_ref}`}
               >
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-[12px] text-fg-2">
@@ -163,6 +166,7 @@ export function StuckList() {
 
               {isOpen && (
                 <div
+                  id={`stuck-detail-${payment.transaction_ref}`}
                   data-testid={`stuck-card-detail-${payment.transaction_ref}`}
                   className="border-t border-border-1 px-4 py-3"
                 >

@@ -72,4 +72,21 @@ describe('RefundConfirmationDialog', () => {
       duration: 8000,
     });
   });
+
+  it('closes dialog after confirm', async () => {
+    // arrange
+    const user = userEvent.setup();
+    render(<RefundConfirmationDialog stuckPayment={createStuckPayment()} />);
+
+    // act
+    await user.click(screen.getByTestId('trigger-refund-button'));
+    const confirmButtons = await screen.findAllByText('Trigger refund');
+    const confirmButton = confirmButtons.find(
+      (btn) => btn.closest('[data-slot="alert-dialog-action"]') !== null,
+    );
+    await user.click(confirmButton!);
+
+    // assert
+    expect(screen.queryByText('Trigger refund?')).not.toBeInTheDocument();
+  });
 });
