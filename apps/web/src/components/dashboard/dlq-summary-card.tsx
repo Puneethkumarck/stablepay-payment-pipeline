@@ -1,11 +1,11 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
-import { useDlqSummary } from '~/lib/hooks/use-dlq-summary';
 import { buttonVariants } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
+import { useDlqSummary } from '~/lib/hooks/use-dlq-summary';
 import { cn } from '~/lib/utils';
 
 const ERROR_CLASSES = [
@@ -34,16 +34,11 @@ export function DlqSummaryCard() {
       <CardContent>
         <div className="grid grid-cols-2 gap-3">
           {ERROR_CLASSES.map(({ key, label, color }) => (
-            <div
-              key={key}
-              className="rounded-md border border-border-1 bg-surface-2 px-3 py-2.5"
-            >
+            <div key={key} className="rounded-md border border-border-1 bg-surface-2 px-3 py-2.5">
               <div className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
                 {label}
               </div>
-              <div className={cn('mt-1 text-lg font-bold', color)}>
-                {byClass[key] ?? 0}
-              </div>
+              <div className={cn('mt-1 text-lg font-bold', color)}>{byClass[key] ?? 0}</div>
             </div>
           ))}
         </div>

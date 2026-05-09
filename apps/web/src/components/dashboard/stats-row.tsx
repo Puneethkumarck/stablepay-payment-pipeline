@@ -1,9 +1,9 @@
 'use client';
 
 import { Activity, AlertTriangle, CheckCircle, DollarSign } from 'lucide-react';
-import { useDashboardStats } from '~/lib/hooks/use-dashboard-stats';
-import { formatMoney } from '~/lib/format/money';
 import { StatCard } from '~/components/stat-card';
+import { formatMoney } from '~/lib/format/money';
+import { useDashboardStats } from '~/lib/hooks/use-dashboard-stats';
 
 export function StatsRow() {
   const { data } = useDashboardStats();
@@ -22,18 +22,8 @@ export function StatsRow() {
         icon={DollarSign}
         accentColor="#3B82F6"
       />
-      <StatCard
-        label="Success rate"
-        value={successRate}
-        icon={CheckCircle}
-        accentColor="#22C55E"
-      />
-      <StatCard
-        label="DLQ events"
-        value={dlqCount}
-        icon={Activity}
-        accentColor="#F59E0B"
-      />
+      <StatCard label="Success rate" value={successRate} icon={CheckCircle} accentColor="#22C55E" />
+      <StatCard label="DLQ events" value={dlqCount} icon={Activity} accentColor="#F59E0B" />
       <StatCard
         label="Stuck payments"
         value={stuckCount}

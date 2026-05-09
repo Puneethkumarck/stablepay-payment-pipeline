@@ -1,16 +1,16 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
-import { useTransactionsList } from '~/lib/hooks/use-transactions-list';
 import { Amount } from '~/components/amount';
+import { type ColumnConfig, DataTable } from '~/components/data-table';
 import { StatusBadge } from '~/components/status-badge';
-import { DataTable, type ColumnConfig } from '~/components/data-table';
 import { buttonVariants } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { formatRelativeTime } from '~/lib/format/time';
+import { useTransactionsList } from '~/lib/hooks/use-transactions-list';
 import type { TransactionDto } from '~/types/api';
 
 type TxnRow = TransactionDto & Record<string, unknown>;
@@ -20,9 +20,7 @@ const columns: ColumnConfig<TxnRow>[] = [
     key: 'ref',
     label: 'Ref',
     width: '25%',
-    render: (_, row) => (
-      <span className="font-mono text-xs text-fg-2">{(row as TxnRow).ref}</span>
-    ),
+    render: (_, row) => <span className="font-mono text-xs text-fg-2">{(row as TxnRow).ref}</span>,
   },
   {
     key: 'type',

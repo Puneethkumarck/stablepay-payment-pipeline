@@ -1,7 +1,7 @@
 'use client';
 
-import { useTransactionsList } from '~/lib/hooks/use-transactions-list';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
+import { useTransactionsList } from '~/lib/hooks/use-transactions-list';
 
 interface FlowCategory {
   label: string;

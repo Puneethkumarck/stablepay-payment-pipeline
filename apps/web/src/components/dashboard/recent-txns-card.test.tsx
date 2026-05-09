@@ -1,6 +1,8 @@
 import { screen } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { createTransaction, createTransactionPage } from '~/test/fixtures/transaction';
+import { server } from '~/test/msw-server';
 import { render } from '~/test/render';
 import { RecentTxnsCard } from './recent-txns-card';
 
@@ -8,37 +10,26 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock('~/lib/hooks/use-transactions-list', () => ({
-  useTransactionsList: vi.fn(),
-}));
-
-import { useTransactionsList } from '~/lib/hooks/use-transactions-list';
-
-const mockUseTransactionsList = vi.mocked(useTransactionsList);
-
 describe('RecentTxnsCard', () => {
-  it('renders recent transactions heading and view-all link', () => {
+  it('renders recent transactions heading and view-all link', async () => {
     // arrange
     const page = createTransactionPage({
       data: [createTransaction({ ref: 'TXN-001' })],
     });
-    mockUseTransactionsList.mockReturnValue({
-      data: page,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useTransactionsList>);
+    server.use(http.get('/api/v1/transactions', () => HttpResponse.json(page)));
 
     // act
     render(<RecentTxnsCard />);
 
     // assert
-    expect(screen.getByText('Recent transactions')).toBeInTheDocument();
+    expect(await screen.findByText('Recent transactions')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /view all/i })).toHaveAttribute(
       'href',
       '/transactions',
     );
   });
 
-  it('renders transaction rows with ref and status', () => {
+  it('renders transaction rows with ref and status', async () => {
     // arrange
     const page = createTransactionPage({
       data: [
@@ -46,31 +37,28 @@ describe('RecentTxnsCard', () => {
         createTransaction({ ref: 'TXN-BBB', internal_status: 'PENDING' }),
       ],
     });
-    mockUseTransactionsList.mockReturnValue({
-      data: page,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useTransactionsList>);
+    server.use(http.get('/api/v1/transactions', () => HttpResponse.json(page)));
 
     // act
     render(<RecentTxnsCard />);
 
     // assert
-    expect(screen.getByText('TXN-AAA')).toBeInTheDocument();
+    expect(await screen.findByText('TXN-AAA')).toBeInTheDocument();
     expect(screen.getByText('TXN-BBB')).toBeInTheDocument();
   });
 
-  it('shows empty state when no transactions', () => {
+  it('shows empty state when no transactions', async () => {
     // arrange
-    const page = createTransactionPage({ data: [] });
-    mockUseTransactionsList.mockReturnValue({
-      data: page,
-      isLoading: false,
-    } as unknown as ReturnType<typeof useTransactionsList>);
+    server.use(
+      http.get('/api/v1/transactions', () =>
+        HttpResponse.json(createTransactionPage({ data: [] })),
+      ),
+    );
 
     // act
     render(<RecentTxnsCard />);
 
     // assert
-    expect(screen.getByText('No transactions yet')).toBeInTheDocument();
+    expect(await screen.findByText('No transactions yet')).toBeInTheDocument();
   });
 });

@@ -1,18 +1,25 @@
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { PageHeader } from '~/components/layout/page-header';
-import { StatsRow } from '~/components/dashboard/stats-row';
-import { RecentTxnsCard } from '~/components/dashboard/recent-txns-card';
-import { FlowBreakdownCard } from '~/components/dashboard/flow-breakdown-card';
 import { DlqSummaryCard } from '~/components/dashboard/dlq-summary-card';
+import { FlowBreakdownCard } from '~/components/dashboard/flow-breakdown-card';
+import { RecentTxnsCard } from '~/components/dashboard/recent-txns-card';
+import { StatsRow } from '~/components/dashboard/stats-row';
 import { StuckAlert } from '~/components/dashboard/stuck-alert';
-import { fetchTransactionsList } from '~/lib/data';
-import { fetchDlqSummary } from '~/lib/data';
-import { fetchStuckList } from '~/lib/data';
+import { PageHeader } from '~/components/layout/page-header';
+import {
+  fetchDashboardStats,
+  fetchDlqSummary,
+  fetchStuckList,
+  fetchTransactionsList,
+} from '~/lib/data';
 
 export default async function Dashboard() {
   const queryClient = new QueryClient();
 
   await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: ['dashboard-stats'],
+      queryFn: fetchDashboardStats,
+    }),
     queryClient.prefetchQuery({
       queryKey: ['transactions', { limit: 6 }],
       queryFn: () => fetchTransactionsList({ limit: 6 }),

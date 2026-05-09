@@ -1,35 +1,27 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
+import { describe, expect, it } from 'vitest';
 import { createDlqSummary } from '~/test/fixtures/dlq';
+import { server } from '~/test/msw-server';
 import { render } from '~/test/render';
 import { DlqSummaryCard } from './dlq-summary-card';
 
-vi.mock('~/lib/hooks/use-dlq-summary', () => ({
-  useDlqSummary: vi.fn(),
-}));
-
-import { useDlqSummary } from '~/lib/hooks/use-dlq-summary';
-
-const mockUseDlqSummary = vi.mocked(useDlqSummary);
-
 describe('DlqSummaryCard', () => {
-  it('renders all 4 error class labels', () => {
+  it('renders all 4 error class labels', async () => {
     // arrange
-    mockUseDlqSummary.mockReturnValue({ data: createDlqSummary() } as unknown as ReturnType<
-      typeof useDlqSummary
-    >);
+    server.use(http.get('/api/v1/admin/dlq/summary', () => HttpResponse.json(createDlqSummary())));
 
     // act
     render(<DlqSummaryCard />);
 
     // assert
-    expect(screen.getByText('Schema invalid')).toBeInTheDocument();
+    expect(await screen.findByText('Schema invalid')).toBeInTheDocument();
     expect(screen.getByText('Proc. failed')).toBeInTheDocument();
     expect(screen.getByText('Sink failure')).toBeInTheDocument();
     expect(screen.getByText('Late event')).toBeInTheDocument();
   });
 
-  it('renders counts from the summary data', () => {
+  it('renders counts from the summary data', async () => {
     // arrange
     const summary = createDlqSummary({
       by_error_class: {
@@ -39,46 +31,45 @@ describe('DlqSummaryCard', () => {
         LATE_EVENT: 1,
       },
     });
-    mockUseDlqSummary.mockReturnValue({ data: summary } as unknown as ReturnType<
-      typeof useDlqSummary
-    >);
+    server.use(http.get('/api/v1/admin/dlq/summary', () => HttpResponse.json(summary)));
 
     // act
     render(<DlqSummaryCard />);
 
     // assert
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(await screen.findByText('5')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
   });
 
-  it('renders DLQ inspector link', () => {
+  it('renders DLQ inspector link', async () => {
     // arrange
-    mockUseDlqSummary.mockReturnValue({ data: createDlqSummary() } as unknown as ReturnType<
-      typeof useDlqSummary
-    >);
+    server.use(http.get('/api/v1/admin/dlq/summary', () => HttpResponse.json(createDlqSummary())));
 
     // act
     render(<DlqSummaryCard />);
 
     // assert
-    expect(screen.getByRole('link', { name: /open dlq inspector/i })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: /open dlq inspector/i })).toHaveAttribute(
       'href',
       '/admin/dlq',
     );
   });
 
-  it('renders zero counts when data is undefined', () => {
+  it('renders zero counts when API returns error', async () => {
     // arrange
-    mockUseDlqSummary.mockReturnValue({ data: undefined } as unknown as ReturnType<
-      typeof useDlqSummary
-    >);
+    server.use(
+      http.get('/api/v1/admin/dlq/summary', () =>
+        HttpResponse.json({ error_code: 'STBLPAY-5000' }, { status: 500 }),
+      ),
+    );
 
     // act
     render(<DlqSummaryCard />);
 
     // assert
-    const zeros = screen.getAllByText('0');
-    expect(zeros).toHaveLength(4);
+    await waitFor(() => {
+      expect(screen.getAllByText('0')).toHaveLength(4);
+    });
   });
 });
