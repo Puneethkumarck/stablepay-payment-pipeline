@@ -57,6 +57,7 @@ export function FilterBar({
               key={status}
               type="button"
               onClick={() => toggleChip(status)}
+              aria-pressed={active}
               data-testid={`chip-${status}`}
               className={cn(
                 'rounded-full border px-3 py-[5px] text-[12px] font-medium transition-colors',

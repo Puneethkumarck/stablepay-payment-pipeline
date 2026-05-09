@@ -91,7 +91,6 @@ export function TransactionsList() {
   const firstPageRows = useMemo(() => (data?.data ?? []) as TxnRow[], [data]);
   const allRows = useMemo(() => [...firstPageRows, ...pages.flat()], [firstPageRows, pages]);
   const hasMore = pages.length > 0 ? cursor !== null : (data?.has_more ?? false);
-  const totalHint = data?.data?.length ?? 0;
 
   const handleLoadMore = useCallback(() => {
     const nextCursor = pages.length > 0 ? cursor : data?.next_cursor;
@@ -106,10 +105,18 @@ export function TransactionsList() {
     fetch(`/api/v1/transactions?${params.toString()}`, {
       credentials: 'include',
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load transactions: ${r.status}`);
+        return r.json();
+      })
       .then((page: { data: TxnRow[]; next_cursor: string | null; has_more: boolean }) => {
         setPages((prev) => [...prev, page.data]);
         setCursor(page.has_more ? page.next_cursor : null);
+      })
+      .catch((err: unknown) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[TransactionsList] pagination error:', err);
+        }
       });
   }, [pages, cursor, data?.next_cursor, criteria]);
 
@@ -146,7 +153,7 @@ export function TransactionsList() {
         />
       </div>
       <div data-testid="transactions-footer" className="mt-3 text-[11px] tracking-wide text-fg-4">
-        3s polling active &middot; {allRows.length} of {totalHint} shown
+        3s polling active &middot; {allRows.length} shown{hasMore ? ' · more available' : ''}
       </div>
     </div>
   );

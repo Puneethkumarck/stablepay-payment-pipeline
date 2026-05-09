@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTransaction, createTransactionPage } from '~/test/fixtures/transaction';
 import { server } from '~/test/msw-server';
 import { render } from '~/test/render';
@@ -14,6 +14,9 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('TransactionsList', () => {
+  beforeEach(() => {
+    pushMock.mockClear();
+  });
   it('renders page header and filter bar', async () => {
     // arrange
     server.use(http.get('/api/v1/transactions', () => HttpResponse.json(createTransactionPage())));
@@ -87,7 +90,7 @@ describe('TransactionsList', () => {
 
     // assert
     expect(await screen.findByTestId('transactions-footer')).toBeInTheDocument();
-    expect(screen.getByTestId('transactions-footer').textContent).toContain('3s polling active');
+    expect(screen.getByTestId('transactions-footer')).toHaveTextContent('3s polling active');
   });
 
   it('renders quick-filter chips that toggle status', async () => {
@@ -100,7 +103,7 @@ describe('TransactionsList', () => {
     const chip = await screen.findByTestId('chip-COMPLETED');
     await user.click(chip);
 
-    // assert — chip should now have active styling (accent purple bg)
-    expect(chip).toHaveClass('bg-[rgba(153,69,255,0.14)]');
+    // assert — chip should now have active styling (accent border visible)
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
   });
 });
