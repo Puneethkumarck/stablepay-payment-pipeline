@@ -1,7 +1,9 @@
 services:
   kafka:
-    volumes:
-      - /tmp/kraft-combined-logs:/tmp/kraft-combined-logs
+    environment:
+      KAFKA_LOG_DIRS: /tmp/kraft-ci-logs
+    tmpfs:
+      - /tmp/kraft-ci-logs
   opensearch:
     environment:
       OPENSEARCH_JAVA_OPTS: "-Xms256m -Xmx256m"
