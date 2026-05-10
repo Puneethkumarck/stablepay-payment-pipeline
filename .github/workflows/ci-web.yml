@@ -94,8 +94,7 @@ jobs:
       - name: Start backend stack
         working-directory: .
         run: |
-          docker compose -f infra/docker-compose.yml up -d postgres redis kafka schema-registry opensearch apps-auth apps-api
-          timeout 180 bash -c 'until curl -sf http://localhost:8080/actuator/health; do sleep 5; done'
+          docker compose -f infra/docker-compose.yml -f infra/docker-compose.ci.yml up -d --wait --wait-timeout 180 postgres redis kafka schema-registry opensearch apps-auth apps-api
 
       - name: Run Playwright tests
         run: pnpm exec playwright test
@@ -114,4 +113,4 @@ jobs:
       - name: Tear down stack
         if: always()
         working-directory: .
-        run: docker compose -f infra/docker-compose.yml down -v
+        run: docker compose -f infra/docker-compose.yml -f infra/docker-compose.ci.yml down -v
