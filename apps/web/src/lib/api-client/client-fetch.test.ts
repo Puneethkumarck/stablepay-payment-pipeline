@@ -30,10 +30,7 @@ describe('clientFetch', () => {
     // arrange
     server.use(
       http.get('/api/v1/failing', () =>
-        HttpResponse.json(
-          { error_code: 'STBLPAY-4040', message: 'Not found' },
-          { status: 404 },
-        ),
+        HttpResponse.json({ error_code: 'STBLPAY-4040', message: 'Not found' }, { status: 404 }),
       ),
     );
 
@@ -43,9 +40,7 @@ describe('clientFetch', () => {
 
   it('throws STBLPAY-1999 when error response has no body', async () => {
     // arrange
-    server.use(
-      http.get('/api/v1/empty-error', () => new HttpResponse(null, { status: 500 })),
-    );
+    server.use(http.get('/api/v1/empty-error', () => new HttpResponse(null, { status: 500 })));
 
     // act / assert
     await expect(clientFetch('/api/v1/empty-error')).rejects.toThrow('STBLPAY-1999');

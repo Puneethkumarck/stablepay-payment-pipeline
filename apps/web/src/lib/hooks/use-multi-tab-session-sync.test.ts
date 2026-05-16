@@ -32,9 +32,7 @@ describe('useMultiTabSessionSync', () => {
     renderHook(() => useMultiTabSessionSync());
 
     // act
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'sp4_authed', newValue: null }),
-    );
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sp4_authed', newValue: null }));
 
     // assert
     expect(replaceFn).toHaveBeenCalledWith('/login?reason=signed-out-elsewhere');
@@ -45,9 +43,7 @@ describe('useMultiTabSessionSync', () => {
     renderHook(() => useMultiTabSessionSync());
 
     // act
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'sp4_theme', newValue: 'light' }),
-    );
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sp4_theme', newValue: 'light' }));
 
     // assert
     expect(replaceFn).not.toHaveBeenCalled();
@@ -58,9 +54,7 @@ describe('useMultiTabSessionSync', () => {
     renderHook(() => useMultiTabSessionSync());
 
     // act
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'sp4_authed', newValue: '1' }),
-    );
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sp4_authed', newValue: '1' }));
 
     // assert
     expect(replaceFn).not.toHaveBeenCalled();
@@ -72,9 +66,7 @@ describe('useMultiTabSessionSync', () => {
 
     // act
     unmount();
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'sp4_authed', newValue: null }),
-    );
+    window.dispatchEvent(new StorageEvent('storage', { key: 'sp4_authed', newValue: null }));
 
     // assert
     expect(replaceFn).not.toHaveBeenCalled();

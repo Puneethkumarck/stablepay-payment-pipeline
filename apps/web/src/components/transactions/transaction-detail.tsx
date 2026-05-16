@@ -125,31 +125,20 @@ export function TransactionDetail({ txnRef, initialData }: TransactionDetailProp
               mono
               borderRight
             />
-            <MetadataCell
-              label="account_id"
-              value={transaction.account_id ?? '—'}
-              mono
-            />
+            <MetadataCell label="account_id" value={transaction.account_id ?? '—'} mono />
             <MetadataCell
               label="counterparty"
               value={transaction.counterparty ?? '—'}
               mono
               borderRight
             />
-            <MetadataCell
-              label="flow_id"
-              value={<IdChip value={transaction.flow_id} />}
-              mono
-            />
+            <MetadataCell label="flow_id" value={<IdChip value={transaction.flow_id} />} mono />
             <MetadataCell
               label="flow_type (topic)"
               value={transaction.source_topic ?? `${transaction.type}_${transaction.direction}`}
               borderRight
             />
-            <MetadataCell
-              label="currency_code"
-              value={transaction.amount.currency}
-            />
+            <MetadataCell label="currency_code" value={transaction.amount.currency} />
             <MetadataCell
               label="provider / chain"
               value={transaction.provider ?? transaction.blockchain ?? '—'}
@@ -195,8 +184,8 @@ export function TransactionDetail({ txnRef, initialData }: TransactionDetailProp
 
       {/* Polling footer */}
       <div data-testid="polling-footer" className="mt-3 text-[11px] tracking-wide text-fg-4">
-        {isTerminal(transaction.internal_status) ? 'Terminal state reached' : '3s polling active'}
-        {' '}&middot;{' '}
+        {isTerminal(transaction.internal_status) ? 'Terminal state reached' : '3s polling active'}{' '}
+        &middot;{' '}
         <span title={formatAbsoluteTooltip(transaction.updated_at)}>
           updated {formatRelativeTime(transaction.updated_at)}
         </span>

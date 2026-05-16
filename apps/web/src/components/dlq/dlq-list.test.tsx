@@ -113,8 +113,16 @@ describe('DlqList', () => {
     // arrange
     const page = createDlqPage({
       data: [
-        createDlqEntry({ id: 'DLQ-100', error_class: 'PROCESSING_FAILED', topic: 'fiat.payin.events.v1' }),
-        createDlqEntry({ id: 'DLQ-200', error_class: 'LATE_EVENT', topic: 'crypto.payout.events.v1' }),
+        createDlqEntry({
+          id: 'DLQ-100',
+          error_class: 'PROCESSING_FAILED',
+          topic: 'fiat.payin.events.v1',
+        }),
+        createDlqEntry({
+          id: 'DLQ-200',
+          error_class: 'LATE_EVENT',
+          topic: 'crypto.payout.events.v1',
+        }),
       ],
     });
     server.use(

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
 import { toast } from 'sonner';
+import { describe, expect, it, vi } from 'vitest';
 import { createStuckPayment } from '~/test/fixtures/stuck';
 import { render } from '~/test/render';
 import { RefundConfirmationDialog } from './refund-confirmation-dialog';

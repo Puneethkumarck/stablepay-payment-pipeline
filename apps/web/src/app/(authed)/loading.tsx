@@ -5,10 +5,7 @@ export default function AuthedLoading() {
     <div className="page" data-testid="authed-loading">
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-card border border-border-1 bg-surface-2 px-5 py-[18px]"
-          >
+          <div key={i} className="rounded-card border border-border-1 bg-surface-2 px-5 py-[18px]">
             <Skeleton className="mb-[14px] h-[11px] w-[110px]" />
             <Skeleton className="mb-[6px] h-[28px] w-[80px]" />
             <Skeleton className="h-[11px] w-[100px]" />

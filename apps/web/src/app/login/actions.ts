@@ -4,11 +4,7 @@ import { AuthError } from 'next-auth';
 import { NEXT_URL_ALLOWLIST } from '~/middleware';
 import { signIn } from '~/server/auth';
 
-export type LoginError =
-  | 'invalid_credentials'
-  | 'account_locked'
-  | 'rate_limited'
-  | 'server_error';
+export type LoginError = 'invalid_credentials' | 'account_locked' | 'rate_limited' | 'server_error';
 
 export interface LoginResult {
   error?: LoginError;
