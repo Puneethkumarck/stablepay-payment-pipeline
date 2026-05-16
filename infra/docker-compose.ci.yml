@@ -4,6 +4,12 @@ services:
       KAFKA_LOG_DIRS: /tmp/kraft-ci-logs
     tmpfs:
       - /tmp/kraft-ci-logs
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
   opensearch:
     environment:
       OPENSEARCH_JAVA_OPTS: "-Xms256m -Xmx256m"
